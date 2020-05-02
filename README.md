@@ -1,5 +1,6 @@
-# vscode-gedcom README
+# vscode-gedcom
 
+GEDCOM file language support for VS Code
 This is the README for your extension "vscode-gedcom". After writing up a brief description, we recommend including the following sections.
 
 ## Features
