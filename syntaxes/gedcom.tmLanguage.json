@@ -1,0 +1,50 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "GEDCOM",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#lastname"
+		},
+		{
+			"include": "#sosa"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+					"name": "storage.type.gedcom",
+					"match": "\\b(FAMS|CHAR|FORM|GEDC|CREM|CONT|CONC|TYPE|RELA|DEAT|OCCU|OBJE|FAMS|HEAD|SOUR|VERS|NAME|CORP|ADDR|DATA|DATE|TIME|FILE|BIRT|SEX|PLAC|BAPM|NOTE|FAMC|RESI)\\b"
+				}
+			]
+		},
+		"lastname": {
+			"name": "string.regexp.gedcom",
+			"begin": "NAME/",
+			"end": "/"
+		},
+		"sosa": {
+			"name": "variable.parameter.gedcom",
+			"begin": "@",
+			"end": "@"
+		},
+		"strings": {
+			"name": "string.quoted.double.gedcom",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.gedcom",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.gedcom"
+}

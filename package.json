@@ -1,0 +1,25 @@
+{
+    "name": "vscode-gedcom",
+    "displayName": "vscode-gedcom",
+    "description": "GEDCOM file language support for VS Code",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.44.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "gedcom",
+            "aliases": ["GEDCOM", "gedcom"],
+            "extensions": [".ged",".gedcom"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "gedcom",
+            "scopeName": "source.gedcom",
+            "path": "./syntaxes/gedcom.tmLanguage.json"
+        }]
+    }
+}
