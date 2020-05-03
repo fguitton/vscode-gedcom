@@ -1,13 +1,12 @@
 # vscode-gedcom
-[![](https://vsmarketplacebadge.apphb.com/version-short/fguitton.gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=fguitton.gedcom)
-[![](https://vsmarketplacebadge.apphb.com/installs-short/fguitton.gedcom.svg)](https://marketplace.visualstudio.com/items?itemNamefguitton.gedcom)
-[![](https://vsmarketplacebadge.apphb.com/rating-short/fguitton.gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=fguitton.gedcom)
+[![](https://vsmarketplacebadge.apphb.com/version-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
+[![](https://vsmarketplacebadge.apphb.com/installs-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
+[![](https://vsmarketplacebadge.apphb.com/rating-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
 [![npm version](https://img.shields.io/npm/v/vscode-gedcom.svg)](https://www.npmjs.com/package/vscode-gedcom)
 [![Licence](https://img.shields.io/npm/l/vscode-gedcom.svg)](https://github.com/fguitton/vscode-gedcom/blob/master/LICENSE)
 [![Dependencies](https://david-dm.org/fguitton/vscode-gedcom/status.svg)](https://david-dm.org/fguitton/vscode-gedcom)
 
-GEDCOM file language support for VS Code
-This is the README for your extension "vscode-gedcom". This extension is a work in progress aiming at providing parsing and syntax highlighting and support for GEDCOM 5.5.1.
+GEDCOM file language support for VS Code. This extension is a work in progress aiming at providing parsing and syntax highlighting and support for GEDCOM 5.5.1.
 
 ## Motivation
 
