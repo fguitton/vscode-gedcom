@@ -1,25 +1,63 @@
 {
     "name": "vscode-gedcom",
-    "displayName": "vscode-gedcom",
+    "displayName": "GEDCOM Language",
     "description": "GEDCOM file language support for VS Code",
     "version": "0.0.1",
+    "publisher": "fguitton",
+    "license": "Apache-2.0",
+    "author": {
+        "name": "Florian Guitton",
+        "url": "https://github.com/fguitton"
+    },
+    "keywords": [
+        "GEDCOM",
+        "gedcom",
+        "ged",
+        "genealogy"
+    ],
+    "homepage": "https://github.com/fguitton/vscode-gedcom/blob/master/README.md",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/fguitton/vscode-gedcom"
+    },
+    "bugs": {
+        "url": "https://github.com/fguitton/vscode-gedcom/issues"
+    },
     "engines": {
         "vscode": "^1.44.0"
     },
     "categories": [
         "Programming Languages"
     ],
+    "icon": "images/icon.png",
+    "galleryBanner": {
+        "color": "#3a3d41",
+        "theme": "dark"
+    },
+    "activationEvents": [
+        "onLanguage:gedcom"
+    ],
     "contributes": {
-        "languages": [{
-            "id": "gedcom",
-            "aliases": ["GEDCOM", "gedcom"],
-            "extensions": [".ged",".gedcom"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "gedcom",
-            "scopeName": "source.gedcom",
-            "path": "./syntaxes/gedcom.tmLanguage.json"
-        }]
+        "languages": [
+            {
+                "id": "gedcom",
+                "aliases": [
+                    "GEDCOM",
+                    "gedcom"
+                ],
+                "extensions": [
+                    ".ged",
+                    ".gedcom"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "gedcom",
+                "scopeName": "source.gedcom",
+                "path": "./syntaxes/gedcom.tmLanguage.json"
+            }
+        ]
     }
 }

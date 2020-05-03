@@ -1,4 +1,7 @@
 # vscode-gedcom
+[![](https://vsmarketplacebadge.apphb.com/version-short/fguitton.gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=fguitton.gedcom)
+[![](https://vsmarketplacebadge.apphb.com/installs-short/fguitton.gedcom.svg)](https://marketplace.visualstudio.com/items?itemNamefguitton.gedcom)
+[![](https://vsmarketplacebadge.apphb.com/rating-short/fguitton.gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=fguitton.gedcom)
 [![npm version](https://img.shields.io/npm/v/vscode-gedcom.svg)](https://www.npmjs.com/package/vscode-gedcom)
 [![Licence](https://img.shields.io/npm/l/vscode-gedcom.svg)](https://github.com/fguitton/vscode-gedcom/blob/master/LICENSE)
 [![Dependencies](https://david-dm.org/fguitton/vscode-gedcom/status.svg)](https://david-dm.org/fguitton/vscode-gedcom)
@@ -13,6 +16,15 @@ This project was borne as a curiosity for the development of VSCode language ext
 ## Features
 
 This is a nascent work in progress and the complete list of supported feature is not known. Feel free to suggest by filing up an issue.
+
+## Installation
+You can install the plugin by searching for [GEDCOM Language extension](https://marketplace.visualstudio.com/items?itemName=fguitton.gedcom) in the extensions market place, or by entering
+
+```
+ext install gedcom language
+```
+
+in to the command palette.
 
 ## GEDCOM Standard
 
