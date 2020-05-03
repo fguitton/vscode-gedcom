@@ -3,7 +3,7 @@
     "displayName": "GEDCOM Language",
     "description": "GEDCOM file language support for VS Code",
     "version": "0.0.1",
-    "publisher": "fguitton",
+    "publisher": "florianguitton",
     "license": "Apache-2.0",
     "author": {
         "name": "Florian Guitton",
