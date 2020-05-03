@@ -1,66 +1,24 @@
 # vscode-gedcom
+[![npm version](https://img.shields.io/npm/v/vscode-gedcom.svg)](https://www.npmjs.com/package/vscode-gedcom)
+[![Licence](https://img.shields.io/npm/l/vscode-gedcom.svg)](https://github.com/fguitton/vscode-gedcom/blob/master/LICENSE)
+[![Dependencies](https://david-dm.org/fguitton/vscode-gedcom/status.svg)](https://david-dm.org/fguitton/vscode-gedcom)
 
 GEDCOM file language support for VS Code
-This is the README for your extension "vscode-gedcom". After writing up a brief description, we recommend including the following sections.
+This is the README for your extension "vscode-gedcom". This extension is a work in progress aiming at providing parsing and syntax highlighting and support for GEDCOM 5.5.1.
+
+## Motivation
+
+This project was borne as a curiosity for the development of VSCode language extension and as a starting point to create tooling usable by family members to help them in their search for familial truth. As such it should be considered an experiment at this stage.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+This is a nascent work in progress and the complete list of supported feature is not known. Feel free to suggest by filing up an issue.
 
-For example if there is an image subfolder under your extension project workspace:
+## GEDCOM Standard
 
-\!\[feature X\]\(images/feature-x.png\)
+GEDCOM was developed by the Family History Department of The Church of Jesus Christ of Latterday Saints (LDS Church) to provide a flexible, uniform format for exchanging computerized
+genealogical data. GEDCOM is an acronym for **GE**nealogical **D**ata **COM**munication. Its purpose is to
+foster the sharing of genealogical information and the development of a wide range of inter-operable
+software products to assist genealogists, historians, and other researchers.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
------------------------------------------------------------------------------------------------------------
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (macOS) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+See [Official Specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).
