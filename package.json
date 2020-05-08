@@ -2,7 +2,7 @@
     "name": "vscode-gedcom",
     "displayName": "GEDCOM Language",
     "description": "GEDCOM file language support for VS Code",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "publisher": "florianguitton",
     "license": "Apache-2.0",
     "author": {
