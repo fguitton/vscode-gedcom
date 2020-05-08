@@ -1,4 +1,4 @@
-# vscode-gedcom
+# vscode-gedcom (Alpha Preview)
 [![](https://vsmarketplacebadge.apphb.com/version-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
 [![](https://vsmarketplacebadge.apphb.com/installs-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
 [![](https://vsmarketplacebadge.apphb.com/rating-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)

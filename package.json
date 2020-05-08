@@ -10,7 +10,6 @@
         "url": "https://github.com/fguitton"
     },
     "keywords": [
-        "GEDCOM",
         "gedcom",
         "ged",
         "genealogy"
@@ -27,16 +26,14 @@
         "vscode": "^1.44.0"
     },
     "categories": [
-        "Programming Languages"
+        "Programming Languages",
+        "Other"
     ],
     "icon": "images/icon.png",
     "galleryBanner": {
         "color": "#3a3d41",
         "theme": "dark"
     },
-    "activationEvents": [
-        "onLanguage:gedcom"
-    ],
     "contributes": {
         "languages": [
             {
