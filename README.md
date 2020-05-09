@@ -1,4 +1,4 @@
-# vscode-gedcom (Alpha Preview)
+# vscode-gedcom (preview)
 [![](https://vsmarketplacebadge.apphb.com/version-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
 [![](https://vsmarketplacebadge.apphb.com/installs-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
 [![](https://vsmarketplacebadge.apphb.com/rating-short/florianguitton.vscode-gedcom.svg)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
@@ -14,7 +14,8 @@ This project was borne as a curiosity for the development of VSCode language ext
 
 ## Features
 
-This is a nascent work in progress and the complete list of supported feature is not known. Feel free to suggest by filing up an issue.
+Currently basic syntax highligthing is supported.
+Note this is a nascent work and the complete list of supported feature is not known. Feel free to suggest by filing up an issue.
 
 ## Installation
 You can install the plugin by searching for [GEDCOM Language extension](https://marketplace.visualstudio.com/items?itemName=fguitton.gedcom) in the extensions market place, or by entering
@@ -32,4 +33,4 @@ genealogical data. GEDCOM is an acronym for **GE**nealogical **D**ata **COM**mun
 foster the sharing of genealogical information and the development of a wide range of inter-operable
 software products to assist genealogists, historians, and other researchers.
 
-See [Official Specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).
+See [Specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf) or visit http://gedcom.org.
