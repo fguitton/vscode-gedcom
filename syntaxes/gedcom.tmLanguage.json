@@ -1,195 +1,336 @@
 {
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
 	"name": "GEDCOM",
+	"scopeName": "source.gedcom",
 	"patterns": [
 		{
 			"include": "#line"
 		}
 	],
-	"scopeName": "source.gedcom",
 	"repository": {
-		"delim": {
-			"patterns": [
-				{
-					"match": "(\\s)",
-					"name": "text.gedcom"
-				}
-			]
-		},
-		"level": {
-			"patterns": [
-				{
-					"match": "(^\\d*)",
-					"name": "constant.numeric.gedcom"
-				},
-				{
-					"include": "#delim"
-				}
-			]
-		},
 		"line": {
 			"patterns": [
 				{
-					"include": "#level"
+					"include": "#record-line"
 				},
 				{
-					"include": "#xref"
+					"include": "#continuation-line"
 				},
 				{
-					"include": "#statement"
+					"include": "#date-line"
+				},
+				{
+					"include": "#name-line"
+				},
+				{
+					"include": "#pointer-line"
+				},
+				{
+					"include": "#tag-line"
+				},
+				{
+					"include": "#invalid-line"
 				}
 			]
 		},
-		"line_name": {
+		"record-line": {
 			"patterns": [
 				{
-					"match": "([^/]*$)",
-					"name": "text.gedcom"
-				},
-				{
-					"include": "#line_name_composite"
-				}
-			]
-		},
-		"line_name_composite": {
-			"patterns": [
-				{
-					"begin": "(/)",
-					"beginCaptures": {
-						"1": {
-							"name": "string.regexp.gedcom"
-						}
-					},
-					"contentName": "string.regexp.gedcom",
-					"end": "(/)",
-					"endCaptures": {
-						"1": {
-							"name": "string.regexp.gedcom"
-						}
-					}
-				},
-				{
-					"match": "(.)",
-					"name": "string.unquoted.gedcom"
-				}
-			]
-		},
-		"noop": {
-			"patterns": [
-				{
-					"match": "(.)",
-					"name": "text.gedcom"
-				}
-			]
-		},
-		"pointer": {
-			"patterns": [
-				{
-					"begin": "(@)",
-					"beginCaptures": {
-						"1": {
-							"name": "storage.type.gedcom"
-						}
-					},
-					"contentName": "storage.type.gedcom",
-					"end": "(@)",
-					"endCaptures": {
-						"1": {
-							"name": "storage.type.gedcom"
+					"name": "meta.line.record.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(@[A-Za-z0-9][^@\\n]*@)[ ]+([A-Za-z_][A-Za-z0-9_]*)(?:[ ](.*))?$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#xref-definition"
+								}
+							]
+						},
+						"4": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"5": {
+							"name": "string.unquoted.payload.gedcom",
+							"patterns": [
+								{
+									"include": "#payload-escapes"
+								}
+							]
 						}
 					}
 				}
 			]
 		},
-		"statement": {
+		"continuation-line": {
 			"patterns": [
 				{
-					"include": "#tag_name"
-				},
-				{
-					"include": "#tag_pointers"
-				},
-				{
-					"include": "#tag_line"
-				},
-				{
-					"include": "#pointer"
-				}
-			]
-		},
-		"tag_line": {
-			"patterns": [
-				{
-					"begin": "([A-Z]*)",
-					"beginCaptures": {
-						"1": {
-							"name": "keyword.control.gedcom"
-						}
-					},
-					"patterns": [
-						{
-							"include": "#noop"
-						}
-					],
-					"end": "(^(?=.{0,1})(?:|))",
-					"endCaptures": {
-						"1": {
-							"name": "text.gedcom"
+					"name": "meta.line.continuation.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(CONC|CONT)(?:[ ](.*))?$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"name": "keyword.control.continuation.gedcom"
+						},
+						"4": {
+							"name": "string.unquoted.payload.gedcom",
+							"patterns": [
+								{
+									"include": "#payload-escapes"
+								}
+							]
 						}
 					}
 				}
 			]
 		},
-		"tag_name": {
+		"date-line": {
 			"patterns": [
 				{
-					"begin": "(NAME)",
-					"beginCaptures": {
-						"1": {
-							"name": "keyword.control.gedcom"
-						}
-					},
-					"patterns": [
-						{
-							"include": "#line_name"
-						}
-					],
-					"end": "(^(?=.{0,1})(?:|))",
-					"endCaptures": {
-						"1": {
-							"name": "text.gedcom"
+					"name": "meta.line.date.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(DATE|SDATE)(?:[ ](.*))?$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"name": "entity.name.tag.gedcom"
+						},
+						"4": {
+							"name": "string.unquoted.payload.gedcom",
+							"patterns": [
+								{
+									"include": "#date"
+								}
+							]
 						}
 					}
 				}
 			]
 		},
-		"tag_pointers": {
+		"name-line": {
 			"patterns": [
 				{
-					"begin": "(FAMS|FAMC|HUSB|WIFE|CHIL|SUBM|SUMN|REPO|ALIA|ANCI|DESI|ASSO|OBJE|NOTE|SOUR)",
-					"beginCaptures": {
-						"1": {
-							"name": "keyword.control.gedcom"
-						}
-					},
-					"patterns": [
-						{
-							"include": "#pointer"
-						}
-					],
-					"end": "(^(?=.{0,1})(?:|))",
-					"endCaptures": {
-						"1": {
-							"name": "text.gedcom"
+					"name": "meta.line.name.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(NAME|_MARNM|_AKA|_AKAN|_BIRN|_ADPN)(?:[ ](.*))?$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "string.unquoted.payload.gedcom",
+							"patterns": [
+								{
+									"include": "#personal-name"
+								}
+							]
 						}
 					}
 				}
 			]
 		},
-		"xref": {
+		"pointer-line": {
 			"patterns": [
 				{
-					"include": "#pointer"
+					"name": "meta.line.pointer.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+([A-Za-z_][A-Za-z0-9_]*)[ ](@[A-Za-z0-9][^@\\n]*@)[ ]*$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"patterns": [
+								{
+									"include": "#xref-reference"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		"tag-line": {
+			"patterns": [
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+([A-Za-z_][A-Za-z0-9_]*)(?:[ ](.*))?$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "string.unquoted.payload.gedcom",
+							"patterns": [
+								{
+									"include": "#payload-escapes"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		"invalid-line": {
+			"patterns": [
+				{
+					"match": "^(?!\\s*$).*$",
+					"name": "invalid.illegal.line.gedcom"
+				}
+			]
+		},
+		"tag": {
+			"patterns": [
+				{
+					"match": "\\b(?:ABBR|ADDR|ADOP|ADR1|ADR2|ADR3|AFN|AGE|AGNC|ALIA|ANCE|ANCI|ANUL|ASSO|AUTH|BAPL|BAPM|BARM|BASM|BIRT|BLES|BURI|CALN|CAST|CAUS|CENS|CHAN|CHAR|CHIL|CHR|CHRA|CITY|CONC|CONF|CONL|CONT|COPR|CORP|CREA|CREM|CROP|CTRY|DATA|DATE|DEAT|DESC|DESI|DEST|DIV|DIVF|DSCR|EDUC|EMAIL|EMIG|ENDL|ENGA|EVEN|EXID|FACT|FAM|FAMC|FAMF|FAMS|FAX|FCOM|FILE|FONE|FORM|GEDC|GIVN|GRAD|HEAD|HEIGHT|HUSB|IDNO|IMMI|INDI|INIL|LANG|LATI|LEFT|LONG|MAP|MARB|MARC|MARL|MARR|MARS|MEDI|MIME|NAME|NATI|NATU|NCHI|NICK|NMR|NO|NOTE|NPFX|NSFX|OBJE|OCCU|ORDI|ORDN|PAGE|PEDI|PHON|PHRASE|PLAC|POST|PROB|PROP|PUBL|QUAY|REFN|RELA|RELI|REPO|RESI|RESN|RETI|RFN|RIN|ROLE|ROMN|SCHMA|SDATE|SEX|SLGC|SLGS|SNOTE|SOUR|SPFX|SSN|STAE|STAT|SUBM|SUBN|SURN|TAG|TEMP|TEXT|TIME|TITL|TOP|TRAN|TRLR|TYPE|UID|VERS|WIDTH|WIFE|WILL|WWW)\\b",
+					"name": "entity.name.tag.gedcom"
+				},
+				{
+					"match": "_[A-Za-z0-9_]*",
+					"name": "entity.name.tag.extension.gedcom"
+				},
+				{
+					"match": "[A-Za-z][A-Za-z0-9_]*",
+					"name": "entity.name.tag.unknown.gedcom"
+				}
+			]
+		},
+		"xref-definition": {
+			"patterns": [
+				{
+					"match": "(@)([A-Za-z0-9][^@\\n]*)(@)",
+					"captures": {
+						"1": {
+							"name": "punctuation.definition.xref.begin.gedcom"
+						},
+						"2": {
+							"name": "entity.name.type.xref.gedcom"
+						},
+						"3": {
+							"name": "punctuation.definition.xref.end.gedcom"
+						}
+					}
+				}
+			]
+		},
+		"xref-reference": {
+			"patterns": [
+				{
+					"match": "(@)(VOID)(@)",
+					"captures": {
+						"1": {
+							"name": "punctuation.definition.xref.begin.gedcom"
+						},
+						"2": {
+							"name": "constant.language.void.gedcom"
+						},
+						"3": {
+							"name": "punctuation.definition.xref.end.gedcom"
+						}
+					}
+				},
+				{
+					"match": "(@)([A-Za-z0-9][^@\\n]*)(@)",
+					"captures": {
+						"1": {
+							"name": "punctuation.definition.xref.begin.gedcom"
+						},
+						"2": {
+							"name": "variable.other.xref.gedcom"
+						},
+						"3": {
+							"name": "punctuation.definition.xref.end.gedcom"
+						}
+					}
+				}
+			]
+		},
+		"payload-escapes": {
+			"patterns": [
+				{
+					"match": "@#[^@]*@",
+					"name": "constant.language.escape.gedcom"
+				},
+				{
+					"match": "@@",
+					"name": "constant.character.escape.gedcom"
+				}
+			]
+		},
+		"date": {
+			"patterns": [
+				{
+					"match": "@#[^@]*@",
+					"name": "constant.language.calendar.gedcom"
+				},
+				{
+					"match": "\\b(?:GREGORIAN|JULIAN|HEBREW|FRENCH_R|ROMAN|UNKNOWN)\\b",
+					"name": "constant.language.calendar.gedcom"
+				},
+				{
+					"match": "\\b(?:FROM|TO|BEF|AFT|BET|AND|ABT|CAL|EST|INT)\\b",
+					"name": "keyword.operator.date.gedcom"
+				},
+				{
+					"match": "\\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|TSH|CSH|KSL|TVT|SHV|ADR|ADS|NSN|IYR|SVN|TMZ|AAV|ELL|VEND|BRUM|FRIM|NIVO|PLUV|VENT|GERM|FLOR|PRAI|MESS|THER|FRUC|COMP)\\b",
+					"name": "constant.language.month.gedcom"
+				},
+				{
+					"match": "\\b(?:BCE|BC|B\\.C\\.)",
+					"name": "constant.language.epoch.gedcom"
+				},
+				{
+					"match": "\\b\\d+\\b",
+					"name": "constant.numeric.date.gedcom"
+				}
+			]
+		},
+		"personal-name": {
+			"patterns": [
+				{
+					"match": "(/)([^/]*)(/)",
+					"captures": {
+						"1": {
+							"name": "punctuation.definition.surname.begin.gedcom"
+						},
+						"2": {
+							"name": "string.quoted.other.surname.gedcom"
+						},
+						"3": {
+							"name": "punctuation.definition.surname.end.gedcom"
+						}
+					}
+				},
+				{
+					"include": "#payload-escapes"
 				}
 			]
 		}

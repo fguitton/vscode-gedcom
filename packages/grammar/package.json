@@ -1,0 +1,11 @@
+{
+  "name": "@vscode-gedcom/grammar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generates and tests the GEDCOM TextMate grammar consumed by VS Code and GitHub Linguist",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "node --experimental-strip-types src/build.ts"
+  }
+}
