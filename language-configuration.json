@@ -1,17 +1,47 @@
 {
-  "comments": {},
-  "brackets": [],
+  "// comments": "GEDCOM has no comment syntax. The key is omitted rather than declared empty so VS Code disables the toggle-comment commands instead of inserting nothing.",
+
+  "// wordPattern": "Two alternatives. The first selects a whole cross-reference including its at-signs, so double-clicking @I1@ selects the identifier rather than a fragment. The second is a run of anything that is not whitespace, an at-sign or a solidus: deliberately not [A-Za-z] so that double-clicking a name works in every script, and stopping at the solidus so a surname selects on its own inside NAME John /Smith/.",
+  "wordPattern": "(@[^@]+@)|([^\\s@/]+)",
+
+  "// autoClosingPairs": "Typing @ closes the pair, because a pointer is the most common reason to type one. The previous configuration excluded string scopes, which disabled it inside payloads — exactly where pointers are written. autoCloseBefore keeps it out of the way mid-word, so an email address in a note does not fight the editor.",
   "autoClosingPairs": [
     {
       "open": "@",
-      "close": "@",
-      "notIn": ["string"]
+      "close": "@"
     }
   ],
+  "autoCloseBefore": " \t\n",
+
+  "// surroundingPairs": "Selecting a surname and pressing / wraps it, which is how GEDCOM marks the surname component of a personal name.",
   "surroundingPairs": [
     ["@", "@"],
     ["/", "/"]
   ],
-  "wordPattern": "(@[^@\\s]+@)|([A-Za-z_][A-Za-z0-9_]*)|(\\d+)",
-  "onEnterRules": []
+
+  "// onEnterRules": "GEDCOM has no indentation to continue, but it does have one unambiguous case: on a CONT line the next line is almost always another CONT at the same level. onEnterRules can only append static text, so each level is spelled out. Levels beyond 5 are rare enough not to be worth the noise.",
+  "onEnterRules": [
+    {
+      "beforeText": "^1 CONT",
+      "action": { "indent": "none", "appendText": "1 CONT " }
+    },
+    {
+      "beforeText": "^2 CONT",
+      "action": { "indent": "none", "appendText": "2 CONT " }
+    },
+    {
+      "beforeText": "^3 CONT",
+      "action": { "indent": "none", "appendText": "3 CONT " }
+    },
+    {
+      "beforeText": "^4 CONT",
+      "action": { "indent": "none", "appendText": "4 CONT " }
+    },
+    {
+      "beforeText": "^5 CONT",
+      "action": { "indent": "none", "appendText": "5 CONT " }
+    }
+  ],
+
+  "// indentationRules": "Deliberately absent. GEDCOM nests by level number with every line at column zero, so indentation-based rules have nothing to act on. Folding is provided by the language server instead."
 }
