@@ -49,7 +49,7 @@ ext install florianguitton.vscode-gedcom
 | Status   | Milestone                                                                                                                               |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅ 0.1.0 | Rewritten grammar, fixture corpus, regression harness                                                                                   |
-| ⬜ 0.2.0 | Zero-dependency GEDCOM parser: CST with source offsets, xref index, registry-driven validation                                          |
+| ✅ 0.2.0 | Zero-dependency GEDCOM parser: CST with source spans, xref index, registry-driven validation                                            |
 | ⬜ 0.3.0 | Language server — go-to-definition on pointers, hovers, document symbols, level-based folding, completion, diagnostics, semantic tokens |
 | ⬜ 0.4.0 | Graph view of the record under the cursor and its nearest edges                                                                         |
 | ⬜ later | Legacy encoding conversion (ANSEL, UTF-16), formatter, 5.5.1 → 7.0 conversion, GEDZIP                                                   |
@@ -62,10 +62,26 @@ Requires Node.js as pinned in `.node-version`. The toolchain is
 ```bash
 npm ci
 npx vp run grammar   # regenerate syntaxes/gedcom.tmLanguage.json from the registry
-npx vp test          # tokenize the fixture corpus and assert scopes
+npx vp run spec      # regenerate the parser's embedded specification model
+npx vp test          # tokenize the corpus, parse it, assert scopes and diagnostics
 npx vp check         # lint, format, type-check
 npx vp run verify    # all of the above
 ```
+
+### Packages
+
+| Package            | Contents                                                                     |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `packages/grammar` | Generates and tests `syntaxes/gedcom.tmLanguage.json`                        |
+| `packages/core`    | The parser: version detection, lexer, CST, cross-reference index, validation |
+
+`packages/core/src` has **zero runtime dependencies and uses no Node builtins**,
+so the same code runs in the extension host, in a browser worker on vscode.dev,
+and in plain tests. Its entry point takes a `Uint8Array` rather than a string
+because version and encoding detection is defined over bytes: the
+[official algorithm](https://github.com/FamilySearch/GEDCOM/blob/main/version-detection/version-detection.md)
+reads character width and byte order from the first two bytes, before any
+decoding can happen.
 
 ### Two things to know before changing the grammar
 

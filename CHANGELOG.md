@@ -3,6 +3,66 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0]
+
+Adds `packages/core`, the GEDCOM parser every later feature is a projection of.
+Nothing user-visible changes yet — no runtime code ships in the extension until
+the language server lands in 0.3.0.
+
+### Added
+
+- **Version and encoding detection** implementing the
+  [official algorithm](https://github.com/FamilySearch/GEDCOM/blob/main/version-detection/version-detection.md):
+  character width and byte order from the first two bytes, then a byte scan for
+  `1 GEDC` / `2 VERS `, then a longest match over the version table. Covers 7.0,
+  5.5.5, 5.5.1, 5.5, 5.6, 5.4, 5.3, 5.0, 4.x, the 3.0 fallback and the PAF-era
+  `1 SYST` form.
+- **Version inference** for files with no `GEDC` structure, which detection
+  formally cannot identify. These are not rare: Linguist's own `Royal92.ged` is a
+  1992 PAF export with no `GEDC` at all.
+- **Lexer** producing line-and-column spans that map onto LSP positions directly.
+- **Tree builder** with error recovery. It never throws and never abandons a
+  document: a skipped level is reattached at the deepest available depth, and
+  every deviation becomes a diagnostic.
+- **CONT/CONC folding**, preserving a payload's significant leading whitespace.
+- **Cross-reference index** — definitions, references, duplicate and dangling
+  detection — with go-to-definition and find-references resolution.
+- **Registry-driven validation**: unknown tags, tags misplaced in context,
+  cardinality, enumerated values including comma-separated `List#Enum` payloads,
+  and pointer target types. `HEAD.SCHMA` declarations are honoured.
+- **Embedded specification model**, generated from the pinned registry snapshot
+  into `packages/core/src/spec/model.generated.ts` — 180 structures for 7.x and
+  195 for 5.5.1, with substructure contexts, cardinalities, payload types,
+  enumerations and labels.
+
+### Notes on behaviour
+
+- `packages/core/src` has zero runtime dependencies and uses no Node builtins, so
+  it runs unchanged in a browser worker. The entry point takes a `Uint8Array`
+  because detection is defined over bytes, before decoding is possible.
+- Validation is **strict for GEDCOM 7 and lenient for 5.5.1**, and an
+  unidentifiable file is treated leniently. Two decades of exporters produced
+  5.5.1 files that violate the specification in ways every consumer tolerates.
+- Extension structures are never validated internally. An extension may carry any
+  substructures unless it documents otherwise, so an unresolved structure makes
+  its whole subtree unchecked rather than checking it against the wrong context.
+
+### Fixed
+
+- `fix(grammar)`: cross-reference identifiers outside ASCII were tokenized as
+  `invalid.illegal.line`, discarding the whole record. No specification permits
+  them, but files in the wild contain them, and the grammar must not be stricter
+  than the parser.
+
+### Testing
+
+- Fixtures covering a dozen writing systems, combining marks and characters
+  outside the basic multilingual plane, in UTF-8 and in UTF-16 in both byte
+  orders; plus non-ASCII cross-reference identifiers.
+- Fixtures for every conformant line terminator — CRLF, lone CR, lone LF — and
+  one mixing all three, with `.gitattributes` marking `fixtures/**` as `-text` so
+  they survive checkout, and a test that fails if they ever stop doing so.
+
 ## [0.1.0]
 
 First release of the rewritten grammar. The previous grammar mis-tokenized every
