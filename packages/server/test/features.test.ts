@@ -322,3 +322,79 @@ describe('against the real corpus', () => {
     expect(symbols.map((s) => s.detail)).toContain('محمد الخوارزمي');
   });
 });
+
+describe('contextual hovers', () => {
+  const TREE = [
+    '0 HEAD',
+    '1 GEDC',
+    '2 VERS 7.0',
+    '0 @I1@ INDI',
+    '1 NAME John /Smith/',
+    '1 SEX M',
+    '1 BIRT',
+    '2 DATE 12 AUG 1901',
+    '1 DEAT',
+    '2 DATE ABT 1975',
+    '1 FAMS @F1@',
+    '0 @F1@ FAM',
+    '1 HUSB @I1@',
+    '1 MARR',
+    '2 DATE 4 JUN 1925',
+    '1 CHIL @C1@',
+    '1 CHIL @C2@',
+    '0 @C1@ INDI',
+    '1 FAMC @F1@',
+    '0 @C2@ INDI',
+    '1 FAMC @F1@',
+    '0 @S1@ SOUR',
+    '1 TITL Parish register',
+    '0 TRLR',
+    '',
+  ].join('\n');
+
+  const tree = analyzeDocument(TREE);
+  const lines = TREE.split('\n');
+  /** A position inside `token`, on the line reading exactly `lineText`. */
+  const at = (lineText: string, token = lineText) => {
+    const line = lines.findIndex((text) => text === lineText);
+    if (line < 0) throw new Error(`no line reading ${lineText}`);
+    return { line, character: lines[line]!.indexOf(token) + 1 };
+  };
+
+  const textOf = (position: { line: number; character: number }) =>
+    JSON.stringify(hover(tree, position)?.contents);
+
+  it('reports the weekday of an exact date', () => {
+    // The one thing a reader cannot work out at a glance and often wants to.
+    expect(textOf(at('2 DATE 12 AUG 1901', 'DATE'))).toContain('Monday');
+    expect(textOf(at('2 DATE 4 JUN 1925', 'DATE'))).toContain('Thursday');
+  });
+
+  it('explains what a qualified date claims instead of a weekday', () => {
+    const text = textOf(at('2 DATE ABT 1975', 'DATE'));
+    expect(text).toContain('Approximate');
+    expect(text).not.toContain('day');
+  });
+
+  it('counts a person\u2019s immediate relationships', () => {
+    const text = textOf(at('0 @I1@ INDI', 'I1'));
+    expect(text).toContain('2 children');
+    expect(text).toContain('1901');
+  });
+
+  it('reports a family\u2019s marriage and size', () => {
+    const text = textOf(at('0 @F1@ FAM', 'F1'));
+    expect(text).toContain('Married');
+    expect(text).toContain('2 children');
+  });
+
+  it('reports how often a source is cited', () => {
+    expect(textOf(at('0 @S1@ SOUR', 'S1'))).toContain('Cited nowhere');
+  });
+
+  it('carries the same detail through a pointer', () => {
+    // Hovering `1 HUSB @I1@` should describe the person, not restate the tag.
+    const text = textOf(at('1 HUSB @I1@', 'I1'));
+    expect(text).toContain('2 children');
+  });
+});

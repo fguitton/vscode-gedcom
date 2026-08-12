@@ -19,6 +19,10 @@ import {
   labelOf,
   modelFor,
   payloadOf,
+  parseExactDate,
+  describeDate,
+  lifespan,
+  relationsOf,
   scanDate,
   walk,
   type Analysis,
@@ -216,6 +220,83 @@ export function summarize(record: Structure, analysis?: Analysis): string {
   return record.tag;
 }
 
+/**
+ * What is worth saying about a record, beyond its name.
+ *
+ * Different records answer different questions. For a person the reader wants to
+ * know their shape in the tree — how many children, whether they married more
+ * than once, how many siblings — none of which the file states directly. For a
+ * source they want to know how much of the tree leans on it.
+ */
+function describeRecord(analysis: Analysis, record: Structure): string[] {
+  const lines: string[] = [];
+  const xref = record.xref;
+  if (xref === null) return lines;
+
+  if (record.tag === 'INDI') {
+    const span = lifespan(analysis, xref);
+    const sex = record.children.find((c) => c.tag === 'SEX')?.payload;
+    const facts = [sex, span].filter(Boolean);
+    if (facts.length) lines.push(facts.join(' · '));
+
+    const relations = relationsOf(analysis, xref);
+    const counts: string[] = [];
+    const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+    if (relations.parents.length)
+      counts.push(plural(relations.parents.length, 'parent', 'parents'));
+    if (relations.siblings.length) {
+      counts.push(plural(relations.siblings.length, 'sibling', 'siblings'));
+    }
+    if (relations.spouses.length)
+      counts.push(plural(relations.spouses.length, 'spouse', 'spouses'));
+    if (relations.children.length)
+      counts.push(plural(relations.children.length, 'child', 'children'));
+
+    if (counts.length) lines.push(counts.join(' · '));
+    else lines.push('_No family recorded._');
+    return lines;
+  }
+
+  if (record.tag === 'FAM') {
+    const children = record.children.filter((c) => c.tag === 'CHIL').length;
+    const marriage = record.children
+      .find((c) => c.tag === 'MARR')
+      ?.children.find((c) => c.tag === 'DATE')?.payload;
+
+    if (marriage) lines.push(`Married ${marriage}`);
+    lines.push(children === 1 ? '1 child' : `${children} children`);
+    return lines;
+  }
+
+  if (record.tag === 'SOUR' || record.tag === 'REPO' || record.tag === 'SNOTE') {
+    const uses = analysis.xrefs.referencesTo.get(xref)?.length ?? 0;
+    lines.push(
+      uses === 0 ? '_Cited nowhere in this file._' : `Cited ${uses} time${uses === 1 ? '' : 's'}`,
+    );
+    return lines;
+  }
+
+  return lines;
+}
+
+/** What a date payload is actually claiming, in words. */
+function describeDatePayload(payload: string): string[] {
+  const lines: string[] = [];
+
+  const exact = parseExactDate(payload);
+  if (exact) {
+    // The one thing a reader cannot work out at a glance, and often wants to:
+    // parish records and censuses were kept on particular days of the week.
+    lines.push(`A ${exact.weekday}.`);
+    return lines;
+  }
+
+  const description = describeDate(payload);
+  if (description) lines.push(`_${description}_`);
+  return lines;
+}
+
 export function hover(analysis: Analysis, position: Position): Hover | null {
   // Pointers are checked first: a pointer lives in the payload, which is outside
   // both the tag and xref spans, so looking up the structure first would miss it.
@@ -223,7 +304,12 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
   if (reference) {
     const target = analysis.xrefs.definitions.get(reference.xref);
     const value = target
-      ? [`**${target.tag}** \`@${reference.xref}@\``, '', summarize(target, analysis)].join('\n')
+      ? [
+          `**${target.tag}** \`@${reference.xref}@\``,
+          '',
+          summarize(target, analysis),
+          ...describeRecord(analysis, target),
+        ].join('\n')
       : `\`@${reference.xref}@\` — no matching record in this document.`;
     return { contents: { kind: 'markdown', value }, range: toRange(reference.span) };
   }
@@ -244,6 +330,16 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
   if (structure.xref !== null) {
     const uses = analysis.xrefs.referencesTo.get(structure.xref)?.length ?? 0;
     lines.push('', `\`@${structure.xref}@\` — ${uses} reference${uses === 1 ? '' : 's'}`);
+
+    const described = describeRecord(analysis, structure);
+    if (described.length) lines.push('', ...described);
+  }
+
+  // Dates get the treatment the payload deserves rather than a restatement of
+  // the tag: a weekday when the date is exact, and what it claims when it is not.
+  if ((structure.tag === 'DATE' || structure.tag === 'SDATE') && structure.payload) {
+    const described = describeDatePayload(structure.payload);
+    if (described.length) lines.push('', ...described);
   }
 
   if (resolution?.slug) {

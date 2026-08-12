@@ -12,6 +12,7 @@
 
 import { neighbourhood, recordAt, type Graph } from '@vscode-gedcom/core';
 import {
+  commands,
   Range,
   Selection,
   TextEditorRevealType,
@@ -293,6 +294,14 @@ export function registerGraphView(context: ExtensionContext): void {
   const provider = new GedcomGraphViewProvider();
 
   context.subscriptions.push(
+    // A panel view behind a `when` clause is close to undiscoverable: it appears
+    // as one more tab beside Terminal and Output, only once a GEDCOM file happens
+    // to be focused. An explicit command in the palette and a button on the
+    // editor title bar give it two ways in that do not rely on noticing a tab.
+    commands.registerCommand('gedcom.showGraph', async () => {
+      await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
+      provider.update(window.activeTextEditor);
+    }),
     window.registerWebviewViewProvider(GRAPH_VIEW_ID, provider, {
       // The panel is cheap to rebuild from the document, so there is no state
       // worth the memory cost of keeping it alive while hidden.

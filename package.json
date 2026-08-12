@@ -182,6 +182,29 @@
           "description": "Trace the communication between VS Code and the GEDCOM language server."
         }
       }
+    },
+    "commands": [
+      {
+        "command": "gedcom.showGraph",
+        "title": "Show Graph",
+        "category": "GEDCOM",
+        "icon": "$(type-hierarchy)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "gedcom.showGraph",
+          "when": "editorLangId == gedcom",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "gedcom.showGraph",
+          "when": "editorLangId == gedcom"
+        }
+      ]
     }
   },
   "icon": "images/icon.png",

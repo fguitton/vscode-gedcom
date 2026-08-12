@@ -129,3 +129,41 @@ describe('graph panel', () => {
     await vscode.commands.executeCommand('gedcom.graph.focus');
   });
 });
+
+describe('discoverability', () => {
+  it('contributes a Show Graph command', async () => {
+    const all = await vscode.commands.getCommands(true);
+    assert.ok(all.includes('gedcom.showGraph'), 'expected gedcom.showGraph to be registered');
+  });
+
+  it('the command opens the panel without throwing', async () => {
+    await openFixture(SAMPLE);
+    await vscode.commands.executeCommand('gedcom.showGraph');
+  });
+});
+
+describe('hovers', () => {
+  it('reports the weekday of an exact date', async () => {
+    const document = await vscode.workspace.openTextDocument({
+      language: 'gedcom',
+      content: '0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 BIRT\n2 DATE 12 AUG 1901\n0 TRLR\n',
+    });
+    await vscode.window.showTextDocument(document);
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+    const hovers = await vscode.commands.executeCommand(
+      'vscode.executeHoverProvider',
+      document.uri,
+      new vscode.Position(5, 3),
+    );
+
+    // `contents` holds MarkdownString objects whose `value` is a getter, so
+    // JSON.stringify renders them as `{}`. Read the property directly.
+    const text = (hovers ?? [])
+      .flatMap((h) => h.contents)
+      .map((c) => (typeof c === 'string' ? c : c.value))
+      .join('\n');
+
+    assert.match(text, /Monday/, `expected a weekday in the hover, saw ${text}`);
+  });
+});
