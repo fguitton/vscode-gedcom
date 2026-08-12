@@ -87,6 +87,12 @@ export default defineConfig({
         command: 'vscode-test',
         input: ['dist/**', 'test/integration/**', 'package.json'],
       },
+      // Launches the extension in the web extension host, in a browser, for
+      // eyeballing what only the web host can show — CSP behaviour in the graph
+      // panel, and the language server running in a nested worker.
+      'dev:web': {
+        command: 'vscode-test-web --browserType=chromium --extensionDevelopmentPath=. fixtures',
+      },
       // Full gate: generated artifacts are refreshed before tests read them, and
       // bundling last catches anything that only breaks when packaged.
       verify: {
