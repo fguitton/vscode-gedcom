@@ -38,6 +38,9 @@ jobs:
       - name: Lint, format and type-check
         run: npx vp check
 
+      - name: Bundle both extension hosts
+        run: npx vp run bundle
+
       - name: Package
         run: npx --yes @vscode/vsce package --no-git-tag-version --out gedcom.vsix
 

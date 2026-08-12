@@ -1,5 +1,5 @@
-# The published extension ships only the declarative language contribution.
-# Everything that produces or verifies the grammar stays out of the VSIX.
+# The published extension ships the declarative language contribution and the
+# two bundles. Everything that produces or verifies them stays out of the VSIX.
 
 .github/**
 .vscode/**
@@ -9,9 +9,13 @@ packages/**
 fixtures/**
 vendor/**
 
+.gitattributes
 .gitignore
 .node-version
 tsconfig.json
+tsdown.config.ts
 vite.config.ts
 package-lock.json
-vsc-extension-quickstart.md
+
+# Source maps are for local debugging; they are larger than the code they map.
+dist/**/*.map

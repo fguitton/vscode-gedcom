@@ -1,7 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023"],
+    // DOM is here for the web extension host: the client constructs a Worker and
+    // the server talks over one. It is deliberately not a licence for
+    // packages/core to use browser APIs — that package's portability is enforced
+    // by packages/core/test/portability.test.ts, which checks the real invariant
+    // rather than trusting a lib list.
+    "lib": ["ES2023", "DOM"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,

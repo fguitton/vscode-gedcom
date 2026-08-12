@@ -69,9 +69,16 @@ export default defineConfig({
         input: ['vendor/registries/**', 'packages/core/scripts/**'],
         output: ['packages/core/src/spec/model.generated.ts'],
       },
-      // Full gate: both generated artifacts are refreshed before tests read them.
+      // Bundle both extension hosts. Four outputs; see tsdown.config.ts.
+      bundle: {
+        command: 'tsdown',
+        input: ['packages/*/src/**', 'tsdown.config.ts'],
+        output: ['dist/**'],
+      },
+      // Full gate: generated artifacts are refreshed before tests read them, and
+      // bundling last catches anything that only breaks when packaged.
       verify: {
-        command: ['vp run grammar', 'vp run spec', 'vp test', 'vp check'],
+        command: ['vp run grammar', 'vp run spec', 'vp test', 'vp check', 'vp run bundle'],
       },
     },
   },

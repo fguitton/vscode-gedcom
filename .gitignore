@@ -109,3 +109,6 @@ dist
 
 # Packaged extension
 *.vsix
+
+# Bundled output
+dist/
