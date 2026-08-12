@@ -32,13 +32,20 @@
     "packages/*"
   ],
   "type": "module",
+  "main": "./dist/node/extension.js",
+  "browser": "./dist/browser/extension.js",
   "scripts": {
     "test": "vp test",
     "check": "vp check"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "@types/vscode": "~1.91.0",
+    "tsdown": "^0.22.14",
     "vite-plus": "^0.2.9",
+    "vscode-languageclient": "^10.1.0",
+    "vscode-languageserver": "^10.1.0",
+    "vscode-languageserver-textdocument": "^1.0.13",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"
   },
@@ -64,7 +71,65 @@
         "scopeName": "source.gedcom",
         "path": "./syntaxes/gedcom.tmLanguage.json"
       }
-    ]
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "gedcom",
+        "scopes": {
+          "property.defaultLibrary": [
+            "entity.name.tag.gedcom"
+          ],
+          "property": [
+            "entity.name.tag.unknown.gedcom"
+          ],
+          "macro": [
+            "entity.name.tag.extension.gedcom"
+          ],
+          "class.declaration": [
+            "entity.name.type.xref.gedcom"
+          ],
+          "variable": [
+            "variable.other.xref.gedcom"
+          ],
+          "variable.deprecated": [
+            "invalid.deprecated.xref.gedcom"
+          ],
+          "keyword": [
+            "constant.language.void.gedcom"
+          ]
+        }
+      }
+    ],
+    "configuration": {
+      "title": "GEDCOM",
+      "properties": {
+        "gedcom.validation.strictness": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "strict",
+            "lenient"
+          ],
+          "enumDescriptions": [
+            "Follow the file's own version: strict for GEDCOM 7, lenient for 5.5.x and for files too old or damaged to identify.",
+            "Enforce placement and cardinality rules on every file, whatever version it claims.",
+            "Report only what is unambiguously wrong: malformed lines, dangling pointers, duplicate identifiers."
+          ],
+          "default": "auto",
+          "markdownDescription": "How strictly to validate GEDCOM structure.\n\nTwo decades of exporters produced 5.5.1 files that violate the specification in ways every consumer tolerates, which is why `auto` does not apply GEDCOM 7's rules to them."
+        },
+        "gedcom.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace the communication between VS Code and the GEDCOM language server."
+        }
+      }
+    }
   },
   "icon": "images/icon.png",
   "galleryBanner": {
@@ -80,7 +145,7 @@
   },
   "engines": {
     "node": "^20.19.0 || ^22.18.0 || >=24.11.0",
-    "vscode": "^1.90.0"
+    "vscode": "^1.91.0"
   },
   "capabilities": {
     "untrustedWorkspaces": {

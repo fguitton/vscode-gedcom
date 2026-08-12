@@ -1,0 +1,11 @@
+{
+  "name": "@vscode-gedcom/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GEDCOM language server: navigation, hovers, outline, folding, completion, diagnostics and semantic tokens",
+  "license": "Apache-2.0",
+  "type": "module",
+  "dependencies": {
+    "@vscode-gedcom/core": "*"
+  }
+}
