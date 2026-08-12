@@ -109,8 +109,16 @@ describe('language server', () => {
     await vscode.window.showTextDocument(document);
     await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-    const codes = vscode.languages.getDiagnostics(document.uri).map((d) => String(d.code));
-    assert.ok(codes.includes('dangling-pointer'), `expected a dangling pointer, saw ${codes}`);
+    // A diagnostic code is a string, a number, or a {value, target} pair; the
+    // server sends plain strings, so narrow to those rather than stringifying.
+    const codes = vscode.languages
+      .getDiagnostics(document.uri)
+      .map((d) => (typeof d.code === 'string' ? d.code : ''));
+
+    assert.ok(
+      codes.includes('dangling-pointer'),
+      `expected a dangling pointer, saw ${codes.join(', ')}`,
+    );
   });
 });
 
