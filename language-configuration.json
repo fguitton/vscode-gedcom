@@ -1,18 +1,17 @@
 {
-    "autoClosingPairs": [
-        [
-            "@",
-            "@"
-        ]
-    ],
-    "surroundingPairs": [
-        [
-            "@",
-            "@"
-        ],
-        [
-            "/",
-            "/"
-        ]
-    ]
+  "comments": {},
+  "brackets": [],
+  "autoClosingPairs": [
+    {
+      "open": "@",
+      "close": "@",
+      "notIn": ["string"]
+    }
+  ],
+  "surroundingPairs": [
+    ["@", "@"],
+    ["/", "/"]
+  ],
+  "wordPattern": "(@[^@\\s]+@)|([A-Za-z_][A-Za-z0-9_]*)|(\\d+)",
+  "onEnterRules": []
 }

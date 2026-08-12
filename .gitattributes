@@ -1,0 +1,14 @@
+# The grammar is a generated artifact that GitHub Linguist reads straight from
+# this repository, and CI checks that regenerating it produces no diff. If it were
+# committed with CRLF from a Windows checkout, that check would fail on Linux.
+# Pin it — and every other text file — to LF regardless of platform.
+* text=auto eol=lf
+
+# GEDCOM fixtures are byte-exact test inputs. Some are UTF-16 and some
+# deliberately use CR-only line endings; git must not touch any of them.
+fixtures/** -text -diff
+
+# Pinned upstream snapshots. Their value is being unmodified copies.
+vendor/** -text
+
+*.png binary

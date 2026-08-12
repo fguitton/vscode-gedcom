@@ -1,61 +1,91 @@
 {
-    "name": "vscode-gedcom",
-    "displayName": "GEDCOM Language",
-    "description": "GEDCOM file language support for VS Code",
-    "version": "0.0.4",
-    "preview": true,
-    "publisher": "florianguitton",
-    "license": "Apache-2.0",
-    "author": {
-        "name": "Florian Guitton",
-        "url": "https://github.com/fguitton"
-    },
-    "keywords": [
-        "gedcom",
-        "ged",
-        "genealogy"
-    ],
-    "homepage": "https://github.com/fguitton/vscode-gedcom/blob/master/README.md",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/fguitton/vscode-gedcom"
-    },
-    "bugs": {
-        "url": "https://github.com/fguitton/vscode-gedcom/issues"
-    },
-    "engines": {
-        "vscode": "^1.44.0"
-    },
-    "categories": [
-        "Programming Languages",
-        "Other"
-    ],
-    "icon": "images/icon.png",
-    "galleryBanner": {
-        "color": "#3a3d41",
-        "theme": "dark"
-    },
-    "contributes": {
-        "languages": [
-            {
-                "id": "gedcom",
-                "aliases": [
-                    "GEDCOM",
-                    "gedcom"
-                ],
-                "extensions": [
-                    ".ged",
-                    ".gedcom"
-                ],
-                "configuration": "./language-configuration.json"
-            }
+  "name": "vscode-gedcom",
+  "displayName": "GEDCOM Language",
+  "version": "0.1.0",
+  "private": false,
+  "description": "GEDCOM language support for VS Code: syntax highlighting for GEDCOM 5.5.1, 5.5.5 and FamilySearch GEDCOM 7",
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "family tree",
+    "familysearch",
+    "ged",
+    "gedcom",
+    "genealogy"
+  ],
+  "homepage": "https://github.com/fguitton/vscode-gedcom/blob/master/README.md",
+  "bugs": {
+    "url": "https://github.com/fguitton/vscode-gedcom/issues"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Florian Guitton",
+    "url": "https://github.com/fguitton"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fguitton/vscode-gedcom"
+  },
+  "publisher": "florianguitton",
+  "workspaces": [
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "vite-plus": "^0.2.9",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "gedcom",
+        "aliases": [
+          "GEDCOM",
+          "gedcom"
         ],
-        "grammars": [
-            {
-                "language": "gedcom",
-                "scopeName": "source.gedcom",
-                "path": "./syntaxes/gedcom.tmLanguage.json"
-            }
-        ]
+        "extensions": [
+          ".ged",
+          ".gedcom"
+        ],
+        "firstLine": "^\\uFEFF?0\\s+HEAD\\s*$",
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gedcom",
+        "scopeName": "source.gedcom",
+        "path": "./syntaxes/gedcom.tmLanguage.json"
+      }
+    ]
+  },
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#003058",
+    "theme": "dark"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "12.0.2",
+      "onFail": "download"
     }
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.18.0 || >=24.11.0",
+    "vscode": "^1.90.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  }
 }

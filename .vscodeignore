@@ -1,4 +1,17 @@
+# The published extension ships only the declarative language contribution.
+# Everything that produces or verifies the grammar stays out of the VSIX.
+
+.github/**
 .vscode/**
 .vscode-test/**
+node_modules/**
+packages/**
+fixtures/**
+vendor/**
+
 .gitignore
+.node-version
+tsconfig.json
+vite.config.ts
+package-lock.json
 vsc-extension-quickstart.md

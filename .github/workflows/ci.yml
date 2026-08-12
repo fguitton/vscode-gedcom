@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+
+      # The grammar is a committed build artifact because GitHub Linguist reads it
+      # straight from this repository and runs no build step. If regenerating it
+      # produces a diff, the committed file is stale and Linguist would ship the
+      # old one.
+      - name: Grammar is up to date with the pinned registry
+        run: |
+          npx vp run grammar
+          git diff --exit-code -- syntaxes/gedcom.tmLanguage.json
+
+      - name: Test
+        run: npx vp test
+
+      - name: Lint, format and type-check
+        run: npx vp check
+
+      - name: Package
+        run: npx --yes @vscode/vsce package --no-git-tag-version --out gedcom.vsix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: gedcom.vsix
