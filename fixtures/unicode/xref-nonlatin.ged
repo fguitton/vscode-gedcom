@@ -1,0 +1,22 @@
+0 HEAD
+1 SOUR vscode-gedcom test corpus
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Cross-reference identifiers outside ASCII. Neither GEDCOM 5.5.1 nor 7.0
+2 CONT permits these, but files in the wild contain them and losing a whole
+2 CONT record over an identifier is worse than accepting one.
+0 @家族1@ FAM
+1 HUSB @人物1@
+1 WIFE @Мария@
+0 @人物1@ INDI
+1 NAME 田中 /一郎/
+1 SEX M
+1 FAMS @家族1@
+0 @Мария@ INDI
+1 NAME Мария /Иванова/
+1 SEX F
+1 FAMS @家族1@
+0 @naïve id@ NOTE An identifier with a diacritic and a space.
+0 TRLR

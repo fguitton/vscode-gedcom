@@ -21,14 +21,16 @@ jobs:
 
       - run: npm ci
 
-      # The grammar is a committed build artifact because GitHub Linguist reads it
-      # straight from this repository and runs no build step. If regenerating it
-      # produces a diff, the committed file is stale and Linguist would ship the
-      # old one.
-      - name: Grammar is up to date with the pinned registry
+      # Both generated artifacts are committed. The grammar because GitHub
+      # Linguist reads it straight from this repository and runs no build step;
+      # the spec model because packages/core must run in a browser worker, where
+      # there is no filesystem to read a registry from. If regenerating either
+      # produces a diff, the committed copy is stale.
+      - name: Generated artifacts are up to date with the pinned registry
         run: |
           npx vp run grammar
-          git diff --exit-code -- syntaxes/gedcom.tmLanguage.json
+          npx vp run spec
+          git diff --exit-code -- syntaxes/gedcom.tmLanguage.json packages/core/src/spec/model.generated.ts
 
       - name: Test
         run: npx vp test

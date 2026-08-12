@@ -1,0 +1,70 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SOUR vscode-gedcom test corpus
+1 NOTE Names, places and notes across writing systems.
+0 @I1@ INDI
+1 NAME 山田 /太郎/
+2 GIVN 太郎
+2 SURN 山田
+1 SEX M
+1 BIRT
+2 DATE 12 AUG 1901
+2 PLAC 京都市, 日本
+1 NOTE 日本語のメモです。
+2 CONT 二行目もあります。
+0 @I2@ INDI
+1 NAME /李/ 小龍
+2 GIVN 小龍
+2 SURN 李
+1 SEX M
+1 BIRT
+2 PLAC 香港
+0 @I3@ INDI
+1 NAME محمد /الخوارزمي/
+1 SEX M
+1 BIRT
+2 PLAC خوارزم
+1 NOTE ملاحظة بالعربية مع أرقام ١٢٣.
+0 @I4@ INDI
+1 NAME משה /רבינו/
+1 SEX M
+1 NOTE הערה בעברית.
+0 @I5@ INDI
+1 NAME Αρχιμήδης /Συρακούσιος/
+1 SEX M
+1 BIRT
+2 PLAC Συρακούσες, Σικελία
+0 @I6@ INDI
+1 NAME Пётр /Чайковский/
+1 SEX M
+1 BIRT
+2 DATE 7 MAY 1840
+2 PLAC Воткинск, Россия
+0 @I7@ INDI
+1 NAME /गांधी/ मोहनदास
+1 SEX M
+1 BIRT
+2 PLAC पोरबंदर, भारत
+0 @I8@ INDI
+1 NAME Nguyễn /Trãi/
+1 SEX M
+1 NOTE Dấu phụ tiếng Việt: ăâđêôơư.
+0 @I9@ INDI
+1 NAME /สมิธ/ สมชาย
+1 SEX M
+1 BIRT
+2 PLAC กรุงเทพมหานคร
+0 @I10@ INDI
+1 NAME 𒀭𒂗𒆠 /𒌷𒀖/
+1 SEX U
+1 NOTE Characters outside the basic multilingual plane occupy two UTF-16 code units each.
+0 @I11@ INDI
+1 NAME Amélie /Poulain/
+1 SEX F
+1 NOTE Combining marks: e + U+0301 renders as é.
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I11@
+1 CHIL @I2@
+0 TRLR

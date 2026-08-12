@@ -7,7 +7,14 @@ import { defineConfig } from 'vite-plus';
  * step with the generator, and CI checks the two match. `vendor/` and `fixtures/`
  * are pinned upstream snapshots whose value is being unmodified copies.
  */
-const IGNORED = ['syntaxes/**', 'vendor/**', 'fixtures/**', '.vscode/**', '.github/**'];
+const IGNORED = [
+  'syntaxes/**',
+  'vendor/**',
+  'fixtures/**',
+  '.vscode/**',
+  '.github/**',
+  '**/*.generated.ts',
+];
 
 export default defineConfig({
   test: {
@@ -28,8 +35,8 @@ export default defineConfig({
     },
     overrides: [
       {
-        // The grammar builder is a CLI: printing progress is the point.
-        files: ['packages/grammar/src/build.ts'],
+        // The generators are CLIs: printing progress is the point.
+        files: ['packages/grammar/src/build.ts', 'packages/*/scripts/**'],
         env: { node: true },
         rules: { 'no-console': 'off' },
       },
@@ -55,9 +62,16 @@ export default defineConfig({
         input: ['vendor/registries/**', 'packages/grammar/src/**'],
         output: ['syntaxes/gedcom.tmLanguage.json'],
       },
-      // Full gate: the grammar must be regenerated before tests read it.
+      // Regenerate the parser's embedded specification model. Embedded rather
+      // than read from disk because packages/core must run in a browser worker.
+      spec: {
+        command: 'node --experimental-strip-types packages/core/scripts/build-spec.ts',
+        input: ['vendor/registries/**', 'packages/core/scripts/**'],
+        output: ['packages/core/src/spec/model.generated.ts'],
+      },
+      // Full gate: both generated artifacts are refreshed before tests read them.
       verify: {
-        command: ['vp run grammar', 'vp test', 'vp check'],
+        command: ['vp run grammar', 'vp run spec', 'vp test', 'vp check'],
       },
     },
   },

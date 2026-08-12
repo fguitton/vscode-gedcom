@@ -1,0 +1,14 @@
+{
+  "name": "@vscode-gedcom/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GEDCOM parser: version detection, lexer, concrete syntax tree, cross-reference index and registry-driven validation",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build-spec": "node --experimental-strip-types scripts/build-spec.ts"
+  }
+}
