@@ -1,0 +1,30 @@
+0 HEAD
+1 SOUR conversion test
+1 SUBM @S1@
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 FILE somename.ged
+1 CHAR ASCII
+0 @S1@ SUBM
+1 NAME Luther Tychonievich
+0 @1@ OBJE
+1 FILE /unix/absolute
+2 FORM bmp
+1 FILE c:\windows\absolute
+2 FORM bmp
+1 FILE \\windows\server
+2 FORM bmp
+1 FILE a/relative/path
+2 FORM bmp
+1 FILE a\relative\path
+2 FORM bmp
+1 FILE most/paths?get#escaped[like]this
+2 FORM bmp
+1 FILE spaces are fine/even with slashes ? and so on
+2 FORM bmp
+1 FILE https://leave.alone?with=args#and-frags
+2 FORM bmp
+1 FILE https:/not.a.url/even-though-similar
+2 FORM bmp
+0 TRLR

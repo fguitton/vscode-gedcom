@@ -1,0 +1,26 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SUBM @S1@
+0 @S1@ SUBM
+1 NAME Luther Tychonievich
+0 @1@ OBJE
+1 FILE file:///unix/absolute
+2 FORM image/bmp
+1 FILE file:///c:/windows/absolute
+2 FORM image/bmp
+1 FILE file://windows/server
+2 FORM image/bmp
+1 FILE a/relative/path
+2 FORM image/bmp
+1 FILE a/relative/path
+2 FORM image/bmp
+1 FILE most/paths%3Fget%23escaped%5Blike%5Dthis
+2 FORM image/bmp
+1 FILE spaces%20are%20fine/even%20with%20slashes%20%3F%20and%20so%20on
+2 FORM image/bmp
+1 FILE https://leave.alone?with=args#and-frags
+2 FORM image/bmp
+1 FILE https%3a/not.a.url/even-though-similar
+2 FORM image/bmp
+0 TRLR

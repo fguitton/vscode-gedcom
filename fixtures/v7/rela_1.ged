@@ -1,0 +1,19 @@
+﻿0 HEAD
+1 SOUR conversion test
+1 SUBM @1@
+1 GEDC
+2 VERS 7.0
+0 @1@ SUBM
+1 NAME Luther Tychonievich
+0 @I1@ INDI
+1 ASSO @I2@
+2 ROLE NGHBR
+3 PHRASE neighbor
+0 @I2@ INDI
+1 ASSO @I1@
+2 ROLE OTHER
+3 PHRASE land-lord
+1 ASSO @I2@
+2 ROLE FRIEND
+2 NOTE This person was fond of saying they were their own friend
+0 TRLR

@@ -1,0 +1,140 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SUBM @S1@
+0 @S1@ SUBM
+1 NAME Luther Tychonievich
+0 @SIMPLE@ INDI
+1 EVEN when child
+2 TYPE test
+2 AGE < 8y
+3 PHRASE child
+1 EVEN when CHILD
+2 TYPE test
+2 AGE < 8y
+3 PHRASE CHILD
+1 EVEN when Child
+2 TYPE test
+2 AGE < 8y
+3 PHRASE Child
+1 EVEN when infant
+2 TYPE test
+2 AGE < 1y
+3 PHRASE infant
+1 EVEN when INFANT
+2 TYPE test
+2 AGE < 1y
+3 PHRASE INFANT
+1 EVEN when Infant
+2 TYPE test
+2 AGE < 1y
+3 PHRASE Infant
+1 EVEN when stillborn
+2 TYPE test
+2 AGE 0y
+3 PHRASE stillborn
+1 EVEN when STILLBORN
+2 TYPE test
+2 AGE 0y
+3 PHRASE STILLBORN
+1 EVEN when Stillborn
+2 TYPE test
+2 AGE 0y
+3 PHRASE Stillborn
+1 EVEN when 0y
+2 TYPE test
+2 AGE 0y
+1 EVEN when 0Y
+2 TYPE test
+2 AGE 0y
+1 EVEN when <0y
+2 TYPE test
+2 AGE < 0y
+1 EVEN when <0Y
+2 TYPE test
+2 AGE < 0y
+1 EVEN when >0y
+2 TYPE test
+2 AGE > 0y
+1 EVEN when >0Y
+2 TYPE test
+2 AGE > 0y
+1 EVEN when 0m
+2 TYPE test
+2 AGE 0m
+1 EVEN when 0M
+2 TYPE test
+2 AGE 0m
+1 EVEN when <0m
+2 TYPE test
+2 AGE < 0m
+1 EVEN when <0M
+2 TYPE test
+2 AGE < 0m
+1 EVEN when >0m
+2 TYPE test
+2 AGE > 0m
+1 EVEN when >0M
+2 TYPE test
+2 AGE > 0m
+1 EVEN when 0d
+2 TYPE test
+2 AGE 0d
+1 EVEN when 0D
+2 TYPE test
+2 AGE 0d
+1 EVEN when <0d
+2 TYPE test
+2 AGE < 0d
+1 EVEN when <0D
+2 TYPE test
+2 AGE < 0d
+1 EVEN when >0d
+2 TYPE test
+2 AGE > 0d
+1 EVEN when >0D
+2 TYPE test
+2 AGE > 0d
+1 EVEN when 99y
+2 TYPE test
+2 AGE 99y
+1 EVEN when >99y
+2 TYPE test
+2 AGE > 99y
+1 EVEN when 99y
+2 TYPE test
+2 AGE 99y
+1 EVEN when 11m
+2 TYPE test
+2 AGE 11m
+1 EVEN when >11m
+2 TYPE test
+2 AGE > 11m
+1 EVEN when 11m
+2 TYPE test
+2 AGE 11m
+1 EVEN when 99y 11m
+2 TYPE test
+2 AGE 99y 11m
+1 EVEN when 30d
+2 TYPE test
+2 AGE 30d
+1 EVEN when >30d
+2 TYPE test
+2 AGE > 30d
+1 EVEN when 30d
+2 TYPE test
+2 AGE 30d
+1 EVEN when 99y 30d
+2 TYPE test
+2 AGE 99y 30d
+1 EVEN when 11m 30d
+2 TYPE test
+2 AGE 11m 30d
+1 EVEN when 99y 11m 30d
+2 TYPE test
+2 AGE 99y 11m 30d
+1 DEAT
+2 AGE 0y
+3 PHRASE Stillborn
+0 TRLR

@@ -1,0 +1,12 @@
+﻿0 HEAD
+1 SOUR conversion test
+1 SUBM @VOID@
+1 GEDC
+2 VERS 7.0
+0 @TEST@ SUBM
+1 NAME Luther Tychonievich
+1 SNOTE @X1@
+1 SNOTE @X2@
+0 @X1@ SNOTE mixed case
+0 @X2@ SNOTE mixed case and space
+0 TRLR

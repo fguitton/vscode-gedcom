@@ -1,0 +1,50 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SUBM @S1@
+0 @S1@ SUBM
+1 NAME Luther Tychonievich
+0 @X1@ SOUR
+1 NOTE A source described inline
+0 @X2@ SOUR
+1 NOTE Another source described inline
+0 @1@ INDI
+1 SOUR @X1@
+2 NOTE The tricky bit is
+2 DATA
+3 TEXT when there's TEXT
+3 TEXT but under SOUR for a text SOUR.
+3 TEXT but it's the way it is
+3 TEXT and we need to conform
+2 NOTE because TEXT is under DATA for a linked SOUR
+2 QUAY 1
+2 NOTE That may seem strange
+2 NOTE to be as backwards-compatible as possible
+2 NOTE like this
+1 SOUR @X2@
+2 DATA
+3 TEXT Let's also put the TEXT first
+3 TEXT and more TEXT
+3 TEXT and event more TEXT
+2 NOTE then a NOTE
+2 NOTE just to be sure
+1 SOUR @2@
+2 PAGE 23
+2 EVEN BIRT
+3 ROLE MOTH
+2 DATA
+3 DATE 1 JAN 1970
+3 TEXT to Mr and Mrs John Doe
+2 NOTE Also with notes
+2 QUAY 2
+0 @2@ SOUR
+1 DATA
+2 EVEN BIRT, CHR
+3 DATE FROM 1950 TO 1980
+1 AUTH Luther's imagination
+1 TITL Example birth and christening source
+1 TEXT Dana Doe was born at the Unix epoch to Mr and Mrs John Doe
+1 CHAN
+2 DATE 18 JUN 2021
+1 NOTE A note in the source record too
+0 TRLR

@@ -1,0 +1,31 @@
+0 HEAD
+1 SOUR conversion test
+1 SUBM @1@
+1 CHAR UTF-8
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+0 @1@ SUBM
+1 NAME Luther Tychonievich
+0 @N01@ NOTE @ one leading
+0 @N02@ NOTE @one leading no space
+0 @N03@ NOTE @@ two leading
+0 @N04@ NOTE @@two leading no space
+0 @N05@ NOTE doubled @@ internal
+0 @N06@ NOTE doubled@@internal no space
+0 @N07@ NOTE single @ internal
+0 @N08@ NOTE single@internal no space
+0 @N09@ NOTE @#DJULIAN@date escape zero spaces
+0 @N10@ NOTE @#DJULIAN@ date escape one space
+0 @N11@ NOTE @#DJULIAN@  date escape two spaces
+0 @N12@ NOTE non-leading @#DJULIAN@ date escape
+0 @N13@ NOTE @#DJULIAN AND SUCH@ date escape internal spaces
+0 @N14@ NOTE obsolete @#OLD FORM@ escape, spaces both sides
+0 @N15@ NOTE obsolete@#OLD FORM@ escape, space after
+0 @N16@ NOTE obsolete@#OLD FORM@  escape, double space after
+0 @N17@ NOTE obsolete @#OLD FORM@escape, space before
+0 @N18@ NOTE @@all in @one@@thing @#DWITH DATES@ , @#OBSOLETE@ etc
+0 @N19@ NOTE @@ at at front and 
+1 CONC @@ at after CONC and 
+1 CONT @@ at after CONT and @ inside CONT too.
+0 TRLR

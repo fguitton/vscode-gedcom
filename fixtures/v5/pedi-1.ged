@@ -1,0 +1,16 @@
+0 HEAD
+1 SOUR conversion test
+1 SUBM @S1@
+1 CHAR UTF-8
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 NOTE Test for bug identified by Diedrich
+0 @S1@ SUBM
+1 NAME Luther Tychonievich
+0 @1@ INDI
+1 FAMC @2@
+2 PEDI birth
+0 @2@ FAM
+1 CHIL @1@
+0 TRLR

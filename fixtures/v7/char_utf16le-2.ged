@@ -1,0 +1,9 @@
+﻿0 HEAD
+1 SOUR conversion test
+1 SUBM @1@
+1 GEDC
+2 VERS 7.0
+1 NOTE UTF-16LE with BOM: ¶ ☺ 𒍅
+0 @1@ SUBM
+1 NAME Luther Tychonievich
+0 TRLR

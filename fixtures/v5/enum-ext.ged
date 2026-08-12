@@ -1,0 +1,25 @@
+0 HEAD
+1 SOUR conversion test
+1 SUBM @1@
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR ASCII
+0 @1@ SUBM
+1 NAME Luther Tychonievich
+0 @2@ INDI
+1 NAME /Family/ Personal
+2 TYPE PROFESSIONAL
+1 NAME King /Kong/
+2 TYPE Screen
+0 @3@ _LOC
+1 TYPE Example
+1 NAME New York
+2 TYPE City
+0 @4@ SUBM
+1 NAME Luther Tychonievich
+0 @5@ INDI
+1 _MAYBE
+2 NAME /Family/ Personal
+3 TYPE Official
+0 TRLR

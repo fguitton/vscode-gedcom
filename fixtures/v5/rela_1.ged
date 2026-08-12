@@ -1,0 +1,19 @@
+0 HEAD
+1 SOUR conversion test
+1 SUBM @1@
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR ASCII
+0 @1@ SUBM
+1 NAME Luther Tychonievich
+0 @I1@ INDI
+1 ASSO @I2@
+2 RELA neighbor
+0 @I2@ INDI
+1 ASSO @I1@
+2 RELA land-lord
+1 ASSO @I2@
+2 RELA friend
+2 NOTE This person was fond of saying they were their own friend
+0 TRLR

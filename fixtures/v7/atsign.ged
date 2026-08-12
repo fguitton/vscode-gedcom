@@ -1,0 +1,27 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SUBM @S1@
+0 @S1@ SUBM
+1 NAME Luther Tychonievich
+0 @N01@ SNOTE @@ one leading
+0 @N02@ SNOTE @@one leading no space
+0 @N03@ SNOTE @@ two leading
+0 @N04@ SNOTE @@two leading no space
+0 @N05@ SNOTE doubled @ internal
+0 @N06@ SNOTE doubled@internal no space
+0 @N07@ SNOTE single @ internal
+0 @N08@ SNOTE single@internal no space
+0 @N09@ SNOTE JULIAN date escape zero spaces
+0 @N10@ SNOTE JULIAN date escape one space
+0 @N11@ SNOTE JULIAN  date escape two spaces
+0 @N12@ SNOTE non-leading JULIAN date escape
+0 @N13@ SNOTE JULIAN_AND_SUCH date escape internal spaces
+0 @N14@ SNOTE obsolete escape, spaces both sides
+0 @N15@ SNOTE obsoleteescape, space after
+0 @N16@ SNOTE obsolete escape, double space after
+0 @N17@ SNOTE obsolete escape, space before
+0 @N18@ SNOTE @@all in @one@thing WITH_DATES , etc
+0 @N19@ SNOTE @@ at at front and @ at after CONC and 
+1 CONT @@ at after CONT and @ inside CONT too.
+0 TRLR
