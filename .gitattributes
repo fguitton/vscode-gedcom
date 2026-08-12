@@ -1,14 +1,26 @@
-# The grammar is a generated artifact that GitHub Linguist reads straight from
-# this repository, and CI checks that regenerating it produces no diff. If it were
-# committed with CRLF from a Windows checkout, that check would fail on Linux.
-# Pin it — and every other text file — to LF regardless of platform.
+# Default: normalise text to LF in the repository and check it out as LF on every
+# platform. The grammar and the spec model are generated artifacts that CI
+# regenerates on Linux and compares against the committed copy; authoring them on
+# Windows with CRLF would fail that check on every run.
 * text=auto eol=lf
 
-# GEDCOM fixtures are byte-exact test inputs. Some are UTF-16 and some
-# deliberately use CR-only line endings; git must not touch any of them.
-fixtures/** -text -diff
+# GEDCOM fixtures are byte-exact test inputs and must never be touched.
+#
+# GEDCOM's EOL production is `%x0D [%x0A] / %x0A`, so CRLF, lone CR and lone LF
+# are all conformant and fixtures/line-endings/ contains one file of each plus a
+# deliberately mixed one. Normalising those would silently delete what they test.
+# fixtures/unicode/ additionally holds UTF-16 files in both byte orders, which
+# any text conversion would corrupt outright.
+#
+# `-text` disables checkin and checkout conversion entirely. Note that
+# `git check-attr eol` still reports `lf` here, inherited from the rule above;
+# that is misleading, because with `text` unset git performs no conversion at
+# all. packages/core/test/line-endings.test.ts asserts the bytes really do
+# survive a fresh checkout, so a regression in this file fails CI rather than
+# quietly normalising the corpus.
+fixtures/** -text -diff -merge
 
-# Pinned upstream snapshots. Their value is being unmodified copies.
-vendor/** -text
+# Pinned upstream registry snapshots. Their value is being unmodified copies.
+vendor/** -text -diff
 
 *.png binary
