@@ -18,7 +18,39 @@
  * `source.gedcom` is fixed by GitHub Linguist's grammars.yml and must never change.
  */
 
-import { calendars, dateKeywords, epochs, knownTags, months } from './registry.ts';
+import { calendars, dateKeywords, epochs, months, tagsByClass, type TagClass } from './registry.ts';
+
+const TAGS_BY_CLASS = tagsByClass();
+
+/**
+ * Semantic class to TextMate scope. This mapping *is* the colour design.
+ *
+ * Scopes are chosen so the classes land in buckets themes actually separate.
+ * That constraint is tighter than it looks: GitHub renders this grammar through
+ * PrettyLights, whose Primer palette has far fewer buckets than a VS Code theme —
+ * broadly keyword, entity, entity-tag, constant/support, string, variable,
+ * comment and markup. Two classes sharing a bucket would be invisible there even
+ * while looking fine locally.
+ *
+ * `variable` for linkage is deliberate on both counts: it is a distinct bucket,
+ * and it makes a linkage tag share its colour with the pointer that follows, so
+ * `1 FAMS @F1@` reads as one gesture rather than two. `markup.quote` for evidence
+ * is chosen on meaning as much as appearance — a citation is material quoted from
+ * elsewhere.
+ *
+ * `administrative` intentionally shares the attribute bucket. De-emphasis is what
+ * it wants, and no honest scope provides it: `comment` would render correctly and
+ * mean something false.
+ */
+const CLASS_SCOPES: readonly (readonly [TagClass, string])[] = [
+  ['envelope', 'keyword.control.envelope.gedcom'],
+  ['record', 'entity.name.type.record.gedcom'],
+  ['event', 'support.function.event.gedcom'],
+  ['attribute', 'entity.name.tag.attribute.gedcom'],
+  ['linkage', 'variable.other.linkage.gedcom'],
+  ['evidence', 'markup.quote.evidence.gedcom'],
+  ['administrative', 'entity.name.tag.administrative.gedcom'],
+];
 
 type Captures = Record<string, { name?: string; patterns?: Rule[] }>;
 
@@ -236,14 +268,30 @@ export function buildGrammar(): Grammar {
       // --- tag classification ---------------------------------------------
 
       /**
-       * Known tags are the union of the 5.5.1 and 7.x vocabularies, read from the
-       * pinned registry snapshot. Unknown tags are scoped distinctly but never as
-       * errors — an undocumented tag is a portability concern, not a syntax error,
-       * and SCHMA-documented extensions cannot be recognised lexically at all.
+       * Tags are coloured by what they *mean*, not merely by being tags.
+       *
+       * A reader scanning a large file is asking which lines record something
+       * that happened, which state an enduring fact, which are edges in the
+       * family graph, and which are just citation paperwork. One scope for all
+       * tags answers none of those. The classes come from `tagsByClass()`, mostly
+       * derived from the registry, so they cannot drift from the specification.
+       *
+       * Scope roots are chosen for what themes actually separate. GitHub renders
+       * this grammar through PrettyLights rather than a modern TextMate engine,
+       * and Primer distinguishes fewer roots than a VS Code theme does, so each
+       * class sits under a different root rather than a different sub-scope.
+       *
+       * Unknown tags are scoped distinctly but never as errors: an undocumented
+       * tag is a portability concern, not a syntax error, and SCHMA-documented
+       * extensions cannot be recognised lexically at all.
        */
       tag: {
         patterns: [
-          { match: alternation(knownTags), name: 'entity.name.tag.gedcom' },
+          ...CLASS_SCOPES.map(([tagClass, name]) => ({
+            match: alternation(TAGS_BY_CLASS[tagClass]),
+            name,
+          })).filter((rule) => rule.match.length > 8),
+          { match: alternation(TAGS_BY_CLASS.other), name: 'entity.name.tag.gedcom' },
           { match: '_[A-Za-z0-9_]*', name: 'entity.name.tag.extension.gedcom' },
           { match: '[A-Za-z][A-Za-z0-9_]*', name: 'entity.name.tag.unknown.gedcom' },
         ],

@@ -24,7 +24,7 @@ describe('line structure', () => {
   });
 
   it('scopes a known tag', async () => {
-    expect(await scopeOf('0 HEAD', 'HEAD')).toBe('entity.name.tag.gedcom');
+    expect(await scopeOf('0 HEAD', 'HEAD')).toBe('keyword.control.envelope.gedcom');
   });
 
   it('distinguishes extension tags from unknown tags', async () => {
@@ -89,12 +89,12 @@ describe('regression: state must not leak across lines', () => {
     // Under the previous grammar the stray @ opened a pointer that consumed
     // everything below it. The second line must still parse as a record.
     expect(await scopeOf(text, 'I1', 1)).toBe('entity.name.type.xref.gedcom');
-    expect(await scopeOf(text, 'INDI', 1)).toBe('entity.name.tag.gedcom');
+    expect(await scopeOf(text, 'INDI', 1)).toBe('entity.name.type.record.gedcom');
   });
 
   it('handles CR-only line endings', async () => {
     const text = '0 HEAD\r1 GEDC\r2 VERS 7.0\r0 TRLR';
-    expect(await scopeOf(text, 'TRLR', 3)).toBe('entity.name.tag.gedcom');
+    expect(await scopeOf(text, 'TRLR', 3)).toBe('keyword.control.envelope.gedcom');
   });
 });
 
