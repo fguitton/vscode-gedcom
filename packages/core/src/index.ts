@@ -16,6 +16,9 @@ export type { Detection, Encoding, GedcomVersion, ByteOrder } from './detect.ts'
 export { inferVersion } from './infer.ts';
 
 export { scanDate, isUncertain } from './date.ts';
+
+export { neighbourhood, recordAt } from './graph.ts';
+export type { Graph, GraphNode, GraphEdge, PositionedNode, NeighbourhoodOptions } from './graph.ts';
 export type { DateKeyword, DateQualifier } from './date.ts';
 
 export { lex, splitLines } from './lexer.ts';

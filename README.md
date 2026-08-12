@@ -51,7 +51,7 @@ ext install florianguitton.vscode-gedcom
 | ✅ 0.1.0 | Rewritten grammar, fixture corpus, regression harness                                                                                  |
 | ✅ 0.2.0 | Zero-dependency GEDCOM parser: CST with source spans, xref index, registry-driven validation                                           |
 | ✅ 0.3.0 | Language server — go-to-definition, references, rename, hovers, outline, level-based folding, completion, diagnostics, semantic tokens |
-| ⬜ 0.4.0 | Graph view of the record under the cursor and its nearest edges                                                                        |
+| ✅ 0.4.0 | Graph panel showing the record under the cursor and its nearest edges                                                                  |
 | ⬜ later | Legacy encoding conversion (ANSEL, UTF-16), formatter, 5.5.1 → 7.0 conversion, GEDZIP                                                  |
 
 ## Development
@@ -65,6 +65,8 @@ npx vp run grammar   # regenerate syntaxes/gedcom.tmLanguage.json from the regis
 npx vp run spec      # regenerate the parser's embedded specification model
 npx vp test          # tokenize the corpus, parse it, assert scopes and diagnostics
 npx vp check         # lint, format, type-check
+npx vp run preview   # render the grammar through real theme palettes, to look at
+npx vscode-test      # integration tests in a real VS Code
 npx vp run verify    # all of the above
 ```
 

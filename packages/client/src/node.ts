@@ -5,12 +5,15 @@ import * as path from 'node:path';
 import type { ExtensionContext } from 'vscode';
 import { LanguageClient, TransportKind, type ServerOptions } from 'vscode-languageclient/node';
 
+import { registerGraphView } from './graph-view.ts';
 import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
 
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): void {
-  const module = context.asAbsolutePath(path.join('dist', 'node', 'server.js'));
+  registerGraphView(context);
+
+  const module = context.asAbsolutePath(path.join('dist', 'node', 'server.cjs'));
 
   const serverOptions: ServerOptions = {
     run: { module, transport: TransportKind.ipc },

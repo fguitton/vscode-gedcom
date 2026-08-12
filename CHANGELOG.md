@@ -3,6 +3,32 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0]
+
+### Added
+
+- **Graph panel** showing the neighbourhood of the record at the cursor, following
+  pointers in both directions — a person connects to their family whether the file
+  writes or , and a reader does not care which. Clicking a
+  node reveals that record; moving the cursor recentres the graph. Depth is
+  configurable via .
+- Layout lives in and is deterministic by design: a panel that
+  redraws as the cursor moves must not rearrange itself.
+- **Colour preview** (Task "preview" not found.) rendering the grammar through Dark+,
+  Light+ and an approximation of GitHub's PrettyLights palette, with a test
+  asserting every semantic class resolves to a distinct colour in each.
+- **Integration tests** in a real VS Code via .
+
+### Fixed
+
+- **The extension could not activate.** The repository is , so
+  Node read the CommonJS bundle as ESM and threw . Node
+  outputs are now named . No unit test could have caught this; the first
+  integration test did.
+- Document symbols used as a range end, which exceeds
+  LSP's maximum and made every symbol fail protocol validation, so the
+  outline was empty.
+
 ## [0.3.0]
 
 The first release with runtime code. A language server now runs in whichever

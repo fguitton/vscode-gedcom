@@ -75,10 +75,29 @@ export default defineConfig({
         input: ['packages/*/src/**', 'tsdown.config.ts'],
         output: ['dist/**'],
       },
+      // Render the grammar through real theme palettes, to look at.
+      preview: {
+        command: 'node --experimental-strip-types packages/grammar/scripts/preview.ts',
+        input: ['syntaxes/**', 'packages/grammar/src/themes.ts', 'packages/grammar/scripts/**'],
+        output: ['dist/preview/**'],
+      },
+      // Integration tests in a real VS Code. These cover what unit tests
+      // cannot: that the manifest wires up and the bundles actually load.
+      'test:vscode': {
+        command: 'vscode-test',
+        input: ['dist/**', 'test/integration/**', 'package.json'],
+      },
       // Full gate: generated artifacts are refreshed before tests read them, and
       // bundling last catches anything that only breaks when packaged.
       verify: {
-        command: ['vp run grammar', 'vp run spec', 'vp test', 'vp check', 'vp run bundle'],
+        command: [
+          'vp run grammar',
+          'vp run spec',
+          'vp test',
+          'vp check',
+          'vp run bundle',
+          'vp run test:vscode',
+        ],
       },
     },
   },

@@ -286,9 +286,16 @@ const SYMBOL_KIND: Record<string, SymbolKind> = {
 export function documentSymbols(analysis: Analysis): DocumentSymbol[] {
   const build = (structure: Structure): DocumentSymbol => {
     const extent = fullSpan(structure);
+    // LSP's `uinteger` tops out at 2^31 - 1. `Number.MAX_SAFE_INTEGER` exceeds
+    // it, which makes the whole symbol fail protocol validation — the client then
+    // reads the response as SymbolInformation and throws. VS Code clamps a
+    // too-large end column to the real line length, so this is the usual idiom
+    // for "to the end of the line".
+    const END_OF_LINE = 2 ** 31 - 1;
+
     const range: Range = {
       start: { line: extent.start.line, character: 0 },
-      end: { line: extent.end.line, character: Number.MAX_SAFE_INTEGER },
+      end: { line: extent.end.line, character: END_OF_LINE },
     };
 
     const detail =

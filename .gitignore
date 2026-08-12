@@ -112,3 +112,6 @@ dist
 
 # Bundled output
 dist/
+
+# Downloaded VS Code builds for integration tests
+.vscode-test/

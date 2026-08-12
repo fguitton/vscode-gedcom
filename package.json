@@ -32,7 +32,7 @@
     "packages/*"
   ],
   "type": "module",
-  "main": "./dist/node/extension.js",
+  "main": "./dist/node/extension.cjs",
   "browser": "./dist/browser/extension.js",
   "scripts": {
     "test": "vp test",
@@ -41,6 +41,9 @@
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/vscode": "~1.91.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/test-web": "^0.0.81",
     "tsdown": "^0.22.14",
     "vite-plus": "^0.2.9",
     "vscode-languageclient": "^10.1.0",
@@ -123,9 +126,36 @@
         }
       }
     ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "gedcom",
+          "title": "GEDCOM",
+          "icon": "$(type-hierarchy)"
+        }
+      ]
+    },
+    "views": {
+      "gedcom": [
+        {
+          "type": "webview",
+          "id": "gedcom.graph",
+          "name": "Graph",
+          "contextualTitle": "GEDCOM Graph",
+          "when": "editorLangId == gedcom || resourceLangId == gedcom"
+        }
+      ]
+    },
     "configuration": {
       "title": "GEDCOM",
       "properties": {
+        "gedcom.graph.depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2,
+          "markdownDescription": "How many hops from the record at the cursor the graph panel shows.\n\nOne shows a person and their families; two also reaches spouses, children and parents. Beyond three the neighbourhood is usually larger than the panel can show usefully."
+        },
         "gedcom.validation.strictness": {
           "type": "string",
           "enum": [
