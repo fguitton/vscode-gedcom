@@ -3,6 +3,39 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0]
+
+The first release with runtime code. A language server now runs in whichever
+extension host is active, including the web worker host on vscode.dev.
+
+### Added
+
+- **Go to definition** on any pointer, **find references** from either end, and
+  **document highlights** distinguishing a declaration from its uses.
+- **Rename** a cross-reference identifier and every pointer to it at once.
+- **Hover**: specification labels from the registry, payload types, and — over a
+  pointer — a summary of the record it names rather than a restatement of the
+  tag. Families resolve their spouse pointers, so a hover reads
+  `John Smith + Jane Doe` instead of `@I1@ + @I2@`.
+- **Outline and breadcrumbs** with records at the top level, each labelled by
+  name, title or spouses.
+- **Folding by level number.** GEDCOM lines all start at column zero, so VS
+  Code's indentation-based folding does nothing for them.
+- **Completion** of tags valid in the enclosing structure, annotated with their
+  cardinality, and of record identifiers once a tag has been typed.
+- **Diagnostics** from the parser, with a `gedcom.validation.strictness` setting.
+- **Semantic tokens** carrying what a regular expression cannot know: whether a
+  tag is valid _in this position_, and whether a pointer resolves.
+
+### Infrastructure
+
+- Bundled with tsdown into four outputs. Both hosts get CommonJS with `vscode`
+  external; the browser server is an IIFE because it is loaded as a nested worker
+  by URL, where module imports and `importScripts` are both unavailable.
+- `engines.vscode` raised to `^1.91.0`, the floor for `vscode-languageclient` 10.
+- A test asserts `packages/core/src` imports nothing and touches no Node globals,
+  enforcing the portability the web build depends on.
+
 ## [0.2.0]
 
 Adds `packages/core`, the GEDCOM parser every later feature is a projection of.

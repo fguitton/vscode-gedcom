@@ -46,13 +46,13 @@ ext install florianguitton.vscode-gedcom
 
 ## Roadmap
 
-| Status   | Milestone                                                                                                                               |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ 0.1.0 | Rewritten grammar, fixture corpus, regression harness                                                                                   |
-| ✅ 0.2.0 | Zero-dependency GEDCOM parser: CST with source spans, xref index, registry-driven validation                                            |
-| ⬜ 0.3.0 | Language server — go-to-definition on pointers, hovers, document symbols, level-based folding, completion, diagnostics, semantic tokens |
-| ⬜ 0.4.0 | Graph view of the record under the cursor and its nearest edges                                                                         |
-| ⬜ later | Legacy encoding conversion (ANSEL, UTF-16), formatter, 5.5.1 → 7.0 conversion, GEDZIP                                                   |
+| Status   | Milestone                                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ 0.1.0 | Rewritten grammar, fixture corpus, regression harness                                                                                  |
+| ✅ 0.2.0 | Zero-dependency GEDCOM parser: CST with source spans, xref index, registry-driven validation                                           |
+| ✅ 0.3.0 | Language server — go-to-definition, references, rename, hovers, outline, level-based folding, completion, diagnostics, semantic tokens |
+| ⬜ 0.4.0 | Graph view of the record under the cursor and its nearest edges                                                                        |
+| ⬜ later | Legacy encoding conversion (ANSEL, UTF-16), formatter, 5.5.1 → 7.0 conversion, GEDZIP                                                  |
 
 ## Development
 
