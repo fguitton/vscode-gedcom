@@ -15,9 +15,11 @@ import {
   completionsFor,
   fullSpan,
   isExtensionTag,
+  isRemovedInVersion,
   labelOf,
   modelFor,
   payloadOf,
+  scanDate,
   walk,
   type Analysis,
   type Diagnostic as CoreDiagnostic,
@@ -400,8 +402,20 @@ export function completion(
  * only ever sees a flat vocabulary.
  */
 export const semanticTokensLegend: SemanticTokensLegend = {
-  tokenTypes: ['number', 'property', 'macro', 'class', 'variable', 'keyword', 'string'],
-  tokenModifiers: ['declaration', 'defaultLibrary', 'deprecated'],
+  tokenTypes: ['number', 'property', 'macro', 'class', 'variable', 'keyword', 'string', 'operator'],
+  tokenModifiers: [
+    'declaration',
+    'defaultLibrary',
+    'deprecated',
+    // Custom modifiers. Themes will not colour these on their own, so
+    // `contributes.semanticTokenScopes` in package.json maps each to a TextMate
+    // scope that themes already understand.
+    'uncertain',
+    'unreferenced',
+    'individual',
+    'family',
+    'source',
+  ],
 };
 
 const TYPE = Object.fromEntries(
@@ -420,21 +434,56 @@ interface RawToken {
   modifiers: number;
 }
 
+/**
+ * Which record a structure belongs to, so its substructures can carry a signal
+ * from it. Only the record types worth distinguishing get a modifier — tinting
+ * everything would be noise rather than information.
+ */
+const RECORD_MODIFIER: Record<string, string> = {
+  INDI: 'individual',
+  FAM: 'family',
+  SOUR: 'source',
+};
+
+function recordModifiers(analysis: Analysis): Map<Structure, number> {
+  const byStructure = new Map<Structure, number>();
+  for (const record of analysis.document.records) {
+    const name = RECORD_MODIFIER[record.tag];
+    if (!name) continue;
+    const bit = MOD[name]!;
+    for (const structure of walk(record)) byStructure.set(structure, bit);
+  }
+  return byStructure;
+}
+
 export function semanticTokens(analysis: Analysis): number[] {
   const raw: RawToken[] = [];
+  const tint = recordModifiers(analysis);
 
   for (const structure of analysis.document.structures) {
     const resolution = analysis.validation.resolutions.get(structure);
+    const inRecord = tint.get(structure) ?? 0;
 
     if (structure.xrefSpan) {
+      // A record nothing points at is a dead end. Worth seeing while reading,
+      // rather than only in a separate report.
+      const unreferenced =
+        structure.xref !== null &&
+        (analysis.xrefs.referencesTo.get(structure.xref)?.length ?? 0) === 0;
+
       raw.push({
         line: structure.xrefSpan.line,
         start: structure.xrefSpan.start + 1,
         length: structure.xrefSpan.end - structure.xrefSpan.start - 2,
         type: TYPE['class']!,
-        modifiers: MOD['declaration']!,
+        modifiers: MOD['declaration']! | (unreferenced ? MOD['unreferenced']! : 0) | inRecord,
       });
     }
+
+    // A tag the target version removed is not merely unknown: it had a meaning
+    // that this version dropped. Themes render `deprecated` struck through,
+    // which is exactly the signal wanted when migrating a file.
+    const removed = isRemovedInVersion(analysis.version, structure.tag);
 
     raw.push({
       line: structure.tagSpan.line,
@@ -442,7 +491,10 @@ export function semanticTokens(analysis: Analysis): number[] {
       length: structure.tagSpan.end - structure.tagSpan.start,
       type: isExtensionTag(structure.tag) ? TYPE['macro']! : TYPE['property']!,
       // The distinguishing bit: resolved means "legal here", not merely "a real tag".
-      modifiers: resolution?.slug ? MOD['defaultLibrary']! : 0,
+      modifiers:
+        (resolution?.slug ? MOD['defaultLibrary']! : 0) |
+        (removed ? MOD['deprecated']! : 0) |
+        inRecord,
     });
 
     const pointer = asPointer(structure);
@@ -453,8 +505,23 @@ export function semanticTokens(analysis: Analysis): number[] {
         start: structure.payloadSpan.start + 1,
         length: structure.payloadSpan.end - structure.payloadSpan.start - 2,
         type: pointer === 'VOID' ? TYPE['keyword']! : TYPE['variable']!,
-        modifiers: pointer !== 'VOID' && !resolved ? MOD['deprecated']! : 0,
+        modifiers: (pointer !== 'VOID' && !resolved ? MOD['deprecated']! : 0) | inRecord,
       });
+    }
+
+    // Date qualifiers. Whether a date is known or guessed is one of the most
+    // important distinctions in a genealogy file and the hardest to see, because
+    // `ABT 1901` and `1901` are otherwise identical to the eye.
+    if ((structure.tag === 'DATE' || structure.tag === 'SDATE') && structure.payloadSpan) {
+      for (const keyword of scanDate(structure.payload ?? '')) {
+        raw.push({
+          line: structure.payloadSpan.line,
+          start: structure.payloadSpan.start + keyword.start,
+          length: keyword.end - keyword.start,
+          type: TYPE['operator']!,
+          modifiers: (keyword.qualifier === 'uncertain' ? MOD['uncertain']! : 0) | inRecord,
+        });
+      }
     }
   }
 

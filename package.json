@@ -96,6 +96,29 @@
           ],
           "keyword": [
             "constant.language.void.gedcom"
+          ],
+          "property.deprecated": [
+            "invalid.deprecated.tag.gedcom"
+          ],
+          "class.unreferenced": [
+            "comment.unreferenced.xref.gedcom",
+            "entity.name.type.xref.gedcom"
+          ],
+          "operator.uncertain": [
+            "markup.italic.date.uncertain.gedcom",
+            "keyword.operator.date.gedcom"
+          ],
+          "operator": [
+            "keyword.operator.date.gedcom"
+          ],
+          "property.individual": [
+            "entity.name.tag.attribute.gedcom"
+          ],
+          "property.family": [
+            "entity.name.tag.attribute.gedcom"
+          ],
+          "property.source": [
+            "markup.quote.evidence.gedcom"
           ]
         }
       }
