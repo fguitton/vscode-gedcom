@@ -131,7 +131,7 @@
         {
           "id": "gedcom",
           "title": "GEDCOM",
-          "icon": "$(type-hierarchy)"
+          "icon": "images/graph.svg"
         }
       ]
     },
