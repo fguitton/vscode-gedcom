@@ -75,6 +75,7 @@ export type DiagnosticCode =
   | 'dangling-pointer'
   // Vocabulary
   | 'unknown-tag'
+  | 'removed-in-version'
   | 'undocumented-extension'
   | 'tag-not-allowed-here'
   | 'cardinality-violation'

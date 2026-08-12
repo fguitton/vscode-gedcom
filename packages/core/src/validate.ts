@@ -23,6 +23,7 @@ import {
   modelFor,
   modelledVersion,
   payloadOf,
+  removalNote,
   resolveSubstructure,
   type SpecModel,
 } from './spec/index.ts';
@@ -66,6 +67,7 @@ export function validate(document: Document, options: ValidateOptions): Validati
       null,
       true,
       model,
+      options.version,
       strictness,
       documented,
       diagnostics,
@@ -110,6 +112,7 @@ function visit(
    */
   contextKnown: boolean,
   model: SpecModel,
+  version: GedcomVersion | null,
   strictness: Strictness,
   documented: Set<string>,
   diagnostics: Diagnostic[],
@@ -126,7 +129,7 @@ function visit(
   });
 
   if (contextKnown && resolved === null) {
-    reportUnresolved(structure, model, strictness, documented, diagnostics);
+    reportUnresolved(structure, model, version, strictness, documented, diagnostics);
   }
 
   if (slug !== null) {
@@ -140,6 +143,7 @@ function visit(
       slug,
       slug !== null,
       model,
+      version,
       strictness,
       documented,
       diagnostics,
@@ -152,6 +156,7 @@ function visit(
 function reportUnresolved(
   structure: Structure,
   model: SpecModel,
+  version: GedcomVersion | null,
   strictness: Strictness,
   documented: Set<string>,
   diagnostics: Diagnostic[],
@@ -174,9 +179,12 @@ function reportUnresolved(
   // Outside strict mode, only a tag unknown to the entire vocabulary is worth
   // reporting; one that is merely in the wrong place is not.
   if (!isKnownTag(model, structure.tag)) {
+    // A tag the other generation defines is not unknown, it is *removed* — and
+    // saying which structure replaced it is what someone converting a file needs.
+    const removed = removalNote(version, structure.tag);
     diagnostics.push({
-      code: 'unknown-tag',
-      message: `\`${structure.tag}\` is not a tag in this version of GEDCOM.`,
+      code: removed ? 'removed-in-version' : 'unknown-tag',
+      message: removed ?? `\`${structure.tag}\` is not a tag in this version of GEDCOM.`,
       severity: strictness === 'strict' ? 'error' : 'warning',
       span: structure.tagSpan,
     });

@@ -184,3 +184,45 @@ describe('cross-reference identifiers are case-sensitive', () => {
     expect(dangling[0]!.message).toContain('@test@');
   });
 });
+
+describe('tags removed between versions', () => {
+  const v7 = (body: string) => bytes(`0 HEAD\n1 GEDC\n2 VERS 7.0\n${body}0 TRLR\n`);
+  const v5 = (body: string) => bytes(`0 HEAD\n1 GEDC\n2 VERS 5.5.1\n${body}0 TRLR\n`);
+
+  const messageFor = (input: Uint8Array, code: string) =>
+    analyze(input).diagnostics.find((d) => d.code === code)?.message ?? '';
+
+  it('names the replacement rather than calling the tag unknown', () => {
+    // "not a tag in this version" is true and useless; the reader is converting
+    // a file and needs to know what to write instead.
+    const input = v7('0 @I1@ INDI\n1 RFN 12345\n');
+    expect(codes(input)).toContain('removed-in-version');
+    expect(codes(input)).not.toContain('unknown-tag');
+    expect(messageFor(input, 'removed-in-version')).toContain('EXID');
+  });
+
+  it.each([
+    ['AFN', 'EXID'],
+    ['RIN', 'EXID'],
+    ['FONE', 'TRAN'],
+    ['ROMN', 'TRAN'],
+    ['RELA', 'ROLE'],
+  ])('maps %s to %s', (tag, replacement) => {
+    const input = v7(`0 @I1@ INDI\n1 ${tag} x\n`);
+    expect(messageFor(input, 'removed-in-version')).toContain(replacement);
+  });
+
+  it('says so plainly when nothing replaced the tag', () => {
+    const message = messageFor(v7('0 @I1@ INDI\n1 ANCE x\n'), 'removed-in-version');
+    expect(message).toContain('no replacement');
+  });
+
+  it('reports a 7.0 tag in an older file as newer than the file claims', () => {
+    const message = messageFor(v5('0 @I1@ INDI\n1 EXID x\n'), 'removed-in-version');
+    expect(message).toContain('introduced after');
+  });
+
+  it('still reports a genuinely unknown tag as unknown', () => {
+    expect(codes(v7('0 @I1@ INDI\n1 ZZTOP x\n'))).toContain('unknown-tag');
+  });
+});
