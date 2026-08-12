@@ -7,27 +7,36 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Added
 
-- **Graph panel** showing the neighbourhood of the record at the cursor, following
-  pointers in both directions — a person connects to their family whether the file
-  writes or , and a reader does not care which. Clicking a
-  node reveals that record; moving the cursor recentres the graph. Depth is
-  configurable via .
-- Layout lives in and is deterministic by design: a panel that
-  redraws as the cursor moves must not rearrange itself.
-- **Colour preview** (Task "preview" not found.) rendering the grammar through Dark+,
-  Light+ and an approximation of GitHub's PrettyLights palette, with a test
-  asserting every semantic class resolves to a distinct colour in each.
-- **Integration tests** in a real VS Code via .
+- **Graph panel** showing the neighbourhood of the record at the cursor. It
+  follows pointers in both directions — a person connects to their family whether
+  the file writes `INDI.FAMS` or `FAM.HUSB`, and a reader does not care which.
+  Clicking a node reveals that record; moving the cursor recentres the graph.
+  Depth is configurable via `gedcom.graph.depth`, and the neighbourhood is capped
+  so a well-connected record cannot flood the panel.
+- Layout lives in `packages/core` and is deterministic by design. A force-directed
+  layout would look livelier and settle somewhere different every time it ran,
+  which is the wrong trade for a panel that redraws as the cursor moves.
+- The panel styles itself entirely from VS Code's theme variables, so it matches
+  whatever theme is in use, high-contrast included. No dependency on the
+  deprecated Webview UI Toolkit.
+- **Colour preview** (`vp run preview`) rendering the grammar through Dark+,
+  Light+ and an approximation of GitHub's PrettyLights palette, plus a test
+  asserting every semantic class resolves to a distinct colour in each. The
+  Primer panel is the one that matters: it has the fewest buckets, so two classes
+  colliding there would be invisible on github.com.
+- **Integration tests** in a real VS Code via `@vscode/test-cli`.
 
 ### Fixed
 
-- **The extension could not activate.** The repository is , so
-  Node read the CommonJS bundle as ESM and threw . Node
-  outputs are now named . No unit test could have caught this; the first
-  integration test did.
-- Document symbols used as a range end, which exceeds
-  LSP's maximum and made every symbol fail protocol validation, so the
-  outline was empty.
+- **The extension could not activate at all.** The repository is `"type": "module"`,
+  so Node read the CommonJS bundle as ESM and threw
+  `ReferenceError: exports is not defined in ES module scope`. Node outputs are now
+  named `.cjs`, which overrides the package type. No unit test could have caught
+  this — nothing but VS Code ever loads the bundle — and the first integration
+  test run found it immediately.
+- **The outline was empty.** Document symbols used `Number.MAX_SAFE_INTEGER` as a
+  range end, which exceeds LSP's `uinteger` maximum; every symbol failed protocol
+  validation and the client then misread the response as `SymbolInformation`.
 
 ## [0.3.0]
 
