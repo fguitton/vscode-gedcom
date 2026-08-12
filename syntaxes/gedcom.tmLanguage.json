@@ -37,7 +37,7 @@
 			"patterns": [
 				{
 					"name": "meta.line.record.gedcom",
-					"match": "^(\\s*)(\\d+)[ ]+(@[A-Za-z0-9][^@\\n]*@)[ ]+([A-Za-z_][A-Za-z0-9_]*)(?:[ ](.*))?$",
+					"match": "^(\\s*)(\\d+)[ ]+(@[^@#\\s][^@\\n]*@)[ ]+([A-Za-z_][A-Za-z0-9_]*)(?:[ ](.*))?$",
 					"captures": {
 						"2": {
 							"name": "constant.numeric.integer.level.gedcom"
@@ -148,7 +148,7 @@
 			"patterns": [
 				{
 					"name": "meta.line.pointer.gedcom",
-					"match": "^(\\s*)(\\d+)[ ]+([A-Za-z_][A-Za-z0-9_]*)[ ](@[A-Za-z0-9][^@\\n]*@)[ ]*$",
+					"match": "^(\\s*)(\\d+)[ ]+([A-Za-z_][A-Za-z0-9_]*)[ ](@[^@#\\s][^@\\n]*@)[ ]*$",
 					"captures": {
 						"2": {
 							"name": "constant.numeric.integer.level.gedcom"
@@ -226,7 +226,7 @@
 		"xref-definition": {
 			"patterns": [
 				{
-					"match": "(@)([A-Za-z0-9][^@\\n]*)(@)",
+					"match": "(@)([^@#\\s][^@\\n]*)(@)",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.xref.begin.gedcom"
@@ -258,7 +258,7 @@
 					}
 				},
 				{
-					"match": "(@)([A-Za-z0-9][^@\\n]*)(@)",
+					"match": "(@)([^@#\\s][^@\\n]*)(@)",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.xref.begin.gedcom"

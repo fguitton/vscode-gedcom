@@ -49,13 +49,21 @@ const D = '[ ]+';
  *  payload, which matters for CONT lines that encode leading whitespace. */
 const DP = '[ ]';
 /**
- * Cross-reference identifier. GEDCOM 7 restricts these to tagchars, but 5.5.1's
- * grammar is `"@" alphanum pointer_string "@"` where pointer_string admits any
- * non-at character — including spaces, as fixtures/v5/xref-case.ged exercises.
- * The leading alphanumeric is what keeps this from swallowing the 5.5.1 date
- * escape form `@#DJULIAN@`, and `[^@]` keeps it from crossing a closing at-sign.
+ * Cross-reference identifier.
+ *
+ * GEDCOM 7 restricts these to tagchars and 5.5.1 requires a leading alphanumeric,
+ * but neither restriction is safe to enforce here. Files in the wild carry
+ * identifiers in non-Latin scripts, and a grammar stricter than the parser would
+ * mark the whole line illegal — losing a record because its identifier is not
+ * Latin. Judging identifier legality is validation's job.
+ *
+ * The first character therefore excludes only what would create an ambiguity:
+ * `#` would swallow the 5.5.1 date escape `@#DJULIAN@`, whitespace cannot open an
+ * identifier, and `@` is the delimiter itself, which also keeps the `@@` escape
+ * from reading as an empty pointer. `[^@]` for the remainder stops the match from
+ * crossing a closing at-sign.
  */
-const XREF_BODY = '[A-Za-z0-9][^@\\n]*';
+const XREF_BODY = '[^@#\\s][^@\\n]*';
 const XREF = `(@${XREF_BODY}@)`;
 const TAG = '([A-Za-z_][A-Za-z0-9_]*)';
 const PAYLOAD = '(.*)';
