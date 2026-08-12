@@ -100,3 +100,69 @@ export function completionsFor(model: SpecModel, parentSlug: string | null): str
 export function isExtensionTag(tag: string): boolean {
   return tag.startsWith('_');
 }
+
+/** Every tag a model knows, in any context. */
+function vocabularyOf(model: SpecModel): Set<string> {
+  return new Set(Object.values(model.tags));
+}
+
+const VOCABULARIES: Record<ModelledVersion, Set<string>> = {
+  '7.0': vocabularyOf(MODELS['7.0']!),
+  '5.5.1': vocabularyOf(MODELS['5.5.1']!),
+};
+
+/**
+ * True when a tag belongs to the *other* GEDCOM generation and was removed from
+ * this one — `SUBN` or `ROMN` inside a 7.0 file, say.
+ *
+ * This is the migration signal. Such a tag is not merely unknown: it had a
+ * meaning that the target version deliberately dropped, usually in favour of a
+ * replacement, and saying so is far more useful than reporting it as unknown.
+ */
+export function isRemovedInVersion(version: GedcomVersion | null, tag: string): boolean {
+  const current = modelledVersion(version);
+  const other: ModelledVersion = current === '7.0' ? '5.5.1' : '7.0';
+  return !VOCABULARIES[current].has(tag) && VOCABULARIES[other].has(tag);
+}
+
+/**
+ * What GEDCOM 7 put in place of a structure it removed.
+ *
+ * Taken from the official migration guide. Knowing a tag was dropped is useful;
+ * knowing what to write instead is what someone converting a file actually needs.
+ * Tags removed without a replacement map to null and are reported as such.
+ */
+const REPLACED_BY_V7: Record<string, string | null> = {
+  AFN: 'EXID',
+  RFN: 'EXID',
+  RIN: 'EXID',
+  FONE: 'TRAN',
+  ROMN: 'TRAN',
+  RELA: 'ROLE',
+  SUBN: null,
+  ANCE: null,
+  DESC: null,
+  FAMF: null,
+  ORDI: null,
+  CHAR: null,
+};
+
+/**
+ * A sentence explaining a removed tag, or undefined when the tag is not one.
+ * Only the 5.5.1 to 7.0 direction has a documented mapping; a 7.0 tag found in an
+ * older file is simply newer than that file claims to be.
+ */
+export function removalNote(version: GedcomVersion | null, tag: string): string | undefined {
+  if (!isRemovedInVersion(version, tag)) return undefined;
+
+  if (modelledVersion(version) !== '7.0') {
+    return `\`${tag}\` was introduced after this version of GEDCOM.`;
+  }
+
+  if (!(tag in REPLACED_BY_V7)) return `\`${tag}\` was removed in GEDCOM 7.`;
+
+  const replacement = REPLACED_BY_V7[tag];
+  return replacement === null
+    ? `\`${tag}\` was removed in GEDCOM 7 with no replacement.`
+    : `\`${tag}\` was removed in GEDCOM 7; use \`${replacement}\` instead.`;
+}

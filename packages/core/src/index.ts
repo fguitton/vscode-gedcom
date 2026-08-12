@@ -15,6 +15,9 @@ export type { Detection, Encoding, GedcomVersion, ByteOrder } from './detect.ts'
 
 export { inferVersion } from './infer.ts';
 
+export { scanDate, isUncertain } from './date.ts';
+export type { DateKeyword, DateQualifier } from './date.ts';
+
 export { lex, splitLines } from './lexer.ts';
 export type { LexedLine, LexResult } from './lexer.ts';
 
@@ -37,6 +40,8 @@ export {
   enumValuesOf,
   isExtensionTag,
   isKnownTag,
+  isRemovedInVersion,
+  removalNote,
   labelOf,
   modelFor,
   modelledVersion,
