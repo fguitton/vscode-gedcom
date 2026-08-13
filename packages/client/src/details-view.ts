@@ -152,6 +152,31 @@ function shell(): string {
   .row:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
   dt { color: var(--vscode-descriptionForeground); overflow-wrap: anywhere; }
   dd { margin: 0; overflow-wrap: anywhere; }
+  /* Text written across CONT lines, where the breaks are the content: an
+     address, or the twenty-eight line posting Royal92 carries. Shown verbatim,
+     in the editor's own font, set apart from the labelled rows around it. */
+  .block { display: block; padding: .3rem .75rem; }
+  .block .name {
+    color: var(--vscode-descriptionForeground);
+    font-size: calc(var(--vscode-font-size) * .9);
+    margin-bottom: .2rem;
+  }
+  .block pre {
+    margin: 0;
+    padding: .5rem .6rem;
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: var(--vscode-editor-font-size, calc(var(--vscode-font-size) * .95));
+    line-height: 1.4;
+    background: var(--vscode-textCodeBlock-background, var(--vscode-editorWidget-background));
+    border: 1px solid var(--vscode-widget-border, transparent);
+    border-radius: 3px;
+    /* Wrap rather than scroll: the panel is narrow and the text is prose. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .block.clickable pre { cursor: pointer; }
+  .block.clickable pre:hover { border-color: var(--vscode-focusBorder); }
+  .block pre:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
   #empty { padding: 1rem .75rem; color: var(--vscode-descriptionForeground); }
 </style>
 </head>
@@ -192,8 +217,41 @@ function shell(): string {
 
       const list = document.createElement('dl');
       for (const field of section.fields) {
+        const clickable = field.line !== undefined;
+        const go = () => vscode.postMessage({ type: 'reveal', line: field.line });
+
+        const activate = (element) => {
+          if (!clickable) return;
+          element.tabIndex = 0;
+          element.setAttribute('role', 'button');
+          element.title = 'Show this line in the editor';
+          element.addEventListener('click', go);
+          element.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); }
+          });
+        };
+
+        // Multi-line text gets the width of the panel and keeps its own breaks;
+        // squeezed into the value column it is unreadable.
+        if (field.block) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'block' + (clickable ? ' clickable' : '');
+
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = field.label;
+
+          const body = document.createElement('pre');
+          body.textContent = field.value;
+          activate(body);
+
+          wrapper.append(name, body);
+          list.appendChild(wrapper);
+          continue;
+        }
+
         const row = document.createElement('div');
-        row.className = 'row' + (field.line === undefined ? '' : ' clickable');
+        row.className = 'row' + (clickable ? ' clickable' : '');
 
         const label = document.createElement('dt');
         label.textContent = field.label;
@@ -201,18 +259,7 @@ function shell(): string {
         value.textContent = field.value;
 
         row.append(label, value);
-
-        if (field.line !== undefined) {
-          row.tabIndex = 0;
-          row.setAttribute('role', 'button');
-          row.title = 'Show this line in the editor';
-          const go = () => vscode.postMessage({ type: 'reveal', line: field.line });
-          row.addEventListener('click', go);
-          row.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); }
-          });
-        }
-
+        activate(row);
         list.appendChild(row);
       }
       sections.appendChild(list);

@@ -139,6 +139,27 @@ describe('against Royal92', () => {
     expect(flat['Submitter/COMM']).toContain('Denis Reid');
   });
 
+  it('keeps every line of folded text, not just the first', () => {
+    // `CONT` reassembly works; it was this layer that used to throw the rest
+    // away. The posting runs to twenty-eight lines and the signature is at the
+    // very bottom of it.
+    const comm = flat['Submitter/COMM']!;
+    expect(comm.split('\n')).toHaveLength(28);
+    expect(comm).toContain('MERRY CHRISTMAS');
+    expect(comm.trimEnd().endsWith('Thanks for your interest.   Denis Reid')).toBe(true);
+  });
+
+  it('marks folded text as a block, so a panel can lay it out as text', () => {
+    const submitter = documentDetails(royal).sections.find((s) => s.title === 'Submitter')!;
+    const byLabel = (label: string) => submitter.fields.find((f) => f.label === label);
+
+    // The line breaks in an address and in correspondence *are* the layout.
+    expect(byLabel('COMM')?.block).toBe(true);
+    expect(byLabel('Address')?.block).toBe(true);
+    // A single-line value stays an ordinary labelled row.
+    expect(byLabel('Phone')?.block).toBeFalsy();
+  });
+
   it('names the program that wrote the file', () => {
     expect(flat['File/Written by']).toBe('PAF 2.2');
     expect(flat['File/Character set']).toBe('ANSEL');

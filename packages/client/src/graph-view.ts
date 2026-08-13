@@ -276,6 +276,32 @@ function shell(): string {
     return text.length > max ? text.slice(0, max - 1) + '…' : text;
   }
 
+  /**
+   * Brings the selected people into view.
+   *
+   * A neighbourhood two hops wide is routinely taller and broader than the
+   * panel, and the selection lands wherever the layout puts it — which, having
+   * scrolled somewhere else, is usually off screen. Scrolling is confined to
+   * each axis that actually overflows: nudging an axis that fits would only
+   * shift a drawing already wholly visible.
+   */
+  function centreOnFocus(graph) {
+    const focused = graph.nodes.filter((node) => (graph.focused || []).indexOf(node.xref) >= 0);
+    if (!focused.length) return;
+
+    const left = Math.min(...focused.map((node) => node.x));
+    const right = Math.max(...focused.map((node) => node.x + NODE_WIDTH));
+    const top = Math.min(...focused.map((node) => node.y));
+    const bottom = Math.max(...focused.map((node) => node.y + NODE_HEIGHT));
+
+    if (scroll.scrollWidth > scroll.clientWidth) {
+      scroll.scrollLeft = (left + right) / 2 - scroll.clientWidth / 2;
+    }
+    if (scroll.scrollHeight > scroll.clientHeight) {
+      scroll.scrollTop = (top + bottom) / 2 - scroll.clientHeight / 2;
+    }
+  }
+
   function render(graph) {
     svg.replaceChildren();
 
@@ -319,7 +345,15 @@ function shell(): string {
 
       const top = a.y <= b.y ? a : b;
       const bottom = a.y <= b.y ? b : a;
-      const point = { x: top.x + NODE_WIDTH, y: (top.y + bottom.y) / 2 + NODE_HEIGHT / 2 };
+
+      // Children leave from the parent whose line is being traced, not from the
+      // midpoint between the couple. The midpoint is nobody: it floats in the
+      // gap between two boxes, and the reader following a descent cannot tell
+      // which of the two it belongs to. The nearer of the pair to the focus is
+      // the one on the path, and ties go to the upper box so it is stable.
+      const anchor =
+        a.distance === b.distance ? top : (a.distance < b.distance ? a : b);
+      const point = { x: anchor.x + NODE_WIDTH, y: anchor.y + NODE_HEIGHT / 2 };
 
       unions.set(a.xref, { partner: b.xref, point: point });
       unions.set(b.xref, { partner: a.xref, point: point });
@@ -484,6 +518,8 @@ function shell(): string {
 
       svg.appendChild(group);
     }
+
+    centreOnFocus(graph);
 
     // Labels last of all.
     //

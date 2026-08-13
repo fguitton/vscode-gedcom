@@ -80,6 +80,16 @@ discard in order to stay readable.
   a line of descent means looking at a dozen people in turn, and jumping the
   editor to each one loses the reader's place in the file for no benefit.
   Navigation is its own gesture, on a button that appears on the box.
+- Text written across `CONT` lines is shown whole, in the editor's font, in a
+  block of its own. `Royal92.ged` records the file's provenance as a twenty-eight
+  line posting from 1992, and only its first line was reaching the panel. The
+  parser's reassembly was never at fault; this layer was discarding the rest.
+- The graph scrolls the selection into view when the neighbourhood is larger
+  than the panel, on whichever axis actually overflows.
+- Children descend from the parent whose line is being traced rather than from
+  the midpoint between the couple. The midpoint is nobody — it floats in the gap
+  between two boxes, and a reader following a descent cannot tell which of the
+  two it belongs to.
 
 ### Added
 

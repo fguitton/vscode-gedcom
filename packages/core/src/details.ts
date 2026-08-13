@@ -23,6 +23,13 @@ import { asPointer } from './xref.ts';
 export interface DetailField {
   readonly label: string;
   readonly value: string;
+  /**
+   * The value is text written across `CONT` lines and its line breaks are part
+   * of it. A panel should render it verbatim rather than as a labelled value —
+   * `Royal92.ged` carries a twenty-eight line mailing list posting this way, and
+   * flattened into a row it is unreadable.
+   */
+  readonly block?: boolean;
   /** Line to reveal when the field is activated, where one is meaningful. */
   readonly line?: number;
 }
@@ -58,17 +65,25 @@ const firstLine = (text: string, max = 200): string => {
 };
 
 /**
- * Folded text as one run of prose.
+ * Folded text, kept whole.
  *
- * A `CONT` chain is one note written across many lines, so keeping only the
- * first would throw away most of it — and the interesting part of a note is
- * rarely in its opening clause. The line breaks themselves carry no meaning
- * worth preserving in a panel this narrow.
+ * A `CONT` chain is one piece of text written across many lines, and the parser
+ * already reassembles it. Truncating it to the first line threw away almost all
+ * of it, and the interesting part of a note is rarely in its opening clause.
+ *
+ * Line breaks are preserved rather than collapsed: `CONT` exists precisely to
+ * encode them, and the text in the wild is addresses and correspondence, where
+ * the breaks are the layout.
  */
-const paragraph = (text: string, max = 400): string => {
-  const flat = text.replace(/\s*\n\s*/g, ' ').trim();
-  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+const MAX_BLOCK = 8_000;
+
+const wholeText = (text: string): string => {
+  const trimmed = text.replace(/[ \t]+$/gm, '').trim();
+  return trimmed.length > MAX_BLOCK ? `${trimmed.slice(0, MAX_BLOCK)}\n…` : trimmed;
 };
+
+/** True when the text's own line breaks are worth preserving on screen. */
+const isBlock = (text: string): boolean => text.includes('\n');
 
 const child = (structure: Structure, tag: string): Structure | undefined =>
   structure.children.find((candidate) => candidate.tag === tag);
@@ -128,9 +143,9 @@ function noteText(analysis: Analysis, structure: Structure): string | undefined 
   const pointer = asPointer(structure);
   if (pointer !== null && pointer !== 'VOID') {
     const target = analysis.xrefs.definitions.get(pointer);
-    return target?.payload ? paragraph(target.payload) : undefined;
+    return target?.payload ? wholeText(target.payload) : undefined;
   }
-  return structure.payload ? paragraph(structure.payload) : undefined;
+  return structure.payload ? wholeText(structure.payload) : undefined;
 }
 
 function section(title: string, fields: DetailField[]): DetailSection[] {
@@ -163,7 +178,7 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
 
     if (tag === 'NOTE' || tag === 'SNOTE') {
       const text = noteText(analysis, structure);
-      if (text) notes.push({ label, value: text, line });
+      if (text) notes.push({ label, value: text, block: isBlock(text), line });
       continue;
     }
 
@@ -287,7 +302,14 @@ export function documentDetails(analysis: Analysis): Details {
 
         if (structure.tag === 'NOTE' || structure.tag === 'SNOTE') {
           const text = noteText(analysis, structure);
-          if (text) notes.push({ label: 'Submitter note', value: text, line: structure.span.line });
+          if (text) {
+            notes.push({
+              label: 'Submitter note',
+              value: text,
+              block: isBlock(text),
+              line: structure.span.line,
+            });
+          }
           continue;
         }
 
@@ -298,9 +320,10 @@ export function documentDetails(analysis: Analysis): Details {
             structure.tag,
             analysis.validation.resolutions.get(structure)?.slug,
           ),
-          // Folded rather than truncated: an address and a mailing-list posting
-          // are both written across `CONT` lines, and the first is never enough.
-          value: paragraph(structure.payload, 300),
+          // Kept whole: an address and a mailing-list posting are both written
+          // across `CONT` lines, and the first of them is never enough.
+          value: wholeText(structure.payload),
+          block: isBlock(structure.payload),
           line: structure.span.line,
         });
       }
@@ -309,7 +332,14 @@ export function documentDetails(analysis: Analysis): Details {
     for (const structure of head.children) {
       if (structure.tag !== 'NOTE' && structure.tag !== 'SNOTE') continue;
       const text = noteText(analysis, structure);
-      if (text) notes.push({ label: 'File note', value: text, line: structure.span.line });
+      if (text) {
+        notes.push({
+          label: 'File note',
+          value: text,
+          block: isBlock(text),
+          line: structure.span.line,
+        });
+      }
     }
   }
 
