@@ -3,7 +3,13 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.6.0]
+
+Two themes. A GEDCOM file is allowed to indent itself, and files in the wild do —
+so those are now read, highlighted and folded like any other, whatever they indent
+with. And the panels stop showing the reader the file's own shorthand: slashes
+around a surname, `F` for a sex, a URL that cannot be clicked, a hover that
+answers "Text."
 
 ### Added
 
