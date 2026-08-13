@@ -211,6 +211,11 @@
           "default": true,
           "markdownDescription": "Show a summary above each record: how many people depend on it, its shape in the tree, and a link into the graph panel."
         },
+        "gedcom.details.imagePreviews": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show a thumbnail in the details panel for media the file points at over `http` or `https`.\n\nTurning this off leaves the link, and the panel then makes no network request of its own: a photograph hosted by a genealogy site is fetched from that site, which tells it the file is being read and from where."
+        },
         "gedcom.trace.server": {
           "type": "string",
           "enum": [

@@ -8,7 +8,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { describeLanguage, describeMediaType, resolveMediaType } from '../src/lang.ts';
+import {
+  describeLanguage,
+  describeMediaType,
+  mediaTypeOfPath,
+  resolveMediaType,
+} from '../src/lang.ts';
 
 describe('describeLanguage', () => {
   it('names a plain language tag', () => {
@@ -67,5 +72,32 @@ describe('describeMediaType', () => {
   it('says nothing for a kind it cannot characterise', () => {
     expect(describeMediaType('application/x-custom')).toBeUndefined();
     expect(describeMediaType('')).toBeUndefined();
+  });
+});
+
+describe('mediaTypeOfPath', () => {
+  it('reads the extension, in any case', () => {
+    expect(mediaTypeOfPath('photo.jpg')).toBe('image/jpeg');
+    expect(mediaTypeOfPath('scan.PNG')).toBe('image/png');
+    expect(mediaTypeOfPath('C:\\Family\\Scans\\gran.TIF')).toBe('image/tiff');
+  });
+
+  it('knows formats no FORM payload ever named', () => {
+    // GEDCOM 5.5.1 listed the formats of 1996. A file exported last year points
+    // at whatever its host actually serves.
+    expect(mediaTypeOfPath('portrait.webp')).toBe('image/webp');
+    expect(mediaTypeOfPath('crest.svg')).toBe('image/svg+xml');
+  });
+
+  it('ignores a query and a fragment', () => {
+    // Neither is part of the name, and a URL may carry both.
+    expect(mediaTypeOfPath('https://example.org/p.jpg?size=large')).toBe('image/jpeg');
+    expect(mediaTypeOfPath('https://example.org/p.png#top')).toBe('image/png');
+  });
+
+  it('says nothing where there is nothing to read', () => {
+    expect(mediaTypeOfPath('https://example.org/photograph')).toBeUndefined();
+    expect(mediaTypeOfPath('archive.tar.xyz')).toBeUndefined();
+    expect(mediaTypeOfPath('')).toBeUndefined();
   });
 });

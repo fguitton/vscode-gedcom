@@ -22,6 +22,23 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 - Five `fixtures/style/` files carrying the same family tree at one, two and four
   spaces per level, at tabs, and at tabs-then-spaces.
 
+- **Links and image previews in the details panel.** A URL anywhere in a field —
+  a media object's `FILE`, a `WWW`, an address written into a note — is now a
+  link that opens in the browser, and media the file identifies as a picture is
+  shown as a thumbnail beneath its row.
+
+  `http` and `https` only. A `FILE` payload is free text from a document the
+  reader may merely have been sent, and `javascript:`, `file:` and `vscode:` URIs
+  would otherwise be handed to the machine by a click; the scheme is checked in
+  the extension host rather than trusted from the panel.
+
+  Previews are on by default and `gedcom.details.imagePreviews` turns them off.
+  Off rewrites the panel's content security policy rather than merely suppressing
+  the `<img>`, so the panel is then unable to make a request rather than
+  disinclined to — the point of the setting is that a photograph hosted by a
+  genealogy site does not get to learn that the file is being read, and from
+  where. Even on, only `https` is permitted.
+
 ### Fixed
 
 - **A media object written inline was reported as a broken pointer.** GEDCOM
@@ -32,9 +49,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Changed
 
-- The Details panel names a media object by its own title rather than by its tag,
-  and says what kind of file it is; a residence with an address but no place now
-  shows the address instead of the word "recorded".
+- The details panel names a media object by its own title rather than by its tag,
+  and says what kind of file it is — read from the `FORM` where the file writes
+  one and from the path's extension where it does not. A residence with an
+  address but no place now shows the address instead of the word "recorded".
 
 ## [0.5.2]
 

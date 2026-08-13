@@ -46,7 +46,7 @@ export {
 } from './place.ts';
 export type { PlaceLevel, Coordinate } from './place.ts';
 
-export { describeLanguage, resolveMediaType, describeMediaType } from './lang.ts';
+export { describeLanguage, resolveMediaType, describeMediaType, mediaTypeOfPath } from './lang.ts';
 
 export { parsePersonalName } from './name.ts';
 export type { PersonalName } from './name.ts';
@@ -57,7 +57,7 @@ export type { Statistics } from './stats.ts';
 export { describePayloadType } from './payload.ts';
 export type { PayloadDescription } from './payload.ts';
 
-export { recordDetails, documentDetails } from './details.ts';
+export { recordDetails, documentDetails, webUrl } from './details.ts';
 export type { Details, DetailSection, DetailField } from './details.ts';
 
 export { neighbourhood, recordAt } from './graph.ts';

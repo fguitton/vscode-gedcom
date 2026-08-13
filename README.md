@@ -39,6 +39,9 @@ here exists to remove a reason to leave the line you are reading.
 - **A details panel** beside it, carrying what the graph has to discard to stay
   readable: occupations, places, notes, citations. With nothing selected it
   describes the file itself — who submitted it, what wrote it, what is in it.
+  Media it points at over `https` is opened with a click and previewed where it
+  is a picture; `gedcom.details.imagePreviews` turns the preview off, and off
+  means the panel is not permitted to make the request at all.
 - **Go to definition, find references, rename** across every pointer at once,
   **outline**, **completion**, and **folding by level number** — GEDCOM lines all
   start at column zero, so indentation-based folding does nothing for them.

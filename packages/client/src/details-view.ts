@@ -11,8 +11,15 @@
  * that has no place in a family tree: a submitter is not somebody's relative.
  */
 
-import { analyzeText, documentDetails, recordDetails, type Details } from '@vscode-gedcom/core';
 import {
+  analyzeText,
+  documentDetails,
+  recordDetails,
+  webUrl,
+  type Details,
+} from '@vscode-gedcom/core';
+import {
+  env,
   Range,
   Selection as EditorSelection,
   TextEditorRevealType,
@@ -20,23 +27,32 @@ import {
   window,
   workspace,
   type CancellationToken,
+  type Disposable,
   type WebviewView,
   type WebviewViewProvider,
 } from 'vscode';
 
+import { contentSecurityPolicy } from './policy.ts';
 import type { SelectionStore } from './selection.ts';
 
 export const DETAILS_VIEW_ID = 'gedcom.details';
 
-interface RevealMessage {
-  readonly type: 'reveal';
-  readonly line: number;
+/** The setting that governs whether the panel fetches anything from the network. */
+const PREVIEWS = 'gedcom.details.imagePreviews';
+
+type PanelMessage =
+  | { readonly type: 'reveal'; readonly line: number }
+  | { readonly type: 'open'; readonly url: string };
+
+function previewsEnabled(): boolean {
+  return workspace.getConfiguration().get<boolean>(PREVIEWS, true);
 }
 
 export class GedcomDetailsViewProvider implements WebviewViewProvider {
   private view: WebviewView | undefined;
   private uri: Uri | undefined;
   private readonly selection: SelectionStore;
+  private readonly subscriptions: Disposable[] = [];
 
   constructor(selection: SelectionStore) {
     this.selection = selection;
@@ -45,14 +61,32 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
   resolveWebviewView(view: WebviewView, _context: unknown, _token: CancellationToken): void {
     this.view = view;
     view.webview.options = { enableScripts: true, localResourceRoots: [] };
-    view.webview.html = shell();
+    view.webview.html = shell(previewsEnabled());
 
-    view.webview.onDidReceiveMessage((message: RevealMessage) => {
+    view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'reveal') void this.reveal(message.line);
+      else if (message.type === 'open') void this.open(message.url);
     });
 
     view.onDidChangeVisibility(() => {
       if (view.visible) this.refresh();
+    });
+
+    // The policy that permits a remote image is written into the document, so
+    // turning previews off has to rewrite it rather than merely stop emitting
+    // pictures. Anything less would leave the panel *able* to make the request
+    // the setting exists to prevent.
+    this.subscriptions.push(
+      workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration(PREVIEWS)) return;
+        view.webview.html = shell(previewsEnabled());
+        this.refresh();
+      }),
+    );
+
+    view.onDidDispose(() => {
+      for (const subscription of this.subscriptions) subscription.dispose();
+      this.subscriptions.length = 0;
     });
 
     this.refresh();
@@ -83,6 +117,18 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     void this.view.webview.postMessage({ type: 'details', details });
   }
 
+  /**
+   * Opens a link the file supplied.
+   *
+   * Checked here rather than trusted from the panel: the payload came out of a
+   * document the user may merely have been sent, and `env.openExternal` will
+   * hand a `file:` or a `vscode:` URI straight to the machine.
+   */
+  private async open(url: string): Promise<void> {
+    if (!webUrl(url)) return;
+    await env.openExternal(Uri.parse(url, true));
+  }
+
   private async reveal(line: number): Promise<void> {
     if (!this.uri) return;
 
@@ -103,7 +149,7 @@ function nonce(): string {
 }
 
 /** The panel document. Inline behind a nonce; see graph-view.ts for why. */
-function shell(): string {
+function shell(previews: boolean): string {
   const id = nonce();
 
   return `<!DOCTYPE html>
@@ -111,7 +157,7 @@ function shell(): string {
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'nonce-${id}'; script-src 'nonce-${id}';">
+      content="${contentSecurityPolicy({ nonce: id, images: previews })}">
 <style nonce="${id}">
   :root { color-scheme: light dark; }
   body {
@@ -183,6 +229,30 @@ function shell(): string {
   .block.clickable pre { cursor: pointer; }
   .block.clickable pre:hover { border-color: var(--vscode-focusBorder); }
   .block pre:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  a {
+    color: var(--vscode-textLink-foreground);
+    text-decoration: none;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+  a:hover { color: var(--vscode-textLink-activeForeground); text-decoration: underline; }
+  a:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  /* A thumbnail sits under its row rather than beside it: the panel is narrow,
+     and a picture squeezed into the value column is too small to be worth the
+     request that fetched it. */
+  .thumb {
+    display: block;
+    margin: .25rem .75rem .5rem;
+    max-width: calc(100% - 1.5rem);
+    max-height: 14rem;
+    border-radius: 4px;
+    border: 1px solid rgba(127, 127, 127, .22);
+    background: rgba(127, 127, 127, .14);
+    cursor: pointer;
+  }
+  /* Nothing came back — a dead link, an offline machine, a host that refuses a
+     hotlink. The row above still says what the file claims is there. */
+  .thumb.broken { display: none; }
   #empty { padding: 1rem .75rem; color: var(--vscode-descriptionForeground); }
 </style>
 </head>
@@ -198,6 +268,69 @@ function shell(): string {
   const empty = document.getElementById('empty');
   const content = document.getElementById('content');
   const sections = document.getElementById('sections');
+  const previews = ${previews ? 'true' : 'false'};
+
+  /** Bare http(s) URLs, stopping before punctuation that ends a sentence. */
+  const URL_PATTERN = /https?:\\/\\/[^\\s<>"']+[^\\s<>"'.,;:!?)\\]]/g;
+
+  function openExternally(url) {
+    vscode.postMessage({ type: 'open', url: url });
+  }
+
+  function link(url) {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.textContent = url;
+    anchor.title = 'Open ' + url;
+    // The row beneath reveals the line in the editor; a click meant for the
+    // link is not also a request to jump there.
+    anchor.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openExternally(url);
+    });
+    return anchor;
+  }
+
+  /**
+   * Text with any URLs in it turned into links.
+   *
+   * Built as nodes rather than as markup: the text came out of the file, and
+   * anything assembled as an HTML string would be the file choosing what the
+   * panel renders.
+   */
+  function linkified(text) {
+    const fragment = document.createDocumentFragment();
+    let last = 0;
+    URL_PATTERN.lastIndex = 0;
+
+    for (let match; (match = URL_PATTERN.exec(text)); ) {
+      if (match.index > last) {
+        fragment.appendChild(document.createTextNode(text.slice(last, match.index)));
+      }
+      fragment.appendChild(link(match[0]));
+      last = match.index + match[0].length;
+    }
+
+    if (last === 0) return document.createTextNode(text);
+    if (last < text.length) fragment.appendChild(document.createTextNode(text.slice(last)));
+    return fragment;
+  }
+
+  function thumbnail(field) {
+    if (!previews || !field.url) return undefined;
+    if (!field.mediaType || field.mediaType.slice(0, 6) !== 'image/') return undefined;
+
+    const image = document.createElement('img');
+    image.className = 'thumb';
+    image.loading = 'lazy';
+    image.alt = field.label;
+    image.title = 'Open ' + field.url;
+    image.addEventListener('click', () => openExternally(field.url));
+    image.addEventListener('error', () => { image.classList.add('broken'); });
+    image.src = field.url;
+    return image;
+  }
 
   function render(details) {
     empty.hidden = true;
@@ -248,7 +381,7 @@ function shell(): string {
           name.textContent = field.label;
 
           const body = document.createElement('pre');
-          body.textContent = field.value;
+          body.replaceChildren(linkified(field.value));
           activate(body);
 
           wrapper.append(name, body);
@@ -262,11 +395,14 @@ function shell(): string {
         const label = document.createElement('dt');
         label.textContent = field.label;
         const value = document.createElement('dd');
-        value.textContent = field.value;
+        value.replaceChildren(linkified(field.value));
 
         row.append(label, value);
         activate(row);
         list.appendChild(row);
+
+        const image = thumbnail(field);
+        if (image) list.appendChild(image);
       }
       sections.appendChild(list);
     }

@@ -7,7 +7,7 @@
  * reports no error anywhere a developer is looking.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -147,6 +147,40 @@ describe('the contributions', () => {
     for (const key of Object.keys(manifest.contributes.configuration.properties)) {
       expect(key.startsWith('gedcom.')).toBe(true);
     }
+  });
+
+  it('declares every setting the source reads', () => {
+    // A setting read but never contributed has no default, no description and no
+    // entry in the settings UI. Nothing reports it: it simply reads as undefined
+    // for every user, forever.
+    const directory = join(root, 'packages', 'client', 'src');
+    const sources = readdirSync(directory)
+      .filter((name) => name.endsWith('.ts'))
+      .map((name) => readFileSync(join(directory, name), 'utf8'))
+      .join('\n');
+
+    // A setting has a section and a name under `gedcom`; a view or command id
+    // has one segment, and `.focus` is the command VS Code makes for a view.
+    const read = new Set(
+      [...sources.matchAll(/'(gedcom\.[a-z][a-zA-Z]*\.[a-zA-Z.]+)'/g)]
+        .map(([, key]) => key!)
+        .filter((key) => !key.endsWith('.focus')),
+    );
+
+    const declared = Object.keys(manifest.contributes.configuration.properties);
+    for (const key of read) expect(declared, `${key} is read but not contributed`).toContain(key);
+  });
+
+  it('offers image previews by default and can turn them off', () => {
+    const setting = manifest.contributes.configuration.properties[
+      'gedcom.details.imagePreviews'
+    ] as { type: string; default: boolean } | undefined;
+
+    expect(setting?.type).toBe('boolean');
+    // On by default because a file that points at a photograph is usually
+    // pointing at one the reader wants; off is one click away, and off means the
+    // panel makes no request at all.
+    expect(setting?.default).toBe(true);
   });
 
   it('puts both panels in the GEDCOM container', () => {

@@ -191,3 +191,62 @@ describe('against Royal92', () => {
     });
   });
 });
+
+describe('media the file points at', () => {
+  const media = (source: string) => {
+    const details = recordDetails(analyze(bytes(source)), 'I1')!;
+    return details.sections.find((section) => section.title === 'Media')?.fields ?? [];
+  };
+
+  const file = (...object: string[]) =>
+    ['0 HEAD', '1 GEDC', '2 VERS 7.0', '0 @I1@ INDI', ...object, '0 TRLR', ''].join('\n');
+
+  it('offers a URL as something to open', () => {
+    const [field] = media(
+      file(
+        '1 OBJE',
+        '2 FORM image/jpeg',
+        '2 FILE https://example.org/photo.jpg',
+        '2 TITL Grandmother at the fair',
+      ),
+    );
+
+    expect(field?.label).toBe('Grandmother at the fair');
+    expect(field?.url).toBe('https://example.org/photo.jpg');
+    expect(field?.mediaType).toBe('image/jpeg');
+  });
+
+  it('reads the type from the extension when no FORM says', () => {
+    // FORM is optional in GEDCOM 7 and frequently absent in 5.5.1 files that
+    // otherwise parse; the path is then the only evidence of what the thing is.
+    const [field] = media(file('1 OBJE', '2 FILE https://example.org/scan.PNG'));
+    expect(field?.mediaType).toBe('image/png');
+    expect(field?.value).toContain('PNG image');
+  });
+
+  it('resolves the legacy spelling of a format', () => {
+    const [field] = media(file('1 OBJE', '2 FORM jpeg', '2 FILE https://example.org/a.dat'));
+    expect(field?.mediaType).toBe('image/jpeg');
+  });
+
+  it('offers nothing to open for a path that is not a URL', () => {
+    // A great many files name a folder on a machine retired two decades ago.
+    const [field] = media(file('1 OBJE', '2 FORM jpg', '2 FILE C:\\Family\\Scans\\gran.jpg'));
+    expect(field?.value).toContain('gran.jpg');
+    expect(field?.url).toBeUndefined();
+  });
+
+  it('refuses a scheme that is not the web', () => {
+    // The payload is free text from a document the reader may merely have been
+    // sent, and the panel hands whatever it is given to the operating system.
+    for (const path of [
+      'javascript:alert(1)',
+      'file:///etc/passwd',
+      'vscode://ms-vscode.node-debug',
+      'data:text/html,<script>alert(1)</script>',
+    ]) {
+      const [field] = media(file('1 OBJE', '2 FORM image/png', `2 FILE ${path}`));
+      expect(field?.url, `${path} must not be offered as a link`).toBeUndefined();
+    }
+  });
+});

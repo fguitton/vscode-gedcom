@@ -16,7 +16,7 @@
 
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
-import { describeMediaType } from './lang.ts';
+import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
 import { modelFor, tagLabel } from './spec/index.ts';
 import { statistics } from './stats.ts';
 import { asPointer } from './xref.ts';
@@ -33,6 +33,17 @@ export interface DetailField {
   readonly block?: boolean;
   /** Line to reveal when the field is activated, where one is meaningful. */
   readonly line?: number;
+  /**
+   * A resource the field points at, when the file gives one that a viewer could
+   * actually open — `http` or `https` only.
+   *
+   * A `FILE` payload is whatever the exporting program wrote there: a URL, a
+   * path relative to the file, a drive letter from a machine retired in 2003.
+   * Only the first kind can be followed from here, so only that kind is offered.
+   */
+  readonly url?: string;
+  /** The media type of `url`, where it is known. */
+  readonly mediaType?: string;
 }
 
 export interface DetailSection {
@@ -98,6 +109,18 @@ function nameOf(record: Structure): string | undefined {
   if (title) return firstLine(title, 60);
 
   return record.payload ? firstLine(record.payload, 60) : undefined;
+}
+
+/**
+ * True for the one kind of payload a viewer can safely follow.
+ *
+ * A GEDCOM file is untrusted input and a `FILE` payload is free text, so this is
+ * a whitelist rather than a check for things known to be bad: `javascript:` and
+ * `file:` are refused because they are not `http`, not because they were
+ * anticipated.
+ */
+export function webUrl(payload: string): boolean {
+  return /^https?:\/\/[^\s]+$/i.test(payload.trim());
 }
 
 /** Follows a pointer to something worth showing in its place. */
@@ -233,10 +256,17 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
       const titl = child(structure, 'TITL')?.payload;
       const kind = form ? describeMediaType(form) : undefined;
       const path = file ? firstLine(file) : (resolve(analysis, structure) ?? '');
+      // The FORM is the authority where the file writes one; where it does not,
+      // the extension is the only evidence of what the thing is.
+      const type = (form ? resolveMediaType(form) : undefined) ?? mediaTypeOfPath(path);
       media.push({
         label: titl ? firstLine(titl, 60) : label,
-        value: [path, kind].filter(Boolean).join(' · '),
+        value: [path, kind ?? (type ? describeMediaType(type) : undefined)]
+          .filter(Boolean)
+          .join(' · '),
         line,
+        ...(webUrl(path) ? { url: path.trim() } : {}),
+        ...(type ? { mediaType: type } : {}),
       });
       continue;
     }

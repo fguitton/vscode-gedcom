@@ -30,6 +30,7 @@ import {
 import { analyzeText } from '@vscode-gedcom/core';
 import { revealLine } from './commands.ts';
 import { DETAILS_VIEW_ID, GedcomDetailsViewProvider } from './details-view.ts';
+import { contentSecurityPolicy } from './policy.ts';
 import { SelectionStore } from './selection.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
@@ -174,7 +175,7 @@ function shell(): string {
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'nonce-${id}'; script-src 'nonce-${id}';">
+      content="${contentSecurityPolicy({ nonce: id })}">
 <style nonce="${id}">
   :root { color-scheme: light dark; }
   body {

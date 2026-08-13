@@ -100,3 +100,39 @@ export function describeMediaType(payload: string): string | undefined {
       return undefined;
   }
 }
+
+/**
+ * Formats a path may carry that no `FORM` payload ever names.
+ *
+ * Kept apart from the legacy table above, which is a record of what 5.5.1
+ * allowed in a `FORM` and should stay that.
+ */
+const PATH_FORMATS: Record<string, string> = {
+  avif: 'image/avif',
+  heic: 'image/heic',
+  htm: 'text/html',
+  html: 'text/html',
+  jpe: 'image/jpeg',
+  mp3: 'audio/mpeg',
+  mp4: 'video/mp4',
+  mov: 'video/quicktime',
+  svg: 'image/svg+xml',
+  txt: 'text/plain',
+  webp: 'image/webp',
+};
+
+/**
+ * What a path's extension implies it holds.
+ *
+ * A `FORM` is the authority where one is written, but it is optional in GEDCOM 7
+ * and often missing in practice, and the extension is then the only evidence
+ * there is — enough to know whether something is worth showing as a picture.
+ */
+export function mediaTypeOfPath(path: string): string | undefined {
+  // Query and fragment are not part of the name, and a URL may carry both.
+  const name = path.trim().split(/[?#]/)[0] ?? '';
+  const extension = /\.([A-Za-z0-9]+)$/.exec(name)?.[1]?.toLowerCase();
+  if (!extension) return undefined;
+
+  return LEGACY_FORMATS[extension] ?? PATH_FORMATS[extension];
+}
