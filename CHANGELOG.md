@@ -226,6 +226,20 @@ discard in order to stay readable.
 
 ### Changed
 
+- **Dependencies.** Every package is at its latest published version, with two
+  deliberate exceptions, both now enforced by tests rather than left to memory:
+  - `@types/vscode` stays at `~1.91.0`, matching `engines.vscode`. It decides
+    which APIs the compiler believes exist, so raising it alone would compile
+    calls to APIs missing from the oldest editor the extension claims to run on
+    — a failure that lands on a user at runtime. The published types are twenty
+    releases ahead; nothing here needs them.
+  - `serialize-javascript` and `diff` are pinned through `overrides` to versions
+    the advisories are fixed in. Both reach the repository only through
+    `@vscode/test-cli` → `mocha`, neither ships in the extension, and neither
+    could be fixed by an upgrade — which is why the security job failed on every
+    run. `npm audit` is now clean. Both replacements were checked against the
+    code that uses them, including mocha's failure-diff rendering, which a green
+    suite never exercises.
 - `devEngines.packageManager` takes a range (`>=11`) and warns rather than
   failing. It pinned npm to one exact patch version, which no CI runner happens
   to have, so `npm ci` aborted with `EBADDEVENGINES` before doing anything. The
