@@ -10,12 +10,14 @@
 import { Uri, type ExtensionContext } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/browser';
 
+import { registerCommands } from './commands.ts';
 import { registerGraphView } from './graph-view.ts';
 import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
 
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): void {
+  registerCommands(context);
   // The panel parses the document itself, so it works identically in both hosts.
   registerGraphView(context);
 

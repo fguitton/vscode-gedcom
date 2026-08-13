@@ -15,10 +15,47 @@ export type { Detection, Encoding, GedcomVersion, ByteOrder } from './detect.ts'
 
 export { inferVersion } from './infer.ts';
 
-export { scanDate, isUncertain, parseExactDate, describeDate } from './date.ts';
-export type { ExactDate } from './date.ts';
+export {
+  scanDate,
+  isUncertain,
+  parseExactDate,
+  describeDate,
+  yearOf,
+  dayNumber,
+  ageAt,
+  relativeTime,
+} from './date.ts';
+export type { ExactDate, AgeAt } from './date.ts';
 export { relationsOf, eventYear, lifespan } from './relations.ts';
 export type { Relations } from './relations.ts';
+
+export { parseAge, describeAge, ageInDays } from './age.ts';
+export type { Age } from './age.ts';
+
+export { enumSetFor, describeEnumValue, meaningOf } from './enums.ts';
+export type { EnumMeaning } from './enums.ts';
+
+export {
+  placeParts,
+  describePlace,
+  placeFormOf,
+  parseCoordinate,
+  formatCoordinate,
+  signedDegrees,
+  coordinatesOf,
+} from './place.ts';
+export type { PlaceLevel, Coordinate } from './place.ts';
+
+export { describeLanguage, resolveMediaType, describeMediaType } from './lang.ts';
+
+export { parsePersonalName } from './name.ts';
+export type { PersonalName } from './name.ts';
+
+export { statistics } from './stats.ts';
+export type { Statistics } from './stats.ts';
+
+export { describePayloadType } from './payload.ts';
+export type { PayloadDescription } from './payload.ts';
 
 export { neighbourhood, recordAt } from './graph.ts';
 export type { Graph, GraphNode, GraphEdge, PositionedNode, NeighbourhoodOptions } from './graph.ts';

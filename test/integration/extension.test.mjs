@@ -142,6 +142,86 @@ describe('discoverability', () => {
   });
 });
 
+describe('inlay hints', () => {
+  it('resolves a pointer to the record it names', async () => {
+    const document = await vscode.workspace.openTextDocument({
+      language: 'gedcom',
+      content: [
+        '0 HEAD',
+        '1 GEDC',
+        '2 VERS 7.0',
+        '0 @I1@ INDI',
+        '1 NAME John /Smith/',
+        '1 SEX M',
+        '1 FAMS @F1@',
+        '0 @F1@ FAM',
+        '1 HUSB @I1@',
+        '0 TRLR',
+        '',
+      ].join('\n'),
+    });
+    await vscode.window.showTextDocument(document);
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+    const hints = await vscode.commands.executeCommand(
+      'vscode.executeInlayHintProvider',
+      document.uri,
+      new vscode.Range(0, 0, document.lineCount, 0),
+    );
+
+    assert.ok(hints?.length, 'expected inlay hints');
+
+    // A hint's label is either a string or an array of parts.
+    const labelOf = (hint) =>
+      typeof hint.label === 'string' ? hint.label : hint.label.map((part) => part.value).join('');
+
+    const onLine = (line) => hints.filter((hint) => hint.position.line === line).map(labelOf);
+
+    assert.deepEqual(onLine(8), ['John Smith'], 'expected the HUSB pointer to resolve');
+    assert.deepEqual(onLine(5), ['male'], 'expected the SEX enumeration to be explained');
+  });
+});
+
+describe('code lens', () => {
+  it('summarises each record', async () => {
+    const document = await openFixture(SAMPLE);
+    const lenses = await vscode.commands.executeCommand(
+      'vscode.executeCodeLensProvider',
+      document.uri,
+    );
+
+    assert.ok(lenses?.length, 'expected code lenses');
+    assert.ok(
+      lenses.some((lens) => /reference/.test(lens.command?.title ?? '')),
+      'expected a reference count lens',
+    );
+  });
+
+  it('registers the command its lenses invoke', async () => {
+    // A lens whose command is not registered fails only when clicked, which no
+    // unit test would ever notice.
+    const all = await vscode.commands.getCommands(true);
+    assert.ok(all.includes('gedcom.showReferences'), 'expected gedcom.showReferences');
+  });
+});
+
+describe('document links', () => {
+  it('makes a web address clickable', async () => {
+    const document = await vscode.workspace.openTextDocument({
+      language: 'gedcom',
+      content:
+        '0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @S1@ SOUR\n1 WWW https://example.org/parish\n0 TRLR\n',
+    });
+    await vscode.window.showTextDocument(document);
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+    const links = await vscode.commands.executeCommand('vscode.executeLinkProvider', document.uri);
+
+    assert.ok(links?.length, 'expected a document link');
+    assert.equal(links[0].target?.toString(), 'https://example.org/parish');
+  });
+});
+
 describe('hovers', () => {
   it('reports the weekday of an exact date', async () => {
     const document = await vscode.workspace.openTextDocument({

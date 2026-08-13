@@ -1,27 +1,34 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Extension (desktop)",
-            "type": "extensionHost",
-            "request": "launch",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}",
-                "${workspaceFolder}/fixtures"
-            ]
-        },
-        {
-            // The extension is purely declarative, so it already runs in the web
-            // extension host. This keeps that true as runtime code lands.
-            "name": "Extension (web)",
-            "type": "extensionHost",
-            "debugWebWorkerHost": true,
-            "request": "launch",
-            "args": [
-                "--extensionDevelopmentKind=web",
-                "--extensionDevelopmentPath=${workspaceFolder}",
-                "${workspaceFolder}/fixtures"
-            ]
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Extension (desktop)",
+      "type": "extensionHost",
+      "request": "launch",
+      // The extension host loads the bundles in dist/, not the sources, so
+      // without a rebuild first F5 silently runs the previous build.
+      "preLaunchTask": "build",
+      "outFiles": ["${workspaceFolder}/dist/node/**/*.cjs"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/fixtures"
+      ]
+    },
+    {
+      // The web host runs the same code as a worker, under a stricter CSP and
+      // with no Node builtins. Worth launching whenever the graph panel or the
+      // server's bundling changes.
+      "name": "Extension (web)",
+      "type": "extensionHost",
+      "debugWebWorkerHost": true,
+      "request": "launch",
+      "preLaunchTask": "build",
+      "outFiles": ["${workspaceFolder}/dist/browser/**/*.js"],
+      "args": [
+        "--extensionDevelopmentKind=web",
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/fixtures"
+      ]
+    }
+  ]
 }

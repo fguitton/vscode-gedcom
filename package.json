@@ -171,6 +171,26 @@
           "default": "auto",
           "markdownDescription": "How strictly to validate GEDCOM structure.\n\nTwo decades of exporters produced 5.5.1 files that violate the specification in ways every consumer tolerates, which is why `auto` does not apply GEDCOM 7's rules to them."
         },
+        "gedcom.inlayHints.pointers": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show what each cross-reference points at, inline after the pointer.\n\nA GEDCOM file is mostly identifiers, and `1 FAMS @F1@` says nothing about the family it names without following it. This puts the answer at the end of the line."
+        },
+        "gedcom.inlayHints.values": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show what coded payloads mean, inline after the value.\n\nCovers enumerated values such as `SEX`, `QUAY` and `PEDI`, and BCP 47 language tags."
+        },
+        "gedcom.inlayHints.ages": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show how old the subject was, inline after an event's date.\n\nComputed against the record's own `BIRT` date, so it only appears where the file records one."
+        },
+        "gedcom.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show a summary above each record: how many people depend on it, its shape in the tree, and a link into the graph panel."
+        },
         "gedcom.trace.server": {
           "type": "string",
           "enum": [

@@ -1,0 +1,63 @@
+/**
+ * Commands a code lens can invoke.
+ *
+ * A lens sent by the language server carries its arguments as plain JSON, and
+ * VS Code's own commands take real `Uri`, `Position` and `Location` objects. There
+ * is no automatic conversion between the two, so a lens cannot call a built-in
+ * command directly — the usual remedy, and the one used here, is a thin
+ * client-side command that rebuilds the objects and forwards.
+ */
+
+import {
+  commands,
+  Location,
+  Position,
+  Range,
+  Selection,
+  Uri,
+  window,
+  workspace,
+  type ExtensionContext,
+} from 'vscode';
+
+/** Shape the server sends: LSP ranges, which are structurally plain objects. */
+interface RawRange {
+  readonly start: { readonly line: number; readonly character: number };
+  readonly end: { readonly line: number; readonly character: number };
+}
+
+const toPosition = (raw: RawRange['start']): Position => new Position(raw.line, raw.character);
+
+const toRange = (raw: RawRange): Range => new Range(toPosition(raw.start), toPosition(raw.end));
+
+export function registerCommands(context: ExtensionContext): void {
+  context.subscriptions.push(
+    commands.registerCommand(
+      'gedcom.showReferences',
+      (uri: string, at: RawRange['start'], ranges: RawRange[]) => {
+        const target = Uri.parse(uri);
+        void commands.executeCommand(
+          'editor.action.showReferences',
+          target,
+          toPosition(at),
+          ranges.map((range) => new Location(target, toRange(range))),
+        );
+      },
+    ),
+  );
+}
+
+/**
+ * Moves the cursor to a line, so a lens can act on the record it sits above.
+ *
+ * Clicking a lens does not move the selection, and the graph panel follows the
+ * selection — without this, a `graph` lens on one record would show whichever
+ * record the cursor happened to be in.
+ */
+export async function revealLine(uri: string, line: number): Promise<void> {
+  const document = await workspace.openTextDocument(Uri.parse(uri));
+  const editor = await window.showTextDocument(document, { preserveFocus: false });
+  const position = new Position(line, 0);
+  editor.selection = new Selection(position, position);
+  editor.revealRange(new Range(position, position));
+}

@@ -3,6 +3,70 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0]
+
+The theme of this release is that a GEDCOM file is mostly opaque identifiers and
+undocumented codes, and every feature below removes a reason to leave the line
+you are reading.
+
+### Added
+
+- **Inlay hints**, off the back of that: what each pointer names
+  (`1 FAMS @F1@` → `John Smith + Jane Doe`), what each coded value means
+  (`1 SEX M` → `male`, `2 QUAY 3` → `primary`), a language tag's language, and how
+  old the subject was at an event, computed against their own `BIRT` date. Each
+  kind has its own setting, because the resolved names are indispensable in an
+  unfamiliar file and noise in your own.
+- **Code lens** above each record: its shape in the tree, a clickable reference
+  count that peeks every pointer to it, and a link into the graph panel. Above
+  `HEAD`, the dataset summary the header does not carry — record counts and the
+  span of years the file covers.
+- **Document links** on `WWW`, `EMAIL` and URL-valued `FILE` payloads.
+- **Per-verb hovers.** The rule they are written against is that a hover must
+  answer the question the line provokes rather than restate the tag:
+  - `DATE` — the weekday for an exact date, what a qualified date is claiming,
+    and how old the subject was; under `CHAN` or `CREA`, how long ago instead,
+    because whether a record is maintained is the actual question there.
+  - `AGE` — the notation in words, **cross-checked against the recorded dates**.
+    An age that disagrees with the file's own birth and event dates is flagged.
+    Nothing else in the format checks the two against each other.
+  - `PLAC` — the jurisdictions labelled from `HEAD.PLAC.FORM`, which almost no
+    tool surfaces, plus coordinates from a `MAP` and a link to a map service.
+  - `NAME` — split into given name, surname and suffix on the slashes, with a
+    note when no surname is marked.
+  - `NCHI` — how many children are claimed against how many are recorded, which
+    is the research question rather than a restatement.
+  - Enumerated payloads across `QUAY`, `PEDI`, `RESN`, `SEX`, `FAMC.STAT`,
+    `NAME.TYPE`, `MEDI`, `ROLE`, `FAMC.ADOP` and the LDS ordinance statuses. When
+    a value is outside its set, the alternatives are listed.
+  - `LANG` resolved through BCP 47, `FORM` through media types in both the modern
+    and 5.5.1 spellings, and the identifier families (`REFN`, `UID`, `EXID`,
+    `RIN`, `AFN`, `RFN`) distinguished from each other.
+  - A **migration note** on any tag the file's version removed, carrying the
+    replacement — `ROMN` says to use `TRAN`.
+- Cardinality stated in words: "Required, exactly one" rather than `{1:1}`.
+
+### Fixed
+
+- **Hovers showed the registry's internal type URIs.** A structure taking plain
+  text was described as `XMLSchema#string` and a date as `type-DATE_VALUE`. Every
+  payload type is now given as a description with an example where one helps, and
+  a test iterates the whole registry so a newly-added type cannot slip through
+  undescribed.
+- `relativeTime` counted two calendar years spanning a leap year as one, because
+  730 days divided by a mean year length floors to 1. It now counts calendar
+  years and months.
+- The age on an event hover named the event by its tag rather than its label,
+  reading `CENS at 9 years old`. The label is keyed by the registry slug, and the
+  slug for `CENS` inside an `INDI` is `INDI-CENS`.
+
+### Changed
+
+- `vp run build` is the build task. It was `bundle`, which nobody guesses.
+- <kbd>F5</kbd> now runs it first. The extension host loads the bundles in
+  `dist/`, so launching without a rebuild looked exactly like a code change
+  having had no effect.
+
 ## [0.4.0]
 
 ### Added

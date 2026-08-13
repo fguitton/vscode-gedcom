@@ -28,6 +28,7 @@ import {
   type WebviewViewResolveContext,
 } from 'vscode';
 import { analyzeText } from '@vscode-gedcom/core';
+import { revealLine } from './commands.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
 
@@ -298,7 +299,12 @@ export function registerGraphView(context: ExtensionContext): void {
     // as one more tab beside Terminal and Output, only once a GEDCOM file happens
     // to be focused. An explicit command in the palette and a button on the
     // editor title bar give it two ways in that do not rely on noticing a tab.
-    commands.registerCommand('gedcom.showGraph', async () => {
+    //
+    // The arguments are for the code lens above each record, which needs to say
+    // *which* record; invoked from the palette or the title bar there are none,
+    // and the panel follows the cursor as before.
+    commands.registerCommand('gedcom.showGraph', async (uri?: string, line?: number) => {
+      if (uri !== undefined && line !== undefined) await revealLine(uri, line);
       await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
       provider.update(window.activeTextEditor);
     }),

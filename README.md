@@ -61,6 +61,7 @@ Requires Node.js as pinned in `.node-version`. The toolchain is
 
 ```bash
 npm ci
+npx vp run build     # bundle both extension hosts into dist/
 npx vp run grammar   # regenerate syntaxes/gedcom.tmLanguage.json from the registry
 npx vp run spec      # regenerate the parser's embedded specification model
 npx vp test          # tokenize the corpus, parse it, assert scopes and diagnostics
@@ -70,6 +71,11 @@ npx vscode-test      # integration tests in a real VS Code
 npx vp run dev:web   # launch the web extension host in a browser, to eyeball it
 npx vp run verify    # all of the above
 ```
+
+Pressing <kbd>F5</kbd> runs the `build` task first, so the extension host always
+loads the current sources. The extension host executes the bundles in `dist/`
+rather than the TypeScript, so a launch without that rebuild looks exactly like
+a code change having had no effect.
 
 ### Packages
 

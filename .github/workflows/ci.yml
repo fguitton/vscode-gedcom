@@ -39,7 +39,7 @@ jobs:
         run: npx vp check
 
       - name: Bundle both extension hosts
-        run: npx vp run bundle
+        run: npx vp run build
 
       - name: Integration tests in a real VS Code
         run: xvfb-run -a npx vscode-test

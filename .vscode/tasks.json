@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Wired to launch.json as a preLaunchTask. Without it, F5 starts the
+      // extension host against whatever happens to be in dist/ already, which
+      // looks exactly like a code change having no effect.
+      "label": "build",
+      "type": "shell",
+      "command": "npx vp run build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$tsc",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      // Everything the CI gate runs, for checking before pushing.
+      "label": "verify",
+      "type": "shell",
+      "command": "npx vp run verify",
+      "problemMatcher": []
+    }
+  ]
+}

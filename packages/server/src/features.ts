@@ -13,34 +13,42 @@ import {
   analyzeText,
   asPointer,
   completionsFor,
+  describePayloadType,
   fullSpan,
   isExtensionTag,
   isRemovedInVersion,
   labelOf,
   modelFor,
   payloadOf,
-  parseExactDate,
-  describeDate,
-  lifespan,
   relationsOf,
+  removalNote,
+  resolveSubstructure,
   scanDate,
+  statistics,
   walk,
+  lifespan,
   type Analysis,
   type Diagnostic as CoreDiagnostic,
   type Span,
   type Structure,
 } from '@vscode-gedcom/core';
 
+import { annotate, describeStructure, type AnnotationKinds } from './describe.ts';
+
 import {
   CompletionItemKind,
   DiagnosticSeverity,
   FoldingRangeKind,
+  InlayHintKind,
   SymbolKind,
+  type CodeLens,
   type CompletionItem,
   type Diagnostic,
   type DocumentHighlight,
+  type DocumentLink,
   type FoldingRange,
   type Hover,
+  type InlayHint,
   type Location,
   type Position,
   type Range,
@@ -280,23 +288,6 @@ function describeRecord(analysis: Analysis, record: Structure): string[] {
   return lines;
 }
 
-/** What a date payload is actually claiming, in words. */
-function describeDatePayload(payload: string): string[] {
-  const lines: string[] = [];
-
-  const exact = parseExactDate(payload);
-  if (exact) {
-    // The one thing a reader cannot work out at a glance, and often wants to:
-    // parish records and censuses were kept on particular days of the week.
-    lines.push(`A ${exact.weekday}.`);
-    return lines;
-  }
-
-  const description = describeDate(payload);
-  if (description) lines.push(`_${description}_`);
-  return lines;
-}
-
 export function hover(analysis: Analysis, position: Position): Hover | null {
   // Pointers are checked first: a pointer lives in the payload, which is outside
   // both the tag and xref spans, so looking up the structure first would miss it.
@@ -314,9 +305,13 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
     return { contents: { kind: 'markdown', value }, range: toRange(reference.span) };
   }
 
-  const structure = analysis.document.structures.find(
-    (s) => contains(s.tagSpan, position) || (s.xrefSpan && contains(s.xrefSpan, position)),
-  );
+  // The payload is checked before the tag, so hovering the value of an enumerated
+  // or computed payload explains the value rather than restating the tag.
+  const structure =
+    analysis.document.structures.find(
+      (s) => contains(s.tagSpan, position) || (s.xrefSpan && contains(s.xrefSpan, position)),
+    ) ??
+    analysis.document.structures.find((s) => s.payloadSpan && contains(s.payloadSpan, position));
   if (!structure) return null;
 
   const model = modelFor(analysis.version);
@@ -335,26 +330,40 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
     if (described.length) lines.push('', ...described);
   }
 
-  // Dates get the treatment the payload deserves rather than a restatement of
-  // the tag: a weekday when the date is exact, and what it claims when it is not.
-  if ((structure.tag === 'DATE' || structure.tag === 'SDATE') && structure.payload) {
-    const described = describeDatePayload(structure.payload);
-    if (described.length) lines.push('', ...described);
-  }
+  // Everything the verb itself is worth saying, given its position in the tree.
+  const described = describeStructure(analysis, structure, resolution?.slug);
+  if (described.length) lines.push('', ...described);
+
+  // A tag the target version dropped is the single most actionable thing that can
+  // be said about a line, because it comes with what to write instead.
+  const removal = removalNote(analysis.version, structure.tag);
+  if (removal) lines.push('', `⚠️ ${removal}`);
 
   if (resolution?.slug) {
     const payload = payloadOf(model, resolution.slug);
     if (payload) {
-      lines.push(
-        '',
-        payload.type === 'pointer'
-          ? `Payload: pointer${payload.to ? ` to a \`${model.tags[payload.to] ?? payload.to}\` record` : ''}`
-          : `Payload: \`${payload.type.replace(/^type-/, '')}\``,
-      );
+      if (payload.type === 'pointer') {
+        const target = payload.to ? (model.tags[payload.to] ?? payload.to) : undefined;
+        lines.push(
+          '',
+          target ? `Takes a pointer to a \`${target}\` record.` : 'Takes a pointer to a record.',
+        );
+      } else {
+        const described = describePayloadType(payload.type);
+        lines.push(
+          '',
+          `${described.summary}${described.example ? ` — for example \`${described.example}\`` : ''}.`,
+        );
+      }
+    } else {
+      lines.push('', 'Takes no payload; the substructures below carry the content.');
     }
+
+    const cardinality = cardinalityOf(analysis, structure);
+    if (cardinality) lines.push('', `_${cardinality}._`);
   } else if (isExtensionTag(structure.tag)) {
     lines.push('', '_Extension tag._');
-  } else {
+  } else if (!removal) {
     lines.push('', '_Not described by this version of the specification._');
   }
 
@@ -362,6 +371,29 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
     contents: { kind: 'markdown', value: lines.join('\n') },
     range: toRange(structure.tagSpan),
   };
+}
+
+/**
+ * How many times a structure may appear where it does, in words.
+ *
+ * `{1:1}` is unreadable and says something a reader genuinely wants: whether this
+ * line is required, and whether writing a second one would be a mistake.
+ */
+function cardinalityOf(analysis: Analysis, structure: Structure): string | undefined {
+  const parent = structure.parent;
+  const parentSlug = parent ? analysis.validation.resolutions.get(parent)?.slug : null;
+  if (parent && !parentSlug) return undefined;
+
+  const model = modelFor(analysis.version);
+  const resolved = resolveSubstructure(model, parentSlug ?? null, structure.tag);
+  if (!resolved) return undefined;
+
+  const { min, max } = resolved.cardinality;
+  if (min === 1 && max === 1) return 'Required, exactly one';
+  if (min === 1 && max === Infinity) return 'Required, one or more';
+  if (min === 0 && max === 1) return 'Optional, at most one';
+  if (min === 0 && max === Infinity) return 'Optional, any number';
+  return `Cardinality ${min} to ${max === Infinity ? 'many' : max}`;
 }
 
 // --- outline ----------------------------------------------------------------
@@ -645,6 +677,154 @@ export function semanticTokens(analysis: Analysis): number[] {
   return data;
 }
 
+// --- inlay hints ------------------------------------------------------------
+
+/**
+ * The single largest thing that can be done for readability.
+ *
+ * A GEDCOM file is mostly identifiers. `1 FAMS @F1@` is three tokens of which the
+ * one carrying the meaning is opaque, and following it means jumping elsewhere in
+ * the file and then finding your way back. Rendering the answer at the end of the
+ * line removes that trip for every pointer at once.
+ *
+ * The other two kinds answer the same shape of question — a code standing in for
+ * something the reader would have to look up — for enumerations and for ages.
+ */
+export function inlayHints(analysis: Analysis, range: Range, settings: Settings): InlayHint[] {
+  const kinds = settings.inlayHints;
+  if (!kinds.pointers && !kinds.values && !kinds.ages) return [];
+
+  const hints: InlayHint[] = [];
+
+  for (const structure of analysis.document.structures) {
+    const span = structure.payloadSpan;
+    if (!span) continue;
+    if (span.line < range.start.line || span.line > range.end.line) continue;
+    // A folded payload ends on a later line than the one the span describes, so
+    // an annotation pinned here would land in the middle of the text.
+    if (structure.continuationLines.length > 0) continue;
+
+    const slug = analysis.validation.resolutions.get(structure)?.slug;
+    const label = annotate(analysis, structure, slug, kinds, (record) =>
+      summarize(record, analysis),
+    );
+    if (!label) continue;
+
+    hints.push({
+      position: { line: span.line, character: span.end },
+      label,
+      kind: InlayHintKind.Parameter,
+      paddingLeft: true,
+    });
+  }
+
+  return hints;
+}
+
+// --- code lens --------------------------------------------------------------
+
+/** Client-side command that converts LSP locations before peeking them. */
+const SHOW_REFERENCES = 'gedcom.showReferences';
+const SHOW_GRAPH = 'gedcom.showGraph';
+
+/**
+ * A summary line above each record.
+ *
+ * The space above a record is the only place in the file with room for something
+ * derived rather than stored. What goes there is what the record does not say
+ * about itself: how many people depend on it, and what shape it has in the tree.
+ */
+export function codeLenses(analysis: Analysis, uri: string, settings: Settings): CodeLens[] {
+  if (!settings.codeLens.enabled) return [];
+
+  const lenses: CodeLens[] = [];
+
+  for (const record of analysis.document.records) {
+    const range = toRange(record.tagSpan);
+
+    if (record.tag === 'HEAD') {
+      const stats = statistics(analysis);
+      const counts = Object.entries(stats.records)
+        .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([tag, count]) => `${count.toLocaleString('en')} ${tag}`);
+
+      const period =
+        stats.earliest !== undefined && stats.latest !== undefined
+          ? `${stats.earliest}–${stats.latest}`
+          : undefined;
+
+      const title = [...counts, period].filter(Boolean).join(' · ');
+      if (title) lenses.push({ range, command: { title, command: '' } });
+      continue;
+    }
+
+    if (record.xref === null) continue;
+
+    const summary = describeRecord(analysis, record)
+      .filter((line) => !line.startsWith('_'))
+      .join(' · ');
+    if (summary) lenses.push({ range, command: { title: summary, command: '' } });
+
+    const uses = analysis.xrefs.referencesTo.get(record.xref) ?? [];
+    lenses.push({
+      range,
+      command: {
+        title: uses.length === 1 ? '1 reference' : `${uses.length} references`,
+        // Peeking nothing is confusing, so a record nothing points at gets an
+        // inert lens rather than a command that appears to do nothing.
+        command: uses.length > 0 ? SHOW_REFERENCES : '',
+        arguments:
+          uses.length > 0
+            ? [uri, toRange(record.tagSpan).start, uses.map((use) => toRange(use.span))]
+            : undefined,
+      },
+    });
+
+    if (record.tag === 'INDI' || record.tag === 'FAM') {
+      lenses.push({
+        range,
+        command: { title: 'graph', command: SHOW_GRAPH, arguments: [uri, record.span.line] },
+      });
+    }
+  }
+
+  return lenses;
+}
+
+// --- document links ---------------------------------------------------------
+
+/**
+ * Payloads that are addresses rather than text.
+ *
+ * GEDCOM has carried web addresses and email since long before either was
+ * clickable anywhere, and a `1 WWW` line is one of the few payloads whose entire
+ * purpose is to be followed.
+ */
+export function documentLinks(analysis: Analysis): DocumentLink[] {
+  const links: DocumentLink[] = [];
+
+  for (const structure of analysis.document.structures) {
+    const span = structure.payloadSpan;
+    const payload = structure.payload?.trim();
+    if (!span || !payload || structure.continuationLines.length > 0) continue;
+
+    const target =
+      structure.tag === 'WWW' || structure.tag === 'FILE'
+        ? /^https?:\/\//i.test(payload)
+          ? payload
+          : undefined
+        : structure.tag === 'EMAIL' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(payload)
+          ? `mailto:${payload}`
+          : undefined;
+
+    if (target) links.push({ range: toRange(span), target, tooltip: payload });
+  }
+
+  return links;
+}
+
 // --- entry point ------------------------------------------------------------
 
 export interface Settings {
@@ -653,9 +833,33 @@ export interface Settings {
    * 5.5.x and for files too old or damaged to identify.
    */
   readonly strictness: 'auto' | 'strict' | 'lenient';
+  readonly inlayHints: AnnotationKinds;
+  readonly codeLens: { readonly enabled: boolean };
 }
 
-export const defaultSettings: Settings = { strictness: 'auto' };
+export const defaultSettings: Settings = {
+  strictness: 'auto',
+  inlayHints: { pointers: true, values: true, ages: true },
+  codeLens: { enabled: true },
+};
+
+/**
+ * Merges incoming configuration over the defaults.
+ *
+ * The nested groups have to be merged explicitly, because a client that sends a
+ * partial `inlayHints` object would otherwise drop the defaults for whatever it
+ * left out. The shape mirrors the dotted setting names in package.json exactly,
+ * which is how VS Code delivers a configuration section.
+ */
+export function resolveSettings(incoming: unknown): Settings {
+  const section = (incoming ?? {}) as Partial<Settings>;
+  return {
+    ...defaultSettings,
+    ...section,
+    inlayHints: { ...defaultSettings.inlayHints, ...section.inlayHints },
+    codeLens: { ...defaultSettings.codeLens, ...section.codeLens },
+  };
+}
 
 export function analyzeDocument(text: string, settings: Settings = defaultSettings): Analysis {
   return analyzeText(

@@ -17,16 +17,20 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import {
   analyzeDocument,
+  codeLenses,
   completion,
   defaultSettings,
   definition,
   diagnostics,
   documentHighlights,
+  documentLinks,
   documentSymbols,
   foldingRanges,
   hover,
+  inlayHints,
   references,
   renameEdits,
+  resolveSettings,
   semanticTokens,
   semanticTokensLegend,
   type Settings,
@@ -79,6 +83,9 @@ export function startServer(connection: Connection): void {
         legend: semanticTokensLegend,
         full: true,
       },
+      inlayHintProvider: true,
+      documentLinkProvider: { resolveProvider: false },
+      codeLensProvider: { resolveProvider: false },
     },
   }));
 
@@ -87,12 +94,16 @@ export function startServer(connection: Connection): void {
   });
 
   connection.onDidChangeConfiguration((change) => {
-    const section = (change.settings as { gedcom?: Partial<Settings> } | undefined)?.gedcom;
-    settings = { ...defaultSettings, ...section };
+    settings = resolveSettings((change.settings as { gedcom?: unknown } | undefined)?.gedcom);
     // Strictness changes which diagnostics apply, so every open document has to
     // be re-analysed, not just the active one.
     cache.clear();
     for (const document of documents.all()) publish(document);
+
+    // Inlay hints and lenses are not diagnostics; the client has to be asked to
+    // fetch them again, or a settings change appears to do nothing until an edit.
+    void connection.languages.inlayHint.refresh();
+    void connection.sendRequest('workspace/codeLens/refresh');
   });
 
   documents.onDidClose((event) => {
@@ -154,6 +165,21 @@ export function startServer(connection: Connection): void {
   connection.languages.semanticTokens.on(({ textDocument }) => {
     const document = documentFor(textDocument.uri);
     return { data: document ? semanticTokens(analysisOf(document)) : [] };
+  });
+
+  connection.languages.inlayHint.on(({ textDocument, range }) => {
+    const document = documentFor(textDocument.uri);
+    return document ? inlayHints(analysisOf(document), range, settings) : [];
+  });
+
+  connection.onDocumentLinks(({ textDocument }) => {
+    const document = documentFor(textDocument.uri);
+    return document ? documentLinks(analysisOf(document)) : [];
+  });
+
+  connection.onCodeLens(({ textDocument }) => {
+    const document = documentFor(textDocument.uri);
+    return document ? codeLenses(analysisOf(document), textDocument.uri, settings) : [];
   });
 
   documents.listen(connection);

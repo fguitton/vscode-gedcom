@@ -70,10 +70,15 @@ export default defineConfig({
         output: ['packages/core/src/spec/model.generated.ts'],
       },
       // Bundle both extension hosts. Four outputs; see tsdown.config.ts.
-      bundle: {
+      // `bundle` is kept as an alias because nothing else in the repo is called
+      // build, and reaching for `vp run build` is the reflex.
+      build: {
         command: 'tsdown',
         input: ['packages/*/src/**', 'tsdown.config.ts'],
         output: ['dist/**'],
+      },
+      bundle: {
+        command: 'vp run build',
       },
       // Render the grammar through real theme palettes, to look at.
       preview: {
@@ -101,7 +106,7 @@ export default defineConfig({
           'vp run spec',
           'vp test',
           'vp check',
-          'vp run bundle',
+          'vp run build',
           'vp run test:vscode',
         ],
       },

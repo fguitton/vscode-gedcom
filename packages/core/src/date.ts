@@ -107,6 +107,98 @@ export function parseExactDate(payload: string): ExactDate | undefined {
   return { day, month: month + 1, year, weekday: WEEKDAYS[date.getUTCDay()]! };
 }
 
+/**
+ * The year a payload settles on.
+ *
+ * The *last* year in the payload, so `BET 1830 AND 1840` reports 1840 and
+ * `FROM 1914 TO 1918` reports 1918. That is the wrong answer for some questions
+ * and the right one for the question actually being asked — when did this stop
+ * being true — which is what an age or a lifespan is reckoned from.
+ */
+export function yearOf(payload: string): number | undefined {
+  const year = /\b(\d{3,4})\b(?!.*\b\d{3,4}\b)/.exec(payload)?.[1];
+  return year ? Number(year) : undefined;
+}
+
+/** Days since the Unix epoch, for arithmetic between two exact dates. */
+export function dayNumber(date: ExactDate): number {
+  const utc = new Date(Date.UTC(2000, date.month - 1, date.day));
+  utc.setUTCFullYear(date.year);
+  return Math.round(utc.getTime() / 86_400_000);
+}
+
+export interface AgeAt {
+  readonly years: number;
+  /** True when either date was a bare year, so the answer is off by up to one. */
+  readonly approximate: boolean;
+}
+
+/**
+ * How old somebody was, given a birth date payload and an event date payload.
+ *
+ * Falls back to subtracting years when either date is not exact, which is the
+ * common case in genealogy and still worth showing — knowing a marriage happened
+ * at roughly nineteen rather than roughly forty changes how the record reads. The
+ * result is flagged approximate so the caller can hedge rather than assert.
+ */
+export function ageAt(birth: string, event: string): AgeAt | undefined {
+  const from = parseExactDate(birth);
+  const to = parseExactDate(event);
+
+  if (from && to) {
+    let years = to.year - from.year;
+    // Not yet had their birthday that year.
+    if (to.month < from.month || (to.month === from.month && to.day < from.day)) years -= 1;
+    return { years, approximate: false };
+  }
+
+  const birthYear = yearOf(birth);
+  const eventYear = yearOf(event);
+  if (birthYear === undefined || eventYear === undefined) return undefined;
+
+  return { years: eventYear - birthYear, approximate: true };
+}
+
+/**
+ * How long ago an exact date was, in words.
+ *
+ * For `CHAN` and `CREA`, where the absolute date answers a question nobody asked
+ * and "eleven years ago" answers the one they did: is this record maintained, or
+ * has nobody touched it since an import.
+ */
+export function relativeTime(payload: string, now: Date = new Date()): string | undefined {
+  const date = parseExactDate(payload);
+  if (!date) return undefined;
+
+  const today = Math.floor(now.getTime() / 86_400_000);
+  const days = today - dayNumber(date);
+
+  if (days < 0) return 'in the future';
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 31) return `${days} days ago`;
+
+  // Counted in calendar months and years rather than by dividing days. Two
+  // calendar years spanning a leap year are 730 days, which a mean-length divisor
+  // rounds down to one — reporting a two-year-old change as a year old.
+  const nowYear = now.getUTCFullYear();
+  const nowMonth = now.getUTCMonth() + 1;
+  const beforeAnniversary = nowDayIsBefore(now, date);
+
+  const months =
+    (nowYear - date.year) * 12 + (nowMonth - date.month) - (now.getUTCDate() < date.day ? 1 : 0);
+  if (months < 12) return months <= 1 ? 'a month ago' : `${months} months ago`;
+
+  const years = nowYear - date.year - (beforeAnniversary ? 1 : 0);
+  return years === 1 ? 'a year ago' : `${years} years ago`;
+}
+
+/** True when the date's anniversary has not yet come round this year. */
+function nowDayIsBefore(now: Date, date: ExactDate): boolean {
+  const month = now.getUTCMonth() + 1;
+  return month < date.month || (month === date.month && now.getUTCDate() < date.day);
+}
+
 /** A human phrase for what a qualified date is claiming. */
 export function describeDate(payload: string): string | undefined {
   const keywords = scanDate(payload);
