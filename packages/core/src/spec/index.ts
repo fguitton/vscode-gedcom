@@ -13,6 +13,7 @@ import { parseCardinality, type Cardinality, type PayloadSpec, type SpecModel } 
 
 export type { Cardinality, PayloadSpec, SpecModel } from './types.ts';
 export { parseCardinality } from './types.ts';
+export { glossOf } from './glossary.ts';
 
 /** Versions the model covers. Others fall back to the nearest modelled one. */
 export type ModelledVersion = '7.0' | '5.5.1';

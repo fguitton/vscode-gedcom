@@ -16,6 +16,7 @@
 
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
+import { meaningOf, standalone } from './enums.ts';
 import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
 import { modelFor, tagLabel } from './spec/index.ts';
 import { statistics } from './stats.ts';
@@ -134,6 +135,22 @@ function resolve(analysis: Analysis, structure: Structure): string | undefined {
 }
 
 /**
+ * An enumerated payload said in English, or nothing where it is not one.
+ *
+ * `F` is a code, and the panel exists to be read rather than decoded — a row
+ * saying "Sex: F" has passed the file's shorthand straight through. The code
+ * itself is still one click away on the line it came from.
+ */
+function coded(analysis: Analysis, structure: Structure): string | undefined {
+  const payload = structure.payload?.trim();
+  if (!payload) return undefined;
+
+  const slug = analysis.validation.resolutions.get(structure)?.slug;
+  const meaning = meaningOf(slug, structure.tag, payload, structure.parent?.tag);
+  return meaning ? standalone(meaning.label) : undefined;
+}
+
+/**
  * A structure written as one line of prose.
  *
  * An event carries its detail in substructures rather than in its payload, so
@@ -145,9 +162,15 @@ function valueOf(analysis: Analysis, structure: Structure): string {
 
   const pointed = resolve(analysis, structure);
   if (pointed) parts.push(pointed);
-  else if (structure.payload) parts.push(firstLine(structure.payload));
+  else if (structure.payload)
+    parts.push(firstLine(coded(analysis, structure) ?? structure.payload));
 
-  const date = child(structure, 'DATE')?.payload;
+  // The time of day hangs under the date rather than beside it — `2 DATE` then
+  // `3 TIME` — in both 5.5.1 and 7.0, and reading only the date drops it. A
+  // change record whose whole purpose is to say when is the place it shows most.
+  const dated = child(structure, 'DATE');
+  const date = dated?.payload;
+  const time = dated ? child(dated, 'TIME')?.payload : undefined;
   const place = child(structure, 'PLAC')?.payload;
   const age = child(structure, 'AGE')?.payload;
 
@@ -155,7 +178,7 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   const asserted = parts.length === 1 && parts[0] === 'Y';
   if (asserted && (date ?? place)) parts.length = 0;
 
-  if (date) parts.push(date.trim());
+  if (date) parts.push(time ? `${date.trim()} at ${time.trim()}` : date.trim());
   if (place) parts.push(firstLine(place, 80));
   else {
     // A residence usually carries an ADDR rather than a PLAC, and the address

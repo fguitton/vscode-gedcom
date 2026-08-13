@@ -36,6 +36,7 @@ import {
   relationsOf,
   relativeTime,
   signedDegrees,
+  standalone,
   statistics,
   tagLabel,
   type Analysis,
@@ -556,7 +557,9 @@ export function annotate(
 
   if (kinds.values) {
     const value = valueAnnotation(analysis, structure, slug);
-    if (value) return truncate(value, 42);
+    // A hint is a caption beside the line, not a clause continuing it, so it
+    // reads as `Female` rather than as `female`.
+    if (value) return truncate(standalone(value), 42);
   }
 
   if (kinds.ages) return ageAnnotation(structure);

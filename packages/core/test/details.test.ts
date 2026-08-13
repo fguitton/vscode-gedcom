@@ -192,6 +192,34 @@ describe('against Royal92', () => {
   });
 });
 
+describe('a date with a time under it', () => {
+  it('shows the time as part of the date', () => {
+    // TIME hangs under DATE rather than beside it, in 5.5.1 and in 7.0 alike, so
+    // a reader of the DATE alone drops it — and a change record exists to say
+    // exactly when.
+    const details = recordDetails(
+      analyze(
+        bytes(
+          [
+            '0 HEAD',
+            '1 GEDC',
+            '2 VERS 5.5.1',
+            '0 @I1@ INDI',
+            '1 CHAN',
+            '2 DATE 14 FEB 1998',
+            '3 TIME 09:22:41',
+            '0 TRLR',
+            '',
+          ].join('\n'),
+        ),
+      ),
+      'I1',
+    )!;
+
+    expect(fields(details)['Facts/Change']).toBe('14 FEB 1998 at 09:22:41');
+  });
+});
+
 describe('media the file points at', () => {
   const media = (source: string) => {
     const details = recordDetails(analyze(bytes(source)), 'I1')!;

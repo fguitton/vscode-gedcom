@@ -264,6 +264,18 @@ export function describeEnumValue(set: string, value: string): EnumMeaning | und
 }
 
 /**
+ * A label as it should read where it stands on its own.
+ *
+ * The labels above are written in lower case because most of their uses are
+ * inside a sentence — "recorded as female", "marked confidential". A panel field
+ * and an inlay hint are not sentences: they are captions, and a caption that
+ * starts lower case looks like a fragment of something else.
+ */
+export function standalone(label: string): string {
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/**
  * The meaning of a payload, resolved from its position in the tree.
  *
  * Returns nothing rather than guessing when the payload is not an enumerated

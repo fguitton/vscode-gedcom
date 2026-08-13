@@ -287,3 +287,52 @@ describe('plain English', () => {
     expect(text).toMatch(/^.*[Cc]ensus recorded on \*\*2 APR 1911\*\* at \*\*Chelsea/m);
   });
 });
+
+describe('tags whose payload is plain text', () => {
+  const source = [
+    '0 HEAD',
+    '1 GEDC',
+    '2 VERS 7.0',
+    '0 @I1@ INDI',
+    '1 OCCU Lighthouse keeper',
+    '1 NPFX Dr',
+    '1 SEX F',
+    '0 TRLR',
+    '',
+  ].join('\n');
+
+  it('says what the tag is for instead of that it holds text', () => {
+    // The registry gives labels and payload types and no prose, so a hover built
+    // from it alone answered `1 OCCU Lighthouse keeper` with "Text." — a fact the
+    // reader could see for themselves.
+    const text = hoverText(source, '1 OCCU', 'OCCU');
+    expect(text).toContain('**Occupation**');
+    expect(text).toContain('The trade or profession');
+    expect(text).not.toContain('Text.');
+  });
+
+  it('distinguishes the tags a reader confuses', () => {
+    const text = hoverText(source, '1 NPFX', 'NPFX');
+    expect(text).toContain('standing before the name');
+  });
+
+  it('still names a payload type worth naming', () => {
+    // Dropping the payload line is only right where it said nothing. A date, an
+    // integer or an enumerated value is a constraint on what may be written.
+    const dated = hoverText(
+      [
+        '0 HEAD',
+        '1 GEDC',
+        '2 VERS 7.0',
+        '0 @I1@ INDI',
+        '1 BIRT',
+        '2 DATE 1 JAN 1900',
+        '0 TRLR',
+        '',
+      ].join('\n'),
+      '2 DATE',
+      'DATE',
+    );
+    expect(dated).toMatch(/for example/);
+  });
+});

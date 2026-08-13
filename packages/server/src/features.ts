@@ -15,6 +15,7 @@ import {
   completionsFor,
   describePayloadType,
   fullSpan,
+  glossOf,
   isExtensionTag,
   isRemovedInVersion,
   modelFor,
@@ -336,6 +337,11 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
     if (described.length) lines.push('', ...described);
   }
 
+  // What the tag is for. It leads because it is the question being asked; what
+  // the payload happens to be typed as is a detail beneath it.
+  const gloss = glossOf(structure.tag, resolution?.slug);
+  if (gloss) lines.push('', gloss);
+
   // Everything the verb itself is worth saying, given its position in the tree.
   const described = describeStructure(analysis, structure, resolution?.slug);
   if (described.length) lines.push('', ...described);
@@ -361,10 +367,18 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
         );
       } else {
         const described = describePayloadType(payload.type);
-        lines.push(
-          '',
-          `${described.summary}${described.example ? ` — for example \`${described.example}\`` : ''}.`,
-        );
+        // "Text." on its own is the emptiest thing a hover can say: the reader
+        // can see that the line holds text. Where the glossary has a sentence
+        // about the tag, that sentence replaces it; a payload type worth naming —
+        // a date, an integer, a media type — is still named.
+        if (gloss && described.summary === 'Text' && !described.example) {
+          // The gloss above has already said what belongs here.
+        } else {
+          lines.push(
+            '',
+            `${described.summary}${described.example ? ` — for example \`${described.example}\`` : ''}.`,
+          );
+        }
       }
     } else {
       lines.push('', 'Takes no payload; the substructures below carry the content.');

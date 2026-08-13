@@ -85,9 +85,11 @@ describe('inlay hints', () => {
   });
 
   it('explains an enumerated value', () => {
-    expect(hintOn(6)).toBe('male');
-    expect(hintOn(18)).toBe('female');
-    expect(hintOn(15)).toBe('primary');
+    // Capitalised: the hint is a caption beside the line, not a clause carrying
+    // on from it, and a lower-case word floating there reads as a fragment.
+    expect(hintOn(6)).toBe('Male');
+    expect(hintOn(18)).toBe('Female');
+    expect(hintOn(15)).toBe('Primary');
   });
 
   it('names a language tag', () => {
@@ -103,11 +105,11 @@ describe('inlay hints', () => {
 
   it('sets the hint apart from the payload it annotates', () => {
     // Butted up against the line, a hint reads as though the file itself said
-    // `1 SEX M male`.
+    // `1 SEX M Male`.
     const hint = inlayHints(analysis, WHOLE, defaultSettings).find(
       (candidate) => candidate.position.line === 6,
     );
-    expect(hint?.label).toMatch(/^\s{2,}male$/);
+    expect(hint?.label).toMatch(/^\s{2,}Male$/);
     expect(hint?.paddingLeft).toBe(true);
   });
 
@@ -136,7 +138,7 @@ describe('inlay hints', () => {
     const noPointers = resolveSettings({ inlayHints: { pointers: false } });
     expect(hintOn(13, noPointers)).toBeUndefined();
     // The other kinds keep working.
-    expect(hintOn(6, noPointers)).toBe('male');
+    expect(hintOn(6, noPointers)).toBe('Male');
 
     const none = resolveSettings({ inlayHints: { pointers: false, values: false, ages: false } });
     expect(inlayHints(analysis, WHOLE, none)).toEqual([]);

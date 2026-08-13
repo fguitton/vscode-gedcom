@@ -19,8 +19,19 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   because the direct calculation needs a space-only line at the same level to
   measure against and a file whose first levels are tabs never provides one.
 
-- Five `fixtures/style/` files carrying the same family tree at one, two and four
-  spaces per level, at tabs, and at tabs-then-spaces.
+- Seven `fixtures/style/` files carrying the same family tree at one, two and
+  four spaces per level, at tabs, and at tabs-then-spaces with the tab standing
+  for two, four and eight columns. A test asserts all seven parse to the _same_
+  tree, which is the load-bearing claim: the level number states the hierarchy
+  and the whitespace states nothing.
+
+- **A sentence about what each tag is for, in hovers.** The registry we vendor is
+  a machine's view of the format — tags, payload types, cardinalities, labels —
+  and carries no prose, so a hover over `OCCU` answered with "Text.", which the
+  reader could see for themselves.
+  Roughly ninety structures now carry a written gloss, and the payload line is
+  dropped where the gloss has already said what belongs there. Across the fixture
+  corpus this takes the hovers that said nothing from several hundred to none.
 
 - **Links and image previews in the details panel.** A URL anywhere in a field —
   a media object's `FILE`, a `WWW`, an address written into a note — is now a
@@ -47,7 +58,18 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   in real files. Only the payload-less form is exempt: `1 ASSO @I1@ df` is still
   wrong however many substructures follow it.
 
+- **A date's time of day was dropped from the details panel.** `TIME` hangs under
+  `DATE` rather than beside it, in 5.5.1 and 7.0 alike, and the panel read only
+  the date — so a change record, whose entire purpose is to say when, showed
+  `14 FEB 1998` and threw away `09:22:41`. The parse tree was right throughout;
+  only the reading of it was wrong.
+
 ### Changed
+
+- **Coded values are shown in English.** The details panel expands an enumerated
+  payload to its meaning — `Sex: Female`, not `Sex: F` — for every enumeration
+  the extension models, not only `SEX`. Inlay hints capitalise the same labels,
+  since a hint is a caption beside the line rather than a clause continuing it.
 
 - The details panel names a media object by its own title rather than by its tag,
   and says what kind of file it is — read from the `FORM` where the file writes

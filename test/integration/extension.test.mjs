@@ -190,7 +190,7 @@ describe('inlay hints', () => {
     const onLine = (line) => hints.filter((hint) => hint.position.line === line).map(labelOf);
 
     assert.deepEqual(onLine(8), ['John Smith'], 'expected the HUSB pointer to resolve');
-    assert.deepEqual(onLine(5), ['male'], 'expected the SEX enumeration to be explained');
+    assert.deepEqual(onLine(5), ['Male'], 'expected the SEX enumeration to be explained');
   });
 });
 
