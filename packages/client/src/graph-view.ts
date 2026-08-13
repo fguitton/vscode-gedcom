@@ -274,6 +274,7 @@ function shell(): string {
   // Must match packages/core/src/graph.ts, which does the positioning.
   const NODE_WIDTH = 170;
   const NODE_HEIGHT = 40;
+  const ROW_HEIGHT = 64;
   /** Vertical space one edge label needs, for nudging collisions apart. */
   const LABEL_HEIGHT = 13;
 
@@ -347,6 +348,10 @@ function shell(): string {
      * lines and removing the crossings that two parents fanning independently to
      * four children make unavoidable.
      */
+    // Keyed by the family, never by the person: somebody may marry twice, and
+    // their children then belong to one marriage or the other. Keyed by person,
+    // the second marriage overwrote the first and every child was drawn from
+    // whichever union happened to be recorded last.
     const unions = new Map();
 
     for (const edge of graph.edges) {
@@ -363,23 +368,43 @@ function shell(): string {
       // gap between two boxes, and the reader following a descent cannot tell
       // which of the two it belongs to. The nearer of the pair to the focus is
       // the one on the path, and ties go to the upper box so it is stable.
-      const anchor =
-        a.distance === b.distance ? top : (a.distance < b.distance ? a : b);
-      const point = { x: anchor.x + NODE_WIDTH, y: anchor.y + NODE_HEIGHT / 2 };
+      const anchor = a.distance === b.distance ? top : a.distance < b.distance ? a : b;
+      if (edge.union) {
+        unions.set(edge.union, { x: anchor.x + NODE_WIDTH, y: anchor.y + NODE_HEIGHT / 2 });
+      }
 
-      unions.set(a.xref, { partner: b.xref, point: point });
-      unions.set(b.xref, { partner: a.xref, point: point });
+      // A marriage bar joins two boxes that sit next to each other. A second
+      // marriage puts the other spouse further down the column, and a straight
+      // bar to them would be drawn straight through whoever is in between —
+      // taking its label with it. That one is routed round the outside.
+      const adjacent = bottom.y - top.y <= ROW_HEIGHT;
 
-      const x = top.x + NODE_WIDTH / 2;
-      svg.appendChild(
-        el('path', {
-          class: 'edge',
-          d: 'M ' + x + ' ' + (top.y + NODE_HEIGHT) + ' L ' + x + ' ' + bottom.y,
-          fill: 'none',
-        }),
-      );
-
-      labelled.push({ text: edge.label, x: x, y: (top.y + NODE_HEIGHT + bottom.y) / 2 });
+      if (adjacent) {
+        const x = top.x + NODE_WIDTH / 2;
+        svg.appendChild(
+          el('path', {
+            class: 'edge',
+            d: 'M ' + x + ' ' + (top.y + NODE_HEIGHT) + ' L ' + x + ' ' + bottom.y,
+            fill: 'none',
+          }),
+        );
+        labelled.push({ text: edge.label, x: x, y: (top.y + NODE_HEIGHT + bottom.y) / 2 });
+      } else {
+        const x = top.x;
+        const bulge = x - 16;
+        const y1 = top.y + NODE_HEIGHT / 2;
+        const y2 = bottom.y + NODE_HEIGHT / 2;
+        svg.appendChild(
+          el('path', {
+            class: 'edge',
+            d:
+              'M ' + x + ' ' + y1 +
+              ' C ' + bulge + ' ' + y1 + ', ' + bulge + ' ' + y2 + ', ' + x + ' ' + y2,
+            fill: 'none',
+          }),
+        );
+        labelled.push({ text: edge.label, x: bulge, y: (y1 + y2) / 2 });
+      }
     }
 
     /** Child edges already drawn from a union point, so the partner's is skipped. */
@@ -428,16 +453,17 @@ function shell(): string {
       let y1 = from.y + NODE_HEIGHT / 2;
       let label = from.xref === edge.from ? edge.label : edge.reverseLabel;
 
-      const union = edge.kind === 'parent' ? unions.get(from.xref) : undefined;
+      // Routed from the marriage this child belongs to, which is why the family
+      // travels on the edge. Both parents produce the same edge, so the second
+      // is skipped rather than drawn on top of the first.
+      const union = edge.kind === 'parent' && edge.union ? unions.get(edge.union) : undefined;
       if (union) {
-        const key = union.partner < from.xref
-          ? union.partner + ' ' + from.xref + ' ' + to.xref
-          : from.xref + ' ' + union.partner + ' ' + to.xref;
+        const key = edge.union + ' ' + to.xref;
         if (drawnFromUnion.has(key)) continue;
         drawnFromUnion.add(key);
 
-        x1 = union.point.x;
-        y1 = union.point.y;
+        x1 = union.x;
+        y1 = union.y;
         // The bar above already says this is a marriage, and the column to the
         // right is the next generation. A row of identical "Child" labels only
         // crowds the drawing.

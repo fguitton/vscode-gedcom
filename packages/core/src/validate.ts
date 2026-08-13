@@ -19,6 +19,7 @@ import {
   enumValuesOf,
   isExtensionTag,
   isKnownTag,
+  isVendorTag,
   labelOf,
   modelFor,
   modelledVersion,
@@ -241,6 +242,22 @@ function reportUnresolved(
     return;
   }
 
+  // A tag a known program wrote without an underscore is not a mistake, it is
+  // history: the convention postdates the files still in circulation. Saying so
+  // is worth doing, but as a note rather than as a fault.
+  if (isVendorTag(structure.tag)) {
+    diagnostics.push({
+      code: 'undocumented-extension',
+      message:
+        `\`${structure.tag}\` is not in any GEDCOM specification. It is a vendor extension — ` +
+        `commonly ${tagLabel(model, structure.tag).toLowerCase()} — written before the ` +
+        'convention of prefixing extensions with an underscore. Nothing needs fixing.',
+      severity: 'hint',
+      span: structure.tagSpan,
+    });
+    return;
+  }
+
   // Outside strict mode, only a tag unknown to the entire vocabulary is worth
   // reporting; one that is merely in the wrong place is not.
   if (!isKnownTag(model, structure.tag)) {
@@ -250,10 +267,17 @@ function reportUnresolved(
     // Naming the versions rather than saying "any version we model": a reader
     // told their tag is unknown needs to know unknown *to what* before they can
     // decide whether the tag or the checker is at fault.
+    // "Not a tag in 7.0 or 5.5.1" reads as though those were the only versions
+    // there have ever been. Six others shipped between 1987 and 1999, no machine
+    // readable vocabulary exists for any of them, and files written to them are
+    // still in circulation — so an unrecognised tag in an old file may be
+    // perfectly correct and merely older than anything we can check against.
     const note =
       removed ??
-      `\`${structure.tag}\` is not a tag in GEDCOM 7.0 or 5.5.1. If it is your own, prefix it ` +
-        'with an underscore and declare it in `HEAD.SCHMA`.';
+      `\`${structure.tag}\` is in neither vocabulary we can check: GEDCOM 7.0 or 5.5.1. It may ` +
+        'belong to an earlier version, for which no machine-readable vocabulary was ever ' +
+        'published, or be an extension — if it is your own, prefix it with an underscore and ' +
+        'declare it in `HEAD.SCHMA`.';
 
     diagnostics.push({
       code: removed ? 'removed-in-version' : 'unknown-tag',

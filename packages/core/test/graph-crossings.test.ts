@@ -33,19 +33,18 @@ interface Segment {
 function segments(graph: Graph): Segment[] {
   const byXref = new Map(graph.nodes.map((node) => [node.xref, node]));
 
-  const unions = new Map<string, { partner: string; x: number; y: number }>();
+  // Keyed by family, exactly as the panel does: someone who married twice has
+  // two unions, and their children belong to one or the other.
+  const unions = new Map<string, { x: number; y: number }>();
   for (const edge of graph.edges) {
-    if (edge.kind !== 'spouse') continue;
+    if (edge.kind !== 'spouse' || !edge.union) continue;
     const a = byXref.get(edge.from);
     const b = byXref.get(edge.to);
     if (!a || !b || a.x !== b.x) continue;
 
     const top = a.y <= b.y ? a : b;
-    const bottom = a.y <= b.y ? b : a;
-    const point = { x: top.x + NODE_WIDTH, y: (top.y + bottom.y) / 2 + NODE_HEIGHT / 2 };
-
-    unions.set(a.xref, { partner: b.xref, ...point });
-    unions.set(b.xref, { partner: a.xref, ...point });
+    const anchor = a.distance === b.distance ? top : a.distance < b.distance ? a : b;
+    unions.set(edge.union, { x: anchor.x + NODE_WIDTH, y: anchor.y + NODE_HEIGHT / 2 });
   }
 
   const drawn = new Set<string>();
@@ -63,9 +62,9 @@ function segments(graph: Graph): Segment[] {
     let x1 = from.x + NODE_WIDTH;
     let y1 = from.y + NODE_HEIGHT / 2;
 
-    const union = edge.kind === 'parent' ? unions.get(from.xref) : undefined;
+    const union = edge.kind === 'parent' && edge.union ? unions.get(edge.union) : undefined;
     if (union) {
-      const key = `${[from.xref, union.partner].sort().join(' ')} ${to.xref}`;
+      const key = `${edge.union} ${to.xref}`;
       if (drawn.has(key)) continue;
       drawn.add(key);
       x1 = union.x;
@@ -118,19 +117,31 @@ describe('against Royal92', () => {
     .filter((graph) => graph.nodes.length >= 3)
     .map(crossings);
 
-  it('draws most neighbourhoods with no crossings at all', () => {
+  /**
+   * These floors are lower than they once were, and deliberately so.
+   *
+   * Ordering each column against its neighbours to minimise crossings reached
+   * 71% crossing-free — and produced a different drawing every time the
+   * selection moved, because the arrangement was computed from whichever people
+   * happened to be on screen. Ordering by birth instead costs roughly a quarter
+   * of the clean drawings and buys a chart that holds still, which is the better
+   * trade for a panel that redraws as the cursor moves. See graph-stability.
+   *
+   * They are a floor to defend and to raise, not a target that has been met.
+   */
+  it('draws many neighbourhoods with no crossings at all', () => {
     const clean = measured.filter((count) => count === 0).length;
-    expect(clean / measured.length).toBeGreaterThan(0.65);
+    expect(clean / measured.length).toBeGreaterThan(0.4);
   });
 
-  it('keeps almost all of the rest to a couple of crossings', () => {
+  it('keeps most of the rest to a couple of crossings', () => {
     const nearly = measured.filter((count) => count <= 2).length;
-    expect(nearly / measured.length).toBeGreaterThan(0.8);
+    expect(nearly / measured.length).toBeGreaterThan(0.65);
   });
 
-  it('has a low mean, so a typical reader sees a clean drawing', () => {
+  it('has a modest mean, so a typical drawing stays readable', () => {
     const mean = measured.reduce((sum, count) => sum + count, 0) / measured.length;
-    expect(mean).toBeLessThan(4);
+    expect(mean).toBeLessThan(8);
   });
 });
 

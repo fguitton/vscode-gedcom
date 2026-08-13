@@ -126,7 +126,7 @@ const UNLABELLED: Record<string, string> = {
  * `COMM` is PAF's comment field, and Linguist's own `Royal92.ged` uses it to
  * carry the note explaining where the file came from.
  */
-const VENDOR_TAGS: Record<string, string> = {
+export const VENDOR_TAGS: Record<string, string> = {
   COMM: 'Comment',
   _AKA: 'Also known as',
   _AKAN: 'Also known as',
@@ -169,6 +169,19 @@ export function completionsFor(model: SpecModel, parentSlug: string | null): str
 
 export function isExtensionTag(tag: string): boolean {
   return tag.startsWith('_');
+}
+
+/**
+ * True for a tag a known program wrote without an underscore.
+ *
+ * Underscoring extensions was a convention before it was a rule, and the files
+ * that predate it are exactly the files still in circulation — `COMM` is PAF's,
+ * and Linguist's own sample uses it. Reporting one as an unknown tag is
+ * technically true and unhelpful: nothing is wrong with the file, and there is
+ * nothing for the reader to fix.
+ */
+export function isVendorTag(tag: string): boolean {
+  return tag in VENDOR_TAGS && !isExtensionTag(tag);
 }
 
 /** Every tag a model knows, in any context. */

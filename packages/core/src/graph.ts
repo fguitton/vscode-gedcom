@@ -53,6 +53,31 @@ export interface GraphNode {
    * which puts two generations side by side and reads as nonsense.
    */
   readonly generation: number;
+  /**
+   * Birth year where the file records one, falling back to baptism.
+   *
+   * Carried on the node because it is what orders a column: siblings run oldest
+   * first, which is both the convention and — being a property of the person
+   * rather than of the current view — the only thing that keeps a column from
+   * rearranging itself every time the selection moves.
+   */
+  readonly year?: number;
+  /**
+   * The family this person is a child of, where the file records one.
+   *
+   * Siblings sit together because they share it, and it is a property of the
+   * record rather than of the current view — so a family stays one block however
+   * the drawing is recentred.
+   */
+  readonly family?: string;
+  /**
+   * When that family's eldest child was born, read from the whole file.
+   *
+   * From the whole file and not from what is on screen: taking it from the
+   * visible siblings would move a family every time one of them scrolled out of
+   * the neighbourhood, which is exactly the drifting this is here to prevent.
+   */
+  readonly familyYear?: number;
   /** Line the record is defined on, for revealing it in the editor. */
   readonly line: number;
 }
@@ -65,6 +90,14 @@ export interface GraphEdge {
   readonly label: string;
   /** How `from` relates to `to`, for when the edge is drawn the other way round. */
   readonly reverseLabel: string;
+  /**
+   * The family this relationship came from, for spouse and parent edges.
+   *
+   * Needed because somebody may marry twice: their children then belong to one
+   * marriage or the other, and a drawing that runs every child from the same
+   * point puts the second family's children under the first family's spouse.
+   */
+  readonly union?: string;
   /** Line the relationship is written on. */
   readonly line: number;
 }
@@ -110,6 +143,8 @@ interface Link {
   readonly reverseLabel: string;
   /** Generations crossed by following this link: -1 up, +1 down, 0 sideways. */
   readonly step: number;
+  /** The family record this came from, where one did. */
+  readonly union?: string;
   readonly line: number;
 }
 
@@ -146,13 +181,25 @@ const lineOf = (record: Structure, tag: string): number =>
  * Louis and Alexandra is unreadable without dates, and the reader would otherwise
  * have to click each one to find out which generation it belongs to.
  */
-function lifespanOf(record: Structure): string | undefined {
-  const yearOfEvent = (tag: string): number | undefined => {
-    const date = record.children.find((c) => c.tag === tag)?.children.find((c) => c.tag === 'DATE');
-    return date?.payload ? yearOf(date.payload) : undefined;
-  };
+function eventYearOf(record: Structure, tag: string): number | undefined {
+  const date = record.children.find((c) => c.tag === tag)?.children.find((c) => c.tag === 'DATE');
+  return date?.payload ? yearOf(date.payload) : undefined;
+}
 
-  const birth = yearOfEvent('BIRT') ?? yearOfEvent('BAPM') ?? yearOfEvent('CHR');
+/**
+ * The year a person's life starts, as near as the file records it.
+ *
+ * Baptism and christening stand in for a missing birth: they follow it closely
+ * enough to put siblings in the right order, which is what this is for.
+ */
+function birthYearOf(record: Structure): number | undefined {
+  return eventYearOf(record, 'BIRT') ?? eventYearOf(record, 'BAPM') ?? eventYearOf(record, 'CHR');
+}
+
+function lifespanOf(record: Structure): string | undefined {
+  const yearOfEvent = (tag: string): number | undefined => eventYearOf(record, tag);
+
+  const birth = birthYearOf(record);
   const death = yearOfEvent('DEAT') ?? yearOfEvent('BURI');
 
   if (birth === undefined && death === undefined) return undefined;
@@ -191,13 +238,14 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     bToA: string,
     line: number,
     step: number,
+    union: string,
   ): void => {
     if (a === b) return;
-    add(a, { to: b, kind, label: aToB, reverseLabel: bToA, line, step });
-    add(b, { to: a, kind, label: bToA, reverseLabel: aToB, line, step: -step });
+    add(a, { to: b, kind, label: aToB, reverseLabel: bToA, line, step, union });
+    add(b, { to: a, kind, label: bToA, reverseLabel: aToB, line, step: -step, union });
   };
 
-  for (const [, record] of analysis.xrefs.definitions) {
+  for (const [family, record] of analysis.xrefs.definitions) {
     if (record.tag !== 'FAM') continue;
 
     const partners = [...pointers(record, 'HUSB'), ...pointers(record, 'WIFE')];
@@ -208,13 +256,13 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
 
     for (const [index, a] of partners.entries()) {
       for (const b of partners.slice(index + 1)) {
-        pair(a, b, 'spouse', spouseLabel, spouseLabel, lineOf(record, 'MARR'), 0);
+        pair(a, b, 'spouse', spouseLabel, spouseLabel, lineOf(record, 'MARR'), 0, family);
       }
     }
 
     for (const parent of partners) {
       for (const child of children) {
-        pair(parent, child, 'parent', 'Child', 'Parent', lineOf(record, 'CHIL'), 1);
+        pair(parent, child, 'parent', 'Child', 'Parent', lineOf(record, 'CHIL'), 1, family);
       }
     }
 
@@ -226,7 +274,7 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     if (partners.length === 0) {
       for (const [index, a] of children.entries()) {
         for (const b of children.slice(index + 1)) {
-          pair(a, b, 'sibling', 'Sibling', 'Sibling', lineOf(record, 'CHIL'), 0);
+          pair(a, b, 'sibling', 'Sibling', 'Sibling', lineOf(record, 'CHIL'), 0, family);
         }
       }
     }
@@ -401,6 +449,28 @@ export function neighbourhood(
     if (skipped > 0) elided.set(xref, skipped);
   }
 
+  /**
+   * When a family's eldest child was born, read from the whole file.
+   *
+   * From the whole file and not from what is on screen: taken from the visible
+   * siblings, a family would shift every time one of them scrolled out of the
+   * neighbourhood, which is exactly the drifting this exists to prevent.
+   */
+  const familyYears = new Map<string, number | undefined>();
+  const familyYear = (family: string): number | undefined => {
+    if (familyYears.has(family)) return familyYears.get(family);
+
+    const record = analysis.xrefs.definitions.get(family);
+    const years = (record ? pointers(record, 'CHIL') : [])
+      .map((child) => analysis.xrefs.definitions.get(child))
+      .map((child) => (child ? birthYearOf(child) : undefined))
+      .filter((year): year is number => year !== undefined);
+
+    const earliest = years.length === 0 ? undefined : Math.min(...years);
+    familyYears.set(family, earliest);
+    return earliest;
+  };
+
   const included = new Set(order);
   const nodes: GraphNode[] = order.map((xref) => {
     const record = analysis.xrefs.definitions.get(xref)!;
@@ -413,6 +483,15 @@ export function neighbourhood(
       detail: (record.tag === 'INDI' ? lifespanOf(record) : undefined) ?? kind,
       distance: distances.get(xref)!,
       generation: generations.get(xref)!,
+      ...(birthYearOf(record) === undefined ? {} : { year: birthYearOf(record) }),
+      ...(pointers(record, 'FAMC')[0] === undefined
+        ? {}
+        : {
+            family: pointers(record, 'FAMC')[0],
+            ...(familyYear(pointers(record, 'FAMC')[0]!) === undefined
+              ? {}
+              : { familyYear: familyYear(pointers(record, 'FAMC')[0]!) }),
+          }),
       line: record.span.line,
     };
   });
@@ -434,6 +513,7 @@ export function neighbourhood(
         kind: link.kind,
         label: link.label,
         reverseLabel: link.reverseLabel,
+        ...(link.union === undefined ? {} : { union: link.union }),
         line: link.line,
       });
     }
@@ -482,12 +562,7 @@ function layout(
 
   const ordered = [...columns.entries()].sort((a, b) => a[0] - b[0]);
 
-  // Sort within a column so ordering does not depend on traversal order.
-  for (const [, column] of ordered) {
-    column.sort((a, b) => a.tag.localeCompare(b.tag) || a.label.localeCompare(b.label));
-  }
-
-  reduceCrossings(ordered, edges);
+  orderColumns(ordered, edges);
 
   const tallest = Math.max(...ordered.map(([, column]) => column.length), 1);
   const height = tallest * ROW_HEIGHT + MARGIN * 2;
@@ -514,114 +589,126 @@ function layout(
 }
 
 /**
- * Orders each column so the lines between columns cross as little as possible.
+ * Orders each column.
  *
- * The barycentre heuristic — put each thing at the average position of what it
- * connects to — with two adaptations that matter for a family tree.
+ * Two things are being balanced, and the first one wins.
  *
- * The first is that a **couple is one unit**, not two nodes. Their children all
- * descend from a single point on the marriage bar between them, so they have to
- * stay adjacent for the drawing to read; and ordering them independently is
- * self-defeating anyway, since both partners are pulled towards exactly the same
- * children and land wherever the average puts them.
+ * **A column must not rearrange itself when the selection moves.** An ordering
+ * chosen purely to minimise crossings is computed against whichever nodes happen
+ * to be on screen, so it lands somewhere different every time the focus changes;
+ * a reader watching siblings shuffle as they click along a row has been handed a
+ * puzzle instead of a chart.
  *
- * The second is that it **sweeps both ways, several times**. One left-to-right
- * pass only ever accounts for the column behind, so the leftmost ancestors never
- * move at all and everything downstream inherits their arbitrary order.
+ * **Lines should not cross.** Sibling groups have to sit beneath their parents,
+ * or every family fans across the whole column and tangles with its neighbours.
  *
- * A fixed number of sweeps with deterministic tie-breaking, never iteration to
- * convergence: the panel redraws as the cursor moves, and a node that settles
- * somewhere different on each keystroke is worse than a few crossings.
+ * Both are had by anchoring rather than averaging. Each column is ordered by
+ * which parent a person descends from, and *within* a set of siblings by birth
+ * year — oldest first, the convention anyway, and a fact about the person rather
+ * than about the current view. So siblings never reorder, and a family only
+ * moves as a block, when the ancestors above it change.
+ *
+ * A couple stays one unit, placed by the earlier-born partner: their children
+ * descend from a single point on the marriage bar between them, so the two boxes
+ * have to be adjacent for the drawing to read at all.
  */
-const SWEEPS = 4;
-
 interface Unit {
   readonly members: GraphNode[];
-  /** Keeps ties in the order they arrived, so sorting is a total order. */
-  readonly seed: number;
+  /** Birth year, name, identifier — none of which depend on the current view. */
+  readonly key: readonly [number, string, string];
+  /** The sibling group this unit belongs to, taken from its anchor. */
+  readonly family?: string;
 }
 
-function reduceCrossings(columns: [number, GraphNode[]][], edges: GraphEdge[]): void {
+function keyOf(node: GraphNode): readonly [number, string, string] {
+  // Anyone with no recorded date sorts after everyone who has one, rather than
+  // silently leading the column.
+  return [node.year ?? Number.POSITIVE_INFINITY, node.label, node.xref];
+}
+
+const compareKeys = (
+  a: readonly [number, string, string],
+  b: readonly [number, string, string],
+): number => a[0] - b[0] || a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]);
+
+/** Couples merged, everybody else alone, in a stable order. */
+function unitsOf(column: GraphNode[], partners: ReadonlyMap<string, string>): Unit[] {
+  const present = new Map(column.map((node) => [node.xref, node]));
+  const taken = new Set<string>();
+  const units: Unit[] = [];
+
+  // Built in key order, so which partner anchors a couple is itself stable.
+  for (const node of [...column].sort((a, b) => compareKeys(keyOf(a), keyOf(b)))) {
+    if (taken.has(node.xref)) continue;
+    taken.add(node.xref);
+
+    const partner = partners.get(node.xref);
+    const beside = partner === undefined ? undefined : present.get(partner);
+
+    if (beside && !taken.has(beside.xref)) {
+      taken.add(beside.xref);
+      const members = [node, beside].sort((a, b) => compareKeys(keyOf(a), keyOf(b)));
+      units.push({ members, key: keyOf(members[0]!) });
+    } else {
+      units.push({ members: [node], key: keyOf(node) });
+    }
+  }
+
+  return units;
+}
+
+/**
+ * Orders each column.
+ *
+ * Everything consulted here is a property of the people involved, and nothing is
+ * a property of the current view. That is the whole design, and it is not the
+ * obvious one: the textbook answer is to order each column against its
+ * neighbours to minimise crossings, which reads better on any single drawing and
+ * produces a *different* drawing every time the selection moves. A reader
+ * clicking along a row of relatives then watches the row reshuffle under them,
+ * which is worse than a few crossed lines — they are tracking movement instead
+ * of reading a family.
+ *
+ * So the order is: sibling groups together, groups by their eldest, and siblings
+ * within a group oldest first. Keeping a family contiguous is what stops
+ * unrelated households interleaving and tangling their lines, and every part of
+ * it — who is whose sibling, who was born when — is fixed by the file.
+ *
+ * A couple stays one unit, placed by the earlier-born partner: their children
+ * descend from a single point on the marriage bar between them, so the two boxes
+ * have to be adjacent for the drawing to read at all.
+ */
+function orderColumns(columns: [number, GraphNode[]][], edges: GraphEdge[]): void {
   const partners = new Map<string, string>();
   for (const edge of edges) {
     if (edge.kind !== 'spouse') continue;
-    // First marriage wins: someone married twice cannot sit beside both, and
-    // picking deterministically beats letting traversal order decide.
-    if (!partners.has(edge.from)) partners.set(edge.from, edge.to);
-    if (!partners.has(edge.to)) partners.set(edge.to, edge.from);
+    // Someone married twice cannot sit beside both. Decided by the partner's own
+    // identifier so the choice does not depend on the order edges arrived in.
+    for (const [a, b] of [
+      [edge.from, edge.to],
+      [edge.to, edge.from],
+    ] as const) {
+      const held = partners.get(a);
+      if (held === undefined || held.localeCompare(b) > 0) partners.set(a, b);
+    }
   }
 
-  /** Neighbours of each node, for the barycentre. */
-  const adjacency = new Map<string, string[]>();
-  for (const edge of edges) {
-    if (edge.kind === 'spouse') continue;
-    adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
-    adjacency.set(edge.to, [...(adjacency.get(edge.to) ?? []), edge.from]);
-  }
+  for (const [, column] of columns) {
+    const units = unitsOf(column, partners);
 
-  /** A column as units: couples merged, everyone else alone. */
-  const unitsOf = (column: GraphNode[]): Unit[] => {
-    const present = new Map(column.map((node) => [node.xref, node]));
-    const taken = new Set<string>();
-    const units: Unit[] = [];
+    // A sibling group is placed by when its eldest child was born — a fact about
+    // the family, read from the file rather than from whoever happens to be on
+    // screen. Anyone whose parents the file never recorded is their own group,
+    // placed by their own birth rather than herded to one end.
+    const groupKey = (unit: Unit): readonly [number, string, string] => {
+      const anchor = unit.members[0]!;
+      if (unit.family === undefined) return unit.key;
+      return [anchor.familyYear ?? unit.key[0], unit.family, unit.family];
+    };
 
-    for (const node of column) {
-      if (taken.has(node.xref)) continue;
-      taken.add(node.xref);
+    units.sort((a, b) => compareKeys(groupKey(a), groupKey(b)) || compareKeys(a.key, b.key));
 
-      const partner = partners.get(node.xref);
-      const beside = partner === undefined ? undefined : present.get(partner);
-      if (beside && !taken.has(beside.xref)) {
-        taken.add(beside.xref);
-        units.push({ members: [node, beside], seed: units.length });
-      } else {
-        units.push({ members: [node], seed: units.length });
-      }
-    }
-
-    return units;
-  };
-
-  const rank = new Map<string, number>();
-  const recordRanks = (column: GraphNode[]): void => {
-    column.forEach((node, position) => rank.set(node.xref, position));
-  };
-
-  for (const [, column] of columns) recordRanks(column);
-
-  for (let sweep = 0; sweep < SWEEPS; sweep++) {
-    // Alternate direction so every column is eventually ordered against both of
-    // its neighbours rather than only the one behind it.
-    const order = sweep % 2 === 0 ? columns : [...columns].reverse();
-
-    for (const [, column] of order) {
-      const units = unitsOf(column);
-
-      const barycentre = new Map<Unit, number>();
-      for (const unit of units) {
-        const positions: number[] = [];
-        for (const member of unit.members) {
-          for (const other of adjacency.get(member.xref) ?? []) {
-            const placed = rank.get(other);
-            if (placed !== undefined) positions.push(placed);
-          }
-        }
-        barycentre.set(
-          unit,
-          // Anything with nothing placed keeps the slot it already had rather
-          // than being swept to the top.
-          positions.length === 0
-            ? unit.seed
-            : positions.reduce((sum, value) => sum + value, 0) / positions.length,
-        );
-      }
-
-      units.sort((a, b) => barycentre.get(a)! - barycentre.get(b)! || a.seed - b.seed);
-
-      const flattened = units.flatMap((unit) => unit.members);
-      column.splice(0, column.length, ...flattened);
-      recordRanks(column);
-    }
+    column.splice(0, column.length, ...units.flatMap((unit) => unit.members));
   }
 }
 
