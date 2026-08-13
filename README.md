@@ -83,91 +83,6 @@ Search for **GEDCOM Language** in the Extensions view, or run:
 ext install florianguitton.vscode-gedcom
 ```
 
-## Development
-
-Requires Node.js as pinned in `.node-version`. The toolchain is
-[Vite+](https://viteplus.dev).
-
-```bash
-npm ci
-npx vp run build     # bundle both extension hosts into dist/
-npx vp run grammar   # regenerate syntaxes/gedcom.tmLanguage.json from the registry
-npx vp run spec      # regenerate the parser's embedded specification model
-npx vp test          # tokenize the corpus, parse it, assert scopes and diagnostics
-npx vp check         # lint, format, type-check
-npx vp run preview   # render the grammar through real theme palettes, to look at
-npx vscode-test      # integration tests in a real VS Code
-npx vp run test:web  # integration tests in the web extension host, headless (stable build)
-npx vp run dev:web   # launch the web extension host in a browser, to eyeball it
-npx vp run verify    # all of the above
-```
-
-Pressing <kbd>F5</kbd> runs the `build` task first, so the extension host always
-loads the current sources. The extension host executes the bundles in `dist/`
-rather than the TypeScript, so a launch without that rebuild looks exactly like
-a code change having had no effect.
-
-### Releasing
-
-Bump `version` in `package.json`, write the `## [x.y.z]` section in
-`CHANGELOG.md`, then tag:
-
-```bash
-git tag -a v0.5.0 -m "0.5.0" && git push origin v0.5.0
-```
-
-The tag triggers `.github/workflows/release.yml`, which refuses to proceed
-unless the tag, the manifest and the changelog agree, runs the whole gate again
-against the tagged commit, attaches the VSIX to a GitHub Release with the
-changelog entry as its notes, and publishes to the Marketplace.
-
-Publishing needs a `VSCE_PAT` repository secret — an Azure DevOps token for the
-`florianguitton` publisher, scoped to Marketplace → Manage. Without it the
-release is still made and the VSIX attached; only the upload is skipped.
-
-### Updating GitHub's rendering
-
-This repository is vendored into
-[Linguist](https://github.com/github-linguist/linguist) as
-`vendor/grammars/vscode-gedcom`, and github.com renders `.ged` files with
-whatever grammar Linguist last vendored. A grammar change therefore reaches
-GitHub only through a pull request there that bumps the submodule.
-
-`vp run preview` renders the grammar through an approximation of GitHub's
-PrettyLights palette alongside Dark+ and Light+, which is as close as the
-rendering can be checked without deploying — there is no way to preview a
-branch's grammar on github.com itself.
-
-### Packages
-
-| Package            | Contents                                                                     |
-| ------------------ | ---------------------------------------------------------------------------- |
-| `packages/grammar` | Generates and tests `syntaxes/gedcom.tmLanguage.json`                        |
-| `packages/core`    | The parser: version detection, lexer, CST, cross-reference index, validation |
-| `packages/server`  | The language server, as pure functions over an analysis                      |
-| `packages/client`  | The extension: language client, graph panel, status bar                      |
-
-`packages/core/src` has **zero runtime dependencies and uses no Node builtins**,
-so the same code runs in the extension host, in a browser worker on vscode.dev,
-and in plain tests. Its entry point takes a `Uint8Array` rather than a string
-because version and encoding detection is defined over bytes: the
-[official algorithm](https://github.com/FamilySearch/GEDCOM/blob/main/version-detection/version-detection.md)
-reads character width and byte order from the first two bytes, before any
-decoding can happen.
-
-### Two things to know before changing the grammar
-
-**The grammar is generated.** Do not hand-edit `syntaxes/gedcom.tmLanguage.json`;
-edit `packages/grammar/src/grammar.ts` and regenerate. The output is committed
-because Linguist reads it directly and runs no build step.
-
-**No rule may use `begin`/`end`.** GEDCOM is strictly line-oriented, so tokenizer
-state must never survive a line boundary. This is enforced by a test that asserts
-the rule stack returns to depth 1 after every line of every fixture. The grammar
-this replaced violated it, which is why one unescaped `@` in a note used to
-re-colour the remainder of the file — on Linguist's own `Royal92.ged` sample, 90%
-of lines carried leaked state.
-
 ## GEDCOM standard
 
 GEDCOM — **GE**nealogical **D**ata **COM**munication — was developed by the Family
@@ -187,6 +102,13 @@ Three specifications are in circulation, and they are not interchangeable:
 5.5.5 and 7.0 are divergent successors to 5.5.1 rather than successive versions;
 5.5.1 files are generally not valid 7.0 files, and no migration path is defined
 between 5.5.5 and 7.0.
+
+## Contributing
+
+Bug reports and pull requests are welcome at
+[github.com/fguitton/vscode-gedcom](https://github.com/fguitton/vscode-gedcom).
+See [CONTRIBUTING.md](https://github.com/fguitton/vscode-gedcom/blob/master/CONTRIBUTING.md)
+for how the repository is laid out and how to build and test it.
 
 ## License
 

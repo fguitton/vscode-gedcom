@@ -20,7 +20,15 @@ package-lock.json
 # Source maps are for local debugging; they are larger than the code they map.
 dist/**/*.map
 
-# The web integration tests are bundled like an extension entry point, which puts
-# them in dist/. They are not part of the extension.
+# Not everything under dist/ is the extension. The web integration tests are
+# bundled like an extension entry point, and the colour preview is a page for
+# looking at the grammar — both land here and neither should ship. The preview
+# is the sneakier of the two: it only exists once somebody has run `vp run
+# preview`, so it would ride along on some machines and not others.
 dist/web-tests/**
+dist/preview/**
 test/**
+
+# README.md *is* the Marketplace listing, so it stays. Everything aimed at
+# somebody working on the extension rather than using it does not.
+CONTRIBUTING.md
