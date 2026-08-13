@@ -40,7 +40,14 @@ export interface GraphNode {
   readonly kind: string;
   /** A human-readable summary — a name, a title, or the tag as a fallback. */
   readonly label: string;
-  /** Lifespan for a person, or the record type for anything else. */
+  /**
+   * The second line of a box: a person's dates, or the record type for anything
+   * that is not a person.
+   *
+   * Empty for a person the file gives no dates for. "Individual" under a name is
+   * a label with no information in it — every box in a family tree holds one —
+   * and a row of them reads as though something failed to load.
+   */
   readonly detail: string;
   /** Hops from the focus. Zero is the focus itself. */
   readonly distance: number;
@@ -78,6 +85,16 @@ export interface GraphNode {
    * the neighbourhood, which is exactly the drifting this is here to prevent.
    */
   readonly familyYear?: number;
+  /**
+   * When this person's eldest child was born, across every family they are a
+   * spouse in, read from the whole file.
+   *
+   * A parent is placed in their column by this rather than by their own
+   * birthday: two couples sorted by their own dates land in one order and their
+   * children, sorted by theirs, land in another, so every line between the two
+   * columns has to cross to reconcile them.
+   */
+  readonly childrenYear?: number;
   /** Line the record is defined on, for revealing it in the editor. */
   readonly line: number;
 }
@@ -98,6 +115,14 @@ export interface GraphEdge {
    * point puts the second family's children under the first family's spouse.
    */
   readonly union?: string;
+  /**
+   * When that marriage's eldest child was born, for a spouse edge.
+   *
+   * A couple has to be ordered by the same measure their children are, or the
+   * two columns disagree and every line between them crosses: parents sorted by
+   * their own birthdays land in one order, their children in another.
+   */
+  readonly unionYear?: number;
   /** Line the relationship is written on. */
   readonly line: number;
 }
@@ -471,6 +496,14 @@ export function neighbourhood(
     return earliest;
   };
 
+  /** The eldest child of anyone, over every marriage they appear in. */
+  const childrenYearOf = (record: Structure): number | undefined => {
+    const years = pointers(record, 'FAMS')
+      .map((family) => familyYear(family))
+      .filter((year): year is number => year !== undefined);
+    return years.length === 0 ? undefined : Math.min(...years);
+  };
+
   const included = new Set(order);
   const nodes: GraphNode[] = order.map((xref) => {
     const record = analysis.xrefs.definitions.get(xref)!;
@@ -480,10 +513,11 @@ export function neighbourhood(
       tag: record.tag,
       kind,
       label: labelFor(record),
-      detail: (record.tag === 'INDI' ? lifespanOf(record) : undefined) ?? kind,
+      detail: record.tag === 'INDI' ? (lifespanOf(record) ?? '') : kind,
       distance: distances.get(xref)!,
       generation: generations.get(xref)!,
       ...(birthYearOf(record) === undefined ? {} : { year: birthYearOf(record) }),
+      ...(childrenYearOf(record) === undefined ? {} : { childrenYear: childrenYearOf(record) }),
       ...(pointers(record, 'FAMC')[0] === undefined
         ? {}
         : {
@@ -514,6 +548,11 @@ export function neighbourhood(
         label: link.label,
         reverseLabel: link.reverseLabel,
         ...(link.union === undefined ? {} : { union: link.union }),
+        ...(link.kind === 'spouse' &&
+        link.union !== undefined &&
+        familyYear(link.union) !== undefined
+          ? { unionYear: familyYear(link.union) }
+          : {}),
         line: link.line,
       });
     }
@@ -693,22 +732,97 @@ function orderColumns(columns: [number, GraphNode[]][], edges: GraphEdge[]): voi
     }
   }
 
-  for (const [, column] of columns) {
+  /** Each person's parents, so a sibling group can follow them. */
+  const parentsOf = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.kind !== 'parent') continue;
+    // `label` reads from `from` to `to`, so "Child" means `to` is the child.
+    const [parent, offspring] =
+      edge.label === 'Child' ? [edge.from, edge.to] : [edge.to, edge.from];
+    parentsOf.set(offspring, [...(parentsOf.get(offspring) ?? []), parent]);
+  }
+
+  /** Where each person ended up, so the generation below can follow them. */
+  const placed = new Map<string, number>();
+
+  for (const [index, [, column]] of columns.entries()) {
     const units = unitsOf(column, partners);
 
-    // A sibling group is placed by when its eldest child was born — a fact about
-    // the family, read from the file rather than from whoever happens to be on
-    // screen. Anyone whose parents the file never recorded is their own group,
-    // placed by their own birth rather than herded to one end.
+    /**
+     * Where a *group* sits, which is the only thing allowed to react.
+     *
+     * Siblings are ordered by their birthdays and nothing else; everything else
+     * arranges itself around that. So a whole sibling group is positioned by the
+     * generation below it — the earliest of any of their children — which makes
+     * this column and the next agree by construction rather than disagreeing and
+     * forcing every line between them to cross. A group with no children yet
+     * falls back to when the group itself began.
+     *
+     * Every term is read from the file rather than from what is on screen. Taken
+     * from the visible relatives, a family would shift each time one of them
+     * scrolled out of the neighbourhood.
+     */
+    const reaction = new Map<string, number>();
+    for (const unit of units) {
+      if (unit.family === undefined) continue;
+      for (const year of unit.members.map((member) => member.childrenYear)) {
+        if (year === undefined) continue;
+        const held = reaction.get(unit.family);
+        if (held === undefined || year < held) reaction.set(unit.family, year);
+      }
+    }
+
     const groupKey = (unit: Unit): readonly [number, string, string] => {
       const anchor = unit.members[0]!;
-      if (unit.family === undefined) return unit.key;
-      return [anchor.familyYear ?? unit.key[0], unit.family, unit.family];
+
+      // Somebody with no recorded parents is a group of one, and reacts alone.
+      if (unit.family === undefined) {
+        return anchor.childrenYear === undefined
+          ? unit.key
+          : [anchor.childrenYear, anchor.label, anchor.xref];
+      }
+
+      const year = reaction.get(unit.family) ?? anchor.familyYear ?? unit.key[0];
+      return [year, unit.family, unit.family];
     };
 
-    units.sort((a, b) => compareKeys(groupKey(a), groupKey(b)) || compareKeys(a.key, b.key));
+    /**
+     * Where a sibling group sits: under its parents.
+     *
+     * This is the rule a pedigree chart has always used, and it is the one that
+     * keeps lines from crossing — children beneath the couple they came from.
+     * The generation above has already been placed, so following it is a
+     * matter of reading off a position.
+     *
+     * The leftmost column has no parents on screen to follow, so it falls back
+     * to reacting to the generation *below* instead, which aligns the two ends
+     * of the drawing by the same logic from the other direction.
+     */
+    const follows = (unit: Unit): number => {
+      const positions = unit.members
+        .flatMap((member) => parentsOf.get(member.xref) ?? [])
+        .map((parent) => placed.get(parent))
+        .filter((position): position is number => position !== undefined);
 
-    column.splice(0, column.length, ...units.flatMap((unit) => unit.members));
+      // Anyone whose parents are not on screen sits after those whose are,
+      // rather than being threaded through families they are unrelated to.
+      return positions.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...positions);
+    };
+
+    units.sort(
+      (a, b) =>
+        // Parents first, where there are any to follow…
+        (index === 0 ? 0 : follows(a) - follows(b)) ||
+        // …then the group's own place in the order…
+        compareKeys(groupKey(a), groupKey(b)) ||
+        // …and within a group, birth order and nothing else. Siblings share both
+        // of the comparisons above, so this is what they fall through to.
+        compareKeys(a.key, b.key),
+    );
+
+    const flattened = units.flatMap((unit) => unit.members);
+    column.splice(0, column.length, ...flattened);
+    flattened.forEach((node, position) => placed.set(node.xref, position));
   }
 }
 

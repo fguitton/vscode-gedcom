@@ -27,19 +27,33 @@ column with boxes that answered no question anyone had asked.
 - **Couples sit together, joined by a marriage bar, and every child descends
   from one point on it.** Two parents fanning independently to four children
   makes crossings unavoidable; one line per child from the marriage makes them
-  impossible. Columns are then ordered by barycentre sweeps in both directions,
-  with each couple treated as a single unit — ordering partners separately is
-  self-defeating, since both are pulled towards exactly the same children.
+  impossible.
+- **Sibling groups hang beneath their parents, and siblings run oldest first
+  within the group.** Nothing in the ordering consults the current view, which
+  is what stops a column rearranging itself every time the selection moves —
+  a reader clicking along a row of relatives was watching the row reshuffle
+  under them.
 
-  Measured over 300 neighbourhoods of Linguist's `Royal92.ged`: **71% are drawn
-  with no crossings at all and 87% with two or fewer**, against 54% and a mean
-  of 6.1 before. A test holds those figures.
+  This replaced a barycentre pass that ordered each column against its
+  neighbours. That reads well on any one drawing and produces a different
+  drawing every time, because the arrangement is computed from whoever happens
+  to be on screen. Ordering by birth alone held still but tangled. Neither trade
+  was necessary: hanging each family beneath its parents makes the two columns
+  agree by construction rather than by search.
+
+  Measured over 300 neighbourhoods of Linguist's `Royal92.ged`: **68% are drawn
+  with no crossings at all, 87% with two or fewer, and the ninetieth percentile
+  is three** — against 54%, and a ninetieth percentile of fourteen, before any
+  of this. Tests hold both the crossing figures and the stability ones.
 
 - **Marriages are shown**, labelled with their year, alongside parent and child
   links. Siblings are drawn only where a family records no parents, since
   otherwise they are already two hops apart through one.
 - **Boxes carry dates** — `1901–1975`, or `b. 1930` where only one is known.
-  A tree full of people sharing a name is unreadable without them.
+  A tree full of people sharing a name is unreadable without them. Where the
+  file records none the box shows the name alone: "Individual" under every name
+  is a label with no information in it, and a row of them reads as though
+  something failed to load.
 - **A family is still shown as itself when it is the record under the cursor**,
   with its members around it and their roles named. Collapsing is right for
   families travelled _through_ and wrong for the one being looked at.

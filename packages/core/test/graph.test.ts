@@ -134,8 +134,10 @@ describe('neighbourhood', () => {
     expect(graph.nodes.find((n) => n.xref === 'I1')?.detail).toBe('1901–1975');
     // Only a birth recorded.
     expect(graph.nodes.find((n) => n.xref === 'I3')?.detail).toBe('b. 1930');
-    // No dates at all falls back to the record type.
-    expect(graph.nodes.find((n) => n.xref === 'I2')?.detail).toBe('Individual');
+    // No dates at all shows nothing. "Individual" under a name is a label with
+    // no information in it — every box in a family tree holds one — and a row of
+    // them reads as though something failed to load.
+    expect(graph.nodes.find((n) => n.xref === 'I2')?.detail).toBe('');
   });
 
   it('leaves sources out unless they are asked for', () => {

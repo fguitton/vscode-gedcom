@@ -493,16 +493,20 @@ function shell(): string {
         transform: 'translate(' + node.x + ',' + node.y + ')',
         tabindex: '0',
         role: 'button',
-        'aria-label': node.kind + ': ' + node.label + ', ' + node.detail,
+        'aria-label': node.kind + ': ' + node.label + (node.detail ? ', ' + node.detail : ''),
       });
 
       group.appendChild(el('rect', { width: NODE_WIDTH, height: NODE_HEIGHT }));
-      group.appendChild(el('text', { class: 'label', x: 8, y: 17 }, truncate(node.label, 24)));
 
       // Dates rather than the record type. A tree full of people sharing a name
-      // is unreadable without them, and "Individual" on every box says nothing
-      // that the shape of the graph has not already said.
-      group.appendChild(el('text', { class: 'tag', x: 8, y: 31 }, truncate(node.detail, 26)));
+      // is unreadable without them. Where the file records none, the name is
+      // centred on the box rather than propped above an empty line.
+      if (node.detail) {
+        group.appendChild(el('text', { class: 'label', x: 8, y: 17 }, truncate(node.label, 24)));
+        group.appendChild(el('text', { class: 'tag', x: 8, y: 31 }, truncate(node.detail, 26)));
+      } else {
+        group.appendChild(el('text', { class: 'label', x: 8, y: 24 }, truncate(node.label, 24)));
+      }
 
       // Clicking selects: it recentres the graph and fills the details panel,
       // and leaves the editor where it is. Reading down a line of descent means

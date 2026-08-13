@@ -118,30 +118,71 @@ describe('against Royal92', () => {
     .map(crossings);
 
   /**
-   * These floors are lower than they once were, and deliberately so.
+   * What these figures cost, and what they turned out not to.
    *
-   * Ordering each column against its neighbours to minimise crossings reached
-   * 71% crossing-free — and produced a different drawing every time the
-   * selection moved, because the arrangement was computed from whichever people
-   * happened to be on screen. Ordering by birth instead costs roughly a quarter
-   * of the clean drawings and buys a chart that holds still, which is the better
-   * trade for a panel that redraws as the cursor moves. See graph-stability.
+   * There was a stage where they had to be lowered. Ordering each column
+   * against its neighbours to minimise crossings reached 71% crossing-free and
+   * produced a different drawing every time the selection moved, because the
+   * arrangement was computed from whoever happened to be on screen; ordering by
+   * birth alone held still but fell to 46%.
    *
-   * They are a floor to defend and to raise, not a target that has been met.
+   * Neither trade was necessary. Hanging each sibling group beneath its parents
+   * and sorting by birthday *within* the group recovers the crossings without
+   * consulting the view at all — the two columns then agree by construction
+   * rather than by search. See graph-stability for the other half.
    */
-  it('draws many neighbourhoods with no crossings at all', () => {
+  it('draws most neighbourhoods with no crossings at all', () => {
     const clean = measured.filter((count) => count === 0).length;
-    expect(clean / measured.length).toBeGreaterThan(0.4);
+    expect(clean / measured.length).toBeGreaterThan(0.62);
   });
 
   it('keeps most of the rest to a couple of crossings', () => {
     const nearly = measured.filter((count) => count <= 2).length;
-    expect(nearly / measured.length).toBeGreaterThan(0.65);
+    expect(nearly / measured.length).toBeGreaterThan(0.8);
   });
 
-  it('has a modest mean, so a typical drawing stays readable', () => {
-    const mean = measured.reduce((sum, count) => sum + count, 0) / measured.length;
-    expect(mean).toBeLessThan(8);
+  /**
+   * Reported as a median and a percentile rather than a mean.
+   *
+   * The distribution is heavily skewed: most drawings have no crossings at all
+   * and a handful of hub records — someone with five marriages and twenty
+   * grandchildren in view — have hundreds. A mean describes neither group, and
+   * moves sharply when one outlier enters or leaves the sample, which makes it
+   * useless as a regression signal.
+   */
+  it('leaves the typical drawing clean', () => {
+    const sorted = [...measured].sort((a, b) => a - b);
+    expect(sorted[Math.floor(sorted.length / 2)]).toBe(0);
+  });
+
+  it('keeps even the crowded end of the range in hand', () => {
+    const sorted = [...measured].sort((a, b) => a - b);
+    expect(sorted[Math.floor(sorted.length * 0.9)]).toBeLessThan(6);
+  });
+
+  it('runs a generation parallel to the one below it', () => {
+    // The defect this closes: two couples ordered by their own birthdays, their
+    // children ordered by theirs, and every line between the columns crossing to
+    // reconcile the two. Albert (1819) marries Victoria and their eldest arrives
+    // in 1840; Alexander (1818) is older but his eldest arrives in 1842 — so by
+    // birthday the parents come out in one order and the children in the other.
+    const beatrice = [...royal.xrefs.definitions].find(
+      ([, record]) =>
+        record.tag === 'INDI' &&
+        record.children.some((c) => c.tag === 'NAME' && /Beatrice/.test(c.payload ?? '')) &&
+        record.children.some(
+          (c) => c.tag === 'BIRT' && c.children.some((d) => /1884/.test(d.payload ?? '')),
+        ),
+    )!;
+
+    const graph = neighbourhood(royal, beatrice[0], { depth: 2 });
+    const grandparents = graph.nodes
+      .filter((node) => node.generation === -2)
+      .sort((a, b) => a.y - b.y)
+      .map((node) => node.label);
+
+    expect(grandparents[0]).toMatch(/Albert Augustus/);
+    expect(crossings(graph)).toBe(0);
   });
 });
 
