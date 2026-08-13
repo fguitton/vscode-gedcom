@@ -56,10 +56,13 @@ jobs:
             --extensionTestsPath=./dist/web-tests/index.cjs \
             fixtures
 
+      # Named as `vsce` would name it, which is the name the extension answers
+      # to everywhere else: `vscode-gedcom-<version>.vsix`.
       - name: Package
-        run: npx --yes @vscode/vsce package --no-git-tag-version --out gedcom.vsix
+        run: npx --yes @vscode/vsce package --no-git-tag-version
 
       - uses: actions/upload-artifact@v4
         with:
           name: vsix
-          path: gedcom.vsix
+          path: '*.vsix'
+          if-no-files-found: error

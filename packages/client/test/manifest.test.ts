@@ -95,6 +95,27 @@ describe('the security overrides', () => {
   });
 });
 
+describe('the release artifact', () => {
+  const workflow = readFileSync(join(root, '.github', 'workflows', 'release.yml'), 'utf8');
+
+  /**
+   * The VSIX must be named the way `vsce` would name it —
+   * `vscode-gedcom-<version>.vsix`. A hand-written name is one the extension
+   * answers to nowhere else: not in the manifest, not on the Marketplace, not in
+   * `code --install-extension`. The first two releases went out as
+   * `gedcom-<version>.vsix` because the workflow spelled it out by hand.
+   */
+  it('derives the file name from the manifest rather than spelling it out', () => {
+    expect(workflow).toContain("require('./package.json').name");
+    expect(workflow).toMatch(/artifact=\$name-\$manifest\.vsix/);
+  });
+
+  it('never hard-codes a name the extension does not answer to', () => {
+    expect(workflow).not.toMatch(/["']gedcom-\$/);
+    expect(workflow).not.toMatch(/gedcom-\$\{/);
+  });
+});
+
 describe('the entry points', () => {
   /**
    * Both hosts read `"type": "module"` from this package and conclude that a

@@ -31,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      artifact: ${{ steps.version.outputs.artifact }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +40,7 @@ jobs:
         run: |
           tag="${GITHUB_REF_NAME#v}"
           manifest="$(node -p "require('./package.json').version")"
+          name="$(node -p "require('./package.json').name")"
 
           if [ "$tag" != "$manifest" ]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json $manifest."
@@ -53,6 +55,11 @@ jobs:
 
           echo "version=$manifest" >> "$GITHUB_OUTPUT"
 
+          # The name `vsce` would choose for itself. Anything else is a name the
+          # extension does not answer to: it is `vscode-gedcom` in the manifest,
+          # on the Marketplace, and in `code --install-extension`.
+          echo "artifact=$name-$manifest.vsix" >> "$GITHUB_OUTPUT"
+
   release:
     name: Verify, package and publish
     needs: check
@@ -63,6 +70,7 @@ jobs:
     env:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
       VERSION: ${{ needs.check.outputs.version }}
+      ARTIFACT: ${{ needs.check.outputs.artifact }}
 
     steps:
       - uses: actions/checkout@v4
@@ -104,7 +112,7 @@ jobs:
             fixtures
 
       - name: Package
-        run: npx --yes @vscode/vsce package --no-git-tag-version --out "gedcom-$VERSION.vsix"
+        run: npx --yes @vscode/vsce package --no-git-tag-version --out "$ARTIFACT"
 
       # The changelog entry, rather than a generated list of commits. It was
       # written for a reader; the commit log was not.
@@ -139,16 +147,16 @@ jobs:
             gh release edit "$GITHUB_REF_NAME" \
               --title "$VERSION" \
               --notes-file release-notes.md
-            gh release upload "$GITHUB_REF_NAME" "gedcom-$VERSION.vsix" --clobber
+            gh release upload "$GITHUB_REF_NAME" "$ARTIFACT" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "gedcom-$VERSION.vsix" \
+            gh release create "$GITHUB_REF_NAME" "$ARTIFACT" \
               --title "$VERSION" \
               --notes-file release-notes.md
           fi
 
       - name: Marketplace
         if: ${{ env.VSCE_PAT != '' }}
-        run: npx --yes @vscode/vsce publish --packagePath "gedcom-$VERSION.vsix"
+        run: npx --yes @vscode/vsce publish --packagePath "$ARTIFACT"
 
       - name: Say so when the Marketplace step was skipped
         if: ${{ env.VSCE_PAT == '' }}
