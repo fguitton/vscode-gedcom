@@ -1,8 +1,8 @@
 # vscode-gedcom
 
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/florianguitton.vscode-gedcom?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/florianguitton.vscode-gedcom)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
-[![Rating](https://img.shields.io/visual-studio-marketplace/stars/florianguitton.vscode-gedcom)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
+[![Marketplace](https://img.shields.io/badge/marketplace-GEDCOM%20Language-blue)](https://marketplace.visualstudio.com/items?itemName=florianguitton.vscode-gedcom)
+[![Release](https://img.shields.io/github/v/release/fguitton/vscode-gedcom)](https://github.com/fguitton/vscode-gedcom/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/fguitton/vscode-gedcom/ci.yml?branch=master)](https://github.com/fguitton/vscode-gedcom/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/fguitton/vscode-gedcom)](https://github.com/fguitton/vscode-gedcom/blob/master/LICENSE)
 
 GEDCOM language support for Visual Studio Code — syntax highlighting, validation,

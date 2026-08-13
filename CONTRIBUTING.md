@@ -107,6 +107,24 @@ Without the secret the release is still made and the VSIX attached; only the
 Marketplace upload is skipped, so a missing token costs a re-run rather than a
 bad release.
 
+## A note on the README badges
+
+`README.md` _is_ the Marketplace listing, and the Marketplace renders images only
+from an allowlist of hosts — `img.shields.io` is on it; most badge services are
+not, and an image from anywhere else shows as broken on the listing while
+looking fine on GitHub.
+
+Badges here have now rotted twice: `vsmarketplacebadge.apphb.com` and
+`david-dm.org` went away, and shields.io has since **retired its entire
+`visual-studio-marketplace` family** — version, installs, downloads and rating
+all answer "retired badge". The obvious replacement, `vsmarketplacebadges.dev`,
+works but is not on the Marketplace allowlist.
+
+So the badges are deliberately ones that cannot rot: a static Marketplace link,
+and release, build and licence from shields' GitHub endpoints. Version, installs
+and rating are no loss on the listing itself — the Marketplace page already
+displays all three in its own header.
+
 ## Updating GitHub's rendering
 
 This repository is vendored into
