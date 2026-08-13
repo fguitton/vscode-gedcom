@@ -97,12 +97,24 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
 
     const analysis = analyzeText(editor.document.getText());
     const chosen = this.selection.current;
+    const isDrawable = (xref: string | null): boolean => {
+      const tag = xref === null ? undefined : analysis.xrefs.definitions.get(xref)?.tag;
+      return tag === 'INDI' || tag === 'FAM';
+    };
     // A selection made in the panel wins over the cursor until the cursor moves,
     // which is what lets a reader walk the tree without losing their place.
     const focus =
       chosen.uri?.toString() === editor.document.uri.toString() && chosen.xref !== null
         ? chosen.xref
         : recordAt(analysis, editor.selection.active.line);
+
+    // A submitter, a source or a note has no place in a family tree. Drawn, it
+    // is a lone box with no generation and no relationships; the details panel
+    // is where that record has something to say.
+    if (focus !== null && !isDrawable(focus)) {
+      void this.view.webview.postMessage({ type: 'empty', reason: 'not-a-person' });
+      return;
+    }
 
     const configuration = workspace.getConfiguration('gedcom');
     const graph = neighbourhood(analysis, focus, {
@@ -582,7 +594,10 @@ function shell(): string {
       }
       render(message.graph);
     } else if (message.type === 'empty') {
-      empty.textContent = 'Open a GEDCOM file and place the cursor in a record.';
+      empty.textContent =
+        message.reason === 'not-a-person'
+          ? 'This record is not a person or a family. Its contents are in the Details panel below.'
+          : 'Open a GEDCOM file and place the cursor in a record.';
       empty.style.display = 'block';
       scroll.style.display = 'none';
     }

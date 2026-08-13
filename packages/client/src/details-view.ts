@@ -166,13 +166,19 @@ function shell(): string {
     padding: .5rem .6rem;
     font-family: var(--vscode-editor-font-family, monospace);
     font-size: var(--vscode-editor-font-size, calc(var(--vscode-font-size) * .95));
-    line-height: 1.4;
-    background: var(--vscode-textCodeBlock-background, var(--vscode-editorWidget-background));
-    border: 1px solid var(--vscode-widget-border, transparent);
-    border-radius: 3px;
+    line-height: 1.45;
+    /* A translucent grey rather than a theme colour alone: it lifts off the
+       panel in a dark theme and settles into it in a light one, and it cannot
+       come out invisible if a theme leaves the token undefined. */
+    background: rgba(127, 127, 127, .14);
+    border: 1px solid rgba(127, 127, 127, .22);
+    border-radius: 4px;
     /* Wrap rather than scroll: the panel is narrow and the text is prose. */
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    /* Correspondence runs to dozens of lines; keep it from burying the panel. */
+    max-height: 22rem;
+    overflow-y: auto;
   }
   .block.clickable pre { cursor: pointer; }
   .block.clickable pre:hover { border-color: var(--vscode-focusBorder); }

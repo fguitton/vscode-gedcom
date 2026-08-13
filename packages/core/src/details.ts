@@ -214,6 +214,14 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
       continue;
     }
 
+    // A payload written across CONT lines is text, whatever tag carries it —
+    // an address, a comment, a transcription. It gets the same treatment a note
+    // does rather than being cut down to its opening clause.
+    if (structure.payload && isBlock(structure.payload)) {
+      facts.push({ label, value: wholeText(structure.payload), block: true, line });
+      continue;
+    }
+
     facts.push({ label, value: valueOf(analysis, structure), line });
   }
 

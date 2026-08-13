@@ -136,14 +136,14 @@ describe('against Royal92', () => {
 
   it('keeps a custom tag rather than dropping it silently', () => {
     // The file's provenance is recorded under a non-standard `COMM`.
-    expect(flat['Submitter/COMM']).toContain('Denis Reid');
+    expect(flat['Submitter/Comment']).toContain('Denis Reid');
   });
 
   it('keeps every line of folded text, not just the first', () => {
     // `CONT` reassembly works; it was this layer that used to throw the rest
     // away. The posting runs to twenty-eight lines and the signature is at the
     // very bottom of it.
-    const comm = flat['Submitter/COMM']!;
+    const comm = flat['Submitter/Comment']!;
     expect(comm.split('\n')).toHaveLength(28);
     expect(comm).toContain('MERRY CHRISTMAS');
     expect(comm.trimEnd().endsWith('Thanks for your interest.   Denis Reid')).toBe(true);
@@ -154,7 +154,7 @@ describe('against Royal92', () => {
     const byLabel = (label: string) => submitter.fields.find((f) => f.label === label);
 
     // The line breaks in an address and in correspondence *are* the layout.
-    expect(byLabel('COMM')?.block).toBe(true);
+    expect(byLabel('Comment')?.block).toBe(true);
     expect(byLabel('Address')?.block).toBe(true);
     // A single-line value stays an ordinary labelled row.
     expect(byLabel('Phone')?.block).toBeFalsy();
@@ -163,5 +163,31 @@ describe('against Royal92', () => {
   it('names the program that wrote the file', () => {
     expect(flat['File/Written by']).toBe('PAF 2.2');
     expect(flat['File/Character set']).toBe('ANSEL');
+  });
+
+  describe('the submitter as a record in its own right', () => {
+    // Selecting @S1@ goes through recordDetails rather than documentDetails, and
+    // that path used to cut every payload down to its first line.
+    const details = recordDetails(royal, 'S1')!;
+    const byLabel = (label: string) =>
+      details.sections.flatMap((section) => section.fields).find((f) => f.label === label);
+
+    it('keeps folded text whole here too', () => {
+      expect(byLabel('Comment')?.value.split('\n')).toHaveLength(28);
+      expect(byLabel('Address')?.value.split('\n')).toHaveLength(3);
+    });
+
+    it('marks that text as a block', () => {
+      expect(byLabel('Comment')?.block).toBe(true);
+      expect(byLabel('Address')?.block).toBe(true);
+      expect(byLabel('Phone')?.block).toBeFalsy();
+    });
+
+    it('names a vendor tag in English instead of showing the tag', () => {
+      // No specification defines COMM; it is PAF's comment field, and it is what
+      // carries this file's provenance.
+      expect(byLabel('COMM')).toBeUndefined();
+      expect(byLabel('Comment')).toBeDefined();
+    });
   });
 });

@@ -116,12 +116,37 @@ const UNLABELLED: Record<string, string> = {
 };
 
 /**
+ * Vendor tags common enough in real files to be worth naming.
+ *
+ * No specification defines these and the registry does not know them, so each
+ * one is a claim about what a particular program meant by it. The list is
+ * deliberately short: only tags whose meaning is unambiguous and attested across
+ * many files, because a confidently wrong label is worse than a bare tag.
+ *
+ * `COMM` is PAF's comment field, and Linguist's own `Royal92.ged` uses it to
+ * carry the note explaining where the file came from.
+ */
+const VENDOR_TAGS: Record<string, string> = {
+  COMM: 'Comment',
+  _AKA: 'Also known as',
+  _AKAN: 'Also known as',
+  _EMAIL: 'Email',
+  _FREL: 'Relationship to father',
+  _MREL: 'Relationship to mother',
+  _MARNM: 'Married name',
+  _BIRN: 'Birth name',
+  _ADPN: 'Adopted name',
+  _PRIM: 'Primary',
+  _UID: 'Unique identifier',
+};
+
+/**
  * The English name of a tag, in the plainest form available.
  *
  * Tries the resolved slug first, since that is context-qualified and therefore
  * the most precise; then the tag read as a slug, which covers most structures;
- * then the table above. Falls back to the tag itself, which is never wrong,
- * only unhelpful.
+ * then the two tables. Falls back to the tag itself, which is never wrong, only
+ * unhelpful.
  */
 export function tagLabel(model: SpecModel, tag: string, slug?: string | null): string {
   return (
@@ -132,6 +157,7 @@ export function tagLabel(model: SpecModel, tag: string, slug?: string | null): s
     // otherwise never find a label for the commonest structures in the format.
     labelOf(model, `record-${tag}`) ??
     UNLABELLED[tag] ??
+    VENDOR_TAGS[tag] ??
     tag
   );
 }

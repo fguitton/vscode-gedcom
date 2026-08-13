@@ -80,10 +80,19 @@ discard in order to stay readable.
   a line of descent means looking at a dozen people in turn, and jumping the
   editor to each one loses the reader's place in the file for no benefit.
   Navigation is its own gesture, on a button that appears on the box.
-- Text written across `CONT` lines is shown whole, in the editor's font, in a
-  block of its own. `Royal92.ged` records the file's provenance as a twenty-eight
-  line posting from 1992, and only its first line was reaching the panel. The
-  parser's reassembly was never at fault; this layer was discarding the rest.
+- Text written across `CONT` lines is shown whole — monospace, wrapped, in a
+  block of its own — whether the record is reached as the file's submitter or
+  selected in its own right. `Royal92.ged` records the file's provenance as a
+  twenty-eight line posting from 1992, and only its first line was reaching the
+  panel; its three-line address fared no better. The parser's reassembly was
+  never at fault, and a test now proves it: this layer was discarding the rest.
+- A short list of **vendor tags** the registry has never covered are named in
+  English — `COMM` is PAF's comment field, and it is what carries that
+  provenance note. The list stays short deliberately: a confidently wrong label
+  is worse than a bare tag.
+- A record that is neither a person nor a family no longer appears in the graph
+  as a lone box with no generation and no relationships. The panel says where to
+  find its contents instead.
 - The graph scrolls the selection into view when the neighbourhood is larger
   than the panel, on whichever axis actually overflows.
 - Children descend from the parent whose line is being traced rather than from
