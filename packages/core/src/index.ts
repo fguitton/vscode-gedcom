@@ -73,6 +73,8 @@ export type {
 export type { DateKeyword, DateQualifier } from './date.ts';
 
 export { lex, splitLines } from './lexer.ts';
+export { detectIndentation } from './indentation.ts';
+export type { Indentation, IndentStyle } from './indentation.ts';
 export type { LexedLine, LexResult } from './lexer.ts';
 
 export { parse, structureAt, fullSpan } from './parser.ts';

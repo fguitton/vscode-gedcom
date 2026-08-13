@@ -16,6 +16,7 @@
 
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
+import { describeMediaType } from './lang.ts';
 import { modelFor, tagLabel } from './spec/index.ts';
 import { statistics } from './stats.ts';
 import { asPointer } from './xref.ts';
@@ -133,9 +134,35 @@ function valueOf(analysis: Analysis, structure: Structure): string {
 
   if (date) parts.push(date.trim());
   if (place) parts.push(firstLine(place, 80));
+  else {
+    // A residence usually carries an ADDR rather than a PLAC, and the address
+    // is the whole fact — without it the row reads "Residence · recorded",
+    // which tells a reader less than the file does.
+    const address = addressLine(structure);
+    if (address) parts.push(address);
+  }
   if (age) parts.push(`aged ${age.trim()}`);
 
   return parts.length > 0 ? parts.join(' · ') : 'recorded';
+}
+
+/**
+ * An address on one line.
+ *
+ * The payload holds the whole thing in older files and the jurisdiction
+ * substructures hold it in newer ones; either way the reader wants one line.
+ */
+function addressLine(structure: Structure): string | undefined {
+  const address = child(structure, 'ADDR');
+  if (!address) return undefined;
+
+  if (address.payload) return firstLine(address.payload, 80);
+
+  const parts = ['ADR1', 'ADR2', 'ADR3', 'CITY', 'STAE', 'POST', 'CTRY']
+    .map((tag) => child(address, tag)?.payload?.trim())
+    .filter((part): part is string => part !== undefined && part.length > 0);
+
+  return parts.length > 0 ? parts.join(', ') : undefined;
 }
 
 /** Note text, whether written inline or pointed at. */
@@ -196,10 +223,19 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
     }
 
     if (tag === 'OBJE') {
+      // Written inline, a media object is a FILE with a FORM and often a TITL
+      // beside it. The tag label alone ("Media object") says nothing a reader
+      // cannot see, so the object's own title takes its place where there is
+      // one, and the format follows the path — a reader scanning a list of
+      // files wants to know which is the photograph.
       const file = child(structure, 'FILE')?.payload;
+      const form = child(structure, 'FORM')?.payload;
+      const titl = child(structure, 'TITL')?.payload;
+      const kind = form ? describeMediaType(form) : undefined;
+      const path = file ? firstLine(file) : (resolve(analysis, structure) ?? '');
       media.push({
-        label,
-        value: file ? firstLine(file) : (resolve(analysis, structure) ?? ''),
+        label: titl ? firstLine(titl, 60) : label,
+        value: [path, kind].filter(Boolean).join(' · '),
         line,
       });
       continue;

@@ -355,6 +355,17 @@ function checkPayload(
   // resolve it. This is reported at every strictness because it is unambiguous
   // under any reading of any version.
   if (pointer === null) {
+    // GEDCOM 5.5.1 lets several structures be written either as a pointer to a
+    // record or inline, with the record's own substructures *in place of* the
+    // payload — `1 OBJE` followed by `2 FORM` and `2 FILE` is the commonest, and
+    // it appears in a great many real files. The registry models only the
+    // pointer form, so demanding one would report a correct file as broken.
+    //
+    // Only the payload-less form is the inline one. A payload that is present
+    // but is not a pointer is still wrong, substructures or not: `1 ASSO @I1@ df`
+    // does not become acceptable by having a `ROLE` beneath it.
+    if (structure.payload === null && structure.children.length > 0) return;
+
     diagnostics.push({
       code: 'malformed-pointer',
       message:

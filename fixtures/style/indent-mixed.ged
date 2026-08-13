@@ -1,0 +1,46 @@
+0 HEAD
+	1 SOUR HeritageBuilder
+		2 VERS 3.1
+	1 GEDC
+		2 VERS 5.5.1
+		2 FORM LINEAGE-LINKED
+	1 CHAR UTF-8
+	1 NOTE Tabs for the first two levels and eight spaces beyond, which is what a
+		2 CONT file looks like once two programs with different habits have edited it.
+		2 CONT A tab here stands for eight columns, and nothing in the file says so.
+0 @I1@ INDI
+	1 NAME Harriet Mae /Ashworth/
+		2 GIVN Harriet Mae
+		2 SURN Ashworth
+	1 SEX F
+	1 BIRT
+		2 DATE 3 APR 1889
+		2 PLAC Whitby, Yorkshire, England
+	1 OCCU Lighthouse keeper
+		2 PLAC Whitby, Yorkshire, England
+	1 RESI
+		2 ADDR
+		        3 CITY Whitby
+		        3 STAE Yorkshire
+		        3 CTRY England
+	1 OBJE
+		2 FORM image/jpeg
+		2 FILE https://upload.wikimedia.org/wikipedia/commons/8/8a/Whitby_Abbey_2007.jpg
+		2 TITL Whitby Abbey, near the family home
+	1 OBJE
+		2 FORM text/html
+		2 FILE https://commons.wikimedia.org/wiki/Category:Whitby
+	1 FAMS @F1@
+	1 CHAN
+		2 DATE 14 FEB 1998
+		        3 TIME 09:22:41
+0 @I2@ INDI
+	1 NAME Albert /Ashworth/
+	1 SEX M
+	1 FAMS @F1@
+0 @F1@ FAM
+	1 HUSB @I2@
+	1 WIFE @I1@
+	1 MARR
+		2 DATE 8 SEP 1912
+0 TRLR

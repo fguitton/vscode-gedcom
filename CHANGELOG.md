@@ -3,6 +3,39 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Indented files are read as first-class.** The specification puts the level
+  number first on the line with nothing before it, but plenty of exporters
+  indent anyway to show the hierarchy, and such a file is now lexed,
+  highlighted, folded and validated exactly as a flat one is. `detectIndentation`
+  reports the habit — spaces, tabs or both, the width per level, and any line
+  that departs from it.
+
+  A tab's width is the only thing a file cannot state. Where tabs and spaces are
+  mixed it is solved by search over the widths anything has ever defaulted to,
+  because the direct calculation needs a space-only line at the same level to
+  measure against and a file whose first levels are tabs never provides one.
+
+- Five `fixtures/style/` files carrying the same family tree at one, two and four
+  spaces per level, at tabs, and at tabs-then-spaces.
+
+### Fixed
+
+- **A media object written inline was reported as a broken pointer.** GEDCOM
+  5.5.1 lets `OBJE`, among others, be written either as a pointer or with the
+  record's substructures in place of the payload, and the second form is common
+  in real files. Only the payload-less form is exempt: `1 ASSO @I1@ df` is still
+  wrong however many substructures follow it.
+
+### Changed
+
+- The Details panel names a media object by its own title rather than by its tag,
+  and says what kind of file it is; a residence with an address but no place now
+  shows the address instead of the word "recorded".
+
 ## [0.5.2]
 
 Tooling and documentation only — nothing in the extension itself changed.
