@@ -124,13 +124,27 @@ jobs:
       # Before the Marketplace, so a packaging mistake is caught while it is
       # still retractable. A GitHub Release can be deleted; a Marketplace version
       # number can never be reused.
+      #
+      # Written to be re-runnable. The whole point of skipping the Marketplace
+      # when the token is missing is that the job can be run again once it is
+      # there — and `gh release create` refuses outright if the release already
+      # exists, so a first attempt made re-running impossible. Which is exactly
+      # what happened.
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "gedcom-$VERSION.vsix" \
-            --title "$VERSION" \
-            --notes-file release-notes.md
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME exists; updating it."
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "$VERSION" \
+              --notes-file release-notes.md
+            gh release upload "$GITHUB_REF_NAME" "gedcom-$VERSION.vsix" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "gedcom-$VERSION.vsix" \
+              --title "$VERSION" \
+              --notes-file release-notes.md
+          fi
 
       - name: Marketplace
         if: ${{ env.VSCE_PAT != '' }}
