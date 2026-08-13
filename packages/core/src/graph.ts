@@ -75,7 +75,13 @@ export interface PositionedNode extends GraphNode {
 }
 
 export interface Graph {
+  /** The record the cursor is in. Not always drawn: a family never is. */
   readonly focus: string | null;
+  /**
+   * The nodes to highlight. Usually just the focus, but the cursor sitting in a
+   * family highlights everyone in it, since the family itself has no box.
+   */
+  readonly focused: readonly string[];
   readonly nodes: PositionedNode[];
   readonly edges: GraphEdge[];
   /** Nodes omitted because the neighbourhood was truncated, by node. */
@@ -86,6 +92,7 @@ export interface Graph {
 
 const EMPTY: Graph = {
   focus: null,
+  focused: [],
   nodes: [],
   edges: [],
   elided: new Map(),
@@ -264,32 +271,20 @@ function references(analysis: Analysis, model: ReturnType<typeof modelFor>): Map
 }
 
 /**
- * A family shown as itself, because the reader is looking at one.
+ * The people a family record is about, and which generation each sits in.
  *
- * The collapse is right for families being travelled *through* and wrong for the
- * family under the cursor: there, the record is the subject, and its members are
- * what the reader wants arranged around it.
+ * A `FAM` is never drawn, not even when it is the record under the cursor. It is
+ * a join, not a person: it has no name, no dates, and nothing to say that its
+ * members do not say better. Putting the cursor in one asks to see *that family*,
+ * and a family is a couple joined by a marriage bar with their children beside
+ * them — which is exactly what the person graph already draws.
  */
-function familyLinks(family: Structure): Link[] {
-  const links: Link[] = [];
-  const role = (tag: string, label: string, reverse: string, step: number): void => {
-    for (const xref of pointers(family, tag)) {
-      links.push({
-        to: xref,
-        kind: 'parent',
-        label,
-        reverseLabel: reverse,
-        step,
-        line: family.span.line,
-      });
-    }
-  };
-
-  // The couple sit level with the family; their children a generation below.
-  role('HUSB', 'Husband', 'Family spouse', 0);
-  role('WIFE', 'Wife', 'Family spouse', 0);
-  role('CHIL', 'Child', 'Family child', 1);
-  return links;
+function familySeeds(family: Structure): { xref: string; generation: number }[] {
+  return [
+    ...pointers(family, 'HUSB').map((xref) => ({ xref, generation: 0 })),
+    ...pointers(family, 'WIFE').map((xref) => ({ xref, generation: 0 })),
+    ...pointers(family, 'CHIL').map((xref) => ({ xref, generation: 1 })),
+  ];
 }
 
 /**
@@ -343,14 +338,13 @@ export function neighbourhood(
   const family = relationships(analysis);
   const cited = options.includeReferences ? references(analysis, model) : new Map<string, Link[]>();
 
-  const focusIsFamily = focusRecord.tag === 'FAM';
+  // Putting the cursor in a family asks to see that family, so its members are
+  // what the search starts from. The family record itself is never drawn.
+  const seeds = (
+    focusRecord.tag === 'FAM' ? familySeeds(focusRecord) : [{ xref: focusXref, generation: 0 }]
+  ).filter((seed) => analysis.xrefs.definitions.has(seed.xref));
 
-  /**
-   * Members of the family under the cursor, whose relationships to each other
-   * the family node already states. Drawing those as well puts a complete
-   * triangle on top of the star and says nothing the star did not.
-   */
-  const members = new Set(focusIsFamily ? familyLinks(focusRecord).map((link) => link.to) : []);
+  if (seeds.length === 0) return EMPTY;
 
   const direction = options.direction ?? 'both';
 
@@ -367,21 +361,23 @@ export function neighbourhood(
     return direction === 'ancestors' ? link.label === 'Parent' : link.label === 'Child';
   };
 
-  const neighboursOf = (xref: string): Link[] => {
-    if (xref === focusXref && focusIsFamily) return familyLinks(focusRecord);
+  // Families are collapsed away entirely, so one can never appear as a node.
+  const neighboursOf = (xref: string): Link[] =>
+    [...(family.get(xref) ?? []), ...(cited.get(xref) ?? [])].filter(travels);
 
-    // A family that is not the focus has been collapsed away and is never
-    // traversed, so it can never appear as an intermediate node.
-    const links = [...(family.get(xref) ?? []), ...(cited.get(xref) ?? [])].filter(travels);
-    return members.has(xref) ? links.filter((link) => !members.has(link.to)) : links;
-  };
-
-  const distances = new Map<string, number>([[focusXref, 0]]);
+  const distances = new Map<string, number>();
   // Generation runs alongside distance because they answer different questions:
   // distance bounds the search, generation decides which column a person is in.
-  const generations = new Map<string, number>([[focusXref, 0]]);
-  const order: string[] = [focusXref];
+  const generations = new Map<string, number>();
+  const order: string[] = [];
   const elided = new Map<string, number>();
+
+  for (const seed of seeds) {
+    if (distances.has(seed.xref)) continue;
+    distances.set(seed.xref, 0);
+    generations.set(seed.xref, seed.generation);
+    order.push(seed.xref);
+  }
 
   for (let index = 0; index < order.length; index++) {
     const xref = order[index]!;
@@ -443,7 +439,13 @@ export function neighbourhood(
     }
   }
 
-  return { focus: focusXref, ...layout(nodes, edges), edges, elided };
+  return {
+    focus: focusXref,
+    focused: seeds.map((seed) => seed.xref),
+    ...layout(nodes, edges),
+    edges,
+    elided,
+  };
 }
 
 /**

@@ -1,0 +1,146 @@
+/**
+ * The details panel's content.
+ *
+ * Two rules shape all of it. Anything the graph already draws is left out, so
+ * the panel spends its space on what the chart had to discard. And composition
+ * is generic rather than a list of tags we thought of, so a file using something
+ * unanticipated still shows it rather than dropping it silently — which is the
+ * failure nobody notices.
+ */
+
+import { describe, expect, it } from 'vitest';
+
+import { documentDetails, recordDetails, type Details } from '../src/details.ts';
+import { analyze } from '../src/index.ts';
+import { bytes, fixture } from './corpus.ts';
+
+/** Flattens a rendering into `Section/Label` → value, for readable assertions. */
+function fields(details: Details): Record<string, string> {
+  const flat: Record<string, string> = {};
+  for (const section of details.sections) {
+    for (const field of section.fields) flat[`${section.title}/${field.label}`] = field.value;
+  }
+  return flat;
+}
+
+const PERSON = [
+  '0 HEAD',
+  '1 GEDC',
+  '2 VERS 7.0',
+  '1 SUBM @U1@',
+  '1 NOTE Compiled from parish registers.',
+  '0 @U1@ SUBM',
+  '1 NAME Alice Archivist',
+  '1 EMAIL alice@example.org',
+  '0 @I1@ INDI',
+  '1 NAME John /Smith/',
+  '1 SEX M',
+  '1 BIRT',
+  '2 DATE 12 AUG 1901',
+  '2 PLAC Chelsea, London, England',
+  '1 OCCU Blacksmith',
+  '2 PLAC Sheffield',
+  '1 DEAT Y',
+  '2 DATE 3 MAR 1975',
+  '1 FAMS @F1@',
+  '1 NOTE Identified from a photograph.',
+  '1 SOUR @S1@',
+  '2 PAGE page 14',
+  '1 REFN 4471',
+  '0 @I2@ INDI',
+  '1 NAME Jane /Doe/',
+  '1 FAMS @F1@',
+  '0 @F1@ FAM',
+  '1 HUSB @I1@',
+  '1 WIFE @I2@',
+  '0 @S1@ SOUR',
+  '1 TITL Parish register of St Luke',
+  '0 TRLR',
+  '',
+].join('\n');
+
+const analysis = analyze(bytes(PERSON));
+
+describe('a record', () => {
+  const details = recordDetails(analysis, 'I1')!;
+  const flat = fields(details);
+
+  it('is titled by name and says what kind of record it is', () => {
+    expect(details.title).toBe('John Smith');
+    expect(details.subtitle).toBe('Individual');
+  });
+
+  it('reads an event as one line rather than as its parts', () => {
+    // The payload alone is half the fact: an event keeps its detail in
+    // substructures, so it has to be read as a whole to say anything.
+    expect(flat['Facts/Birth']).toBe('12 AUG 1901 · Chelsea, London, England');
+    expect(flat['Facts/Occupation']).toBe('Blacksmith · Sheffield');
+  });
+
+  it('drops the bare Y once there is a real date to show', () => {
+    // `1 DEAT Y` asserts only that it happened, which is noise beside a date.
+    expect(flat['Facts/Death']).toBe('3 MAR 1975');
+  });
+
+  it('leaves out what the graph is already drawing', () => {
+    expect(Object.keys(flat).some((key) => key.includes('Family spouse'))).toBe(false);
+  });
+
+  it('separates notes, sources and identifiers from facts', () => {
+    expect(flat['Notes/Note']).toBe('Identified from a photograph.');
+    expect(flat['Sources/Source']).toBe('Parish register of St Luke · page 14');
+    expect(flat['Identifiers/Reference']).toBe('4471');
+  });
+
+  it('gives each field a line, so the panel can reveal it', () => {
+    for (const section of details.sections) {
+      for (const field of section.fields) expect(field.line).toBeTypeOf('number');
+    }
+  });
+
+  it('has nothing to say about a record that does not exist', () => {
+    expect(recordDetails(analysis, 'NOPE')).toBeUndefined();
+  });
+});
+
+describe('the file', () => {
+  const flat = fields(documentDetails(analysis));
+
+  it('counts what is in it', () => {
+    expect(flat['Contents/Individual']).toBe('2');
+    expect(flat['Contents/Family record']).toBe('1');
+  });
+
+  it('describes the submitter, who is nobody in the family', () => {
+    // A submitter drawn into the graph became a box with no generation and no
+    // relationships, hanging off the side of a tree it has nothing to do with.
+    expect(flat['Submitter/Name']).toBe('Alice Archivist');
+    expect(flat['Submitter/Email']).toBe('alice@example.org');
+  });
+
+  it('carries the header notes', () => {
+    expect(flat['Notes/File note']).toBe('Compiled from parish registers.');
+  });
+});
+
+describe('against Royal92', () => {
+  const royal = analyze(fixture('v5/Royal92.ged').bytes);
+  const flat = fields(documentDetails(royal));
+
+  it('finds a submitter that nothing points at', () => {
+    // PAF-era files carry a SUBM record with no pointer from the header, and
+    // Linguist's own sample is one of them.
+    expect(flat['Submitter/Name']).toBe('Denis R. Reid');
+    expect(flat['Submitter/Address']).toContain('Kimrose Lane');
+  });
+
+  it('keeps a custom tag rather than dropping it silently', () => {
+    // The file's provenance is recorded under a non-standard `COMM`.
+    expect(flat['Submitter/COMM']).toContain('Denis Reid');
+  });
+
+  it('names the program that wrote the file', () => {
+    expect(flat['File/Written by']).toBe('PAF 2.2');
+    expect(flat['File/Character set']).toBe('ANSEL');
+  });
+});

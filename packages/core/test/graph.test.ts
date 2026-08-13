@@ -84,12 +84,31 @@ describe('neighbourhood', () => {
     expect([child.label, child.reverseLabel].sort()).toEqual(['Child', 'Parent']);
   });
 
-  it('shows a family as itself when it is the record being looked at', () => {
-    // Collapsing is right for families travelled *through* and wrong for the one
-    // under the cursor, where the record is the subject.
+  it('draws a family as its people, never as a box of its own', () => {
+    // Putting the cursor in a family asks to see that family — a couple and
+    // their children. The record itself has no name, no dates, and nothing to
+    // say that its members do not say better.
     const graph = neighbourhood(analysis, 'F1', { depth: 1 });
-    expect(graph.nodes.map((n) => n.xref).sort()).toEqual(['F1', 'I1', 'I2', 'I3']);
-    expect(graph.edges.map((e) => e.label).sort()).toEqual(['Child', 'Husband', 'Wife']);
+    expect(graph.nodes.map((n) => n.xref).sort()).toEqual(['I1', 'I2', 'I3']);
+    expect(graph.nodes.some((n) => n.tag === 'FAM')).toBe(false);
+  });
+
+  it('highlights everyone the family is about, since it has no box', () => {
+    const graph = neighbourhood(analysis, 'F1', { depth: 1 });
+    expect(graph.focus).toBe('F1');
+    expect([...graph.focused].sort()).toEqual(['I1', 'I2', 'I3']);
+  });
+
+  it('seats the family in generations rather than all in one column', () => {
+    // The bug this replaced: a family and its spouses all sat at generation
+    // zero, so the edge between them ran backwards and its label fell behind a
+    // box.
+    const graph = neighbourhood(analysis, 'F1', { depth: 1 });
+    const generation = (xref: string) => graph.nodes.find((node) => node.xref === xref)?.generation;
+
+    expect(generation('I1')).toBe(0);
+    expect(generation('I2')).toBe(0);
+    expect(generation('I3')).toBe(1);
   });
 
   it('draws every relationship once', () => {
@@ -132,9 +151,9 @@ describe('neighbourhood', () => {
   });
 
   it('names record types in English', () => {
-    const graph = neighbourhood(analysis, 'F1', { depth: 1 });
+    const graph = neighbourhood(analysis, 'I1', { depth: 1, includeReferences: true });
     expect(graph.nodes.find((n) => n.xref === 'I1')?.kind).toBe('Individual');
-    expect(graph.nodes.find((n) => n.xref === 'F1')?.kind).toBe('Family record');
+    expect(graph.nodes.find((n) => n.xref === 'S1')?.kind).toBe('Source');
     expect(graph.edges.every((edge) => edge.label.length > 0)).toBe(true);
   });
 
@@ -143,8 +162,15 @@ describe('neighbourhood', () => {
     expect(neighbourhood(analysis, 'NOPE').nodes).toEqual([]);
   });
 
+  it('returns nothing for a family whose members are all missing', () => {
+    const orphaned = analyze(
+      bytes('0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @F9@ FAM\n1 HUSB @GONE@\n0 TRLR\n'),
+    );
+    expect(neighbourhood(orphaned, 'F9').nodes).toEqual([]);
+  });
+
   it('caps the neighbourhood and reports what it left out', () => {
-    const graph = neighbourhood(analysis, 'F1', { depth: 5, maxNodes: 2 });
+    const graph = neighbourhood(analysis, 'I1', { depth: 5, maxNodes: 2 });
     expect(graph.nodes.length).toBeLessThanOrEqual(2);
     expect([...graph.elided.values()].reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
   });

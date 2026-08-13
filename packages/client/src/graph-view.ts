@@ -29,12 +29,15 @@ import {
 } from 'vscode';
 import { analyzeText } from '@vscode-gedcom/core';
 import { revealLine } from './commands.ts';
+import { DETAILS_VIEW_ID, GedcomDetailsViewProvider } from './details-view.ts';
+import { SelectionStore } from './selection.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
 
 /** Messages from the webview: a node was clicked, or a control was used. */
 type PanelMessage =
   | { readonly type: 'reveal'; readonly line: number }
+  | { readonly type: 'select'; readonly xref: string }
   | { readonly type: 'direction'; readonly value: Direction };
 
 export class GedcomGraphViewProvider implements WebviewViewProvider {
@@ -47,6 +50,11 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
    * configure once.
    */
   private direction: Direction = 'both';
+  private readonly selection: SelectionStore;
+
+  constructor(selection: SelectionStore) {
+    this.selection = selection;
+  }
 
   resolveWebviewView(
     view: WebviewView,
@@ -59,7 +67,10 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
 
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'reveal') void this.reveal(message.line);
-      else if (message.type === 'direction') {
+      else if (message.type === 'select') {
+        // Recentre on whoever was clicked, without touching the editor.
+        this.selection.set({ uri: this.documentUri, xref: message.xref });
+      } else if (message.type === 'direction') {
         this.direction = message.value;
         this.update(window.activeTextEditor);
       }
@@ -72,7 +83,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     this.update(window.activeTextEditor);
   }
 
-  /** Recomputes and pushes the graph for the editor's current cursor position. */
+  /** Recomputes and pushes the graph for whatever is currently selected. */
   update(editor: TextEditor | undefined): void {
     if (!this.view?.visible) return;
 
@@ -85,7 +96,14 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     this.documentUri = editor.document.uri;
 
     const analysis = analyzeText(editor.document.getText());
-    const focus = recordAt(analysis, editor.selection.active.line);
+    const chosen = this.selection.current;
+    // A selection made in the panel wins over the cursor until the cursor moves,
+    // which is what lets a reader walk the tree without losing their place.
+    const focus =
+      chosen.uri?.toString() === editor.document.uri.toString() && chosen.xref !== null
+        ? chosen.xref
+        : recordAt(analysis, editor.selection.active.line);
+
     const configuration = workspace.getConfiguration('gedcom');
     const graph = neighbourhood(analysis, focus, {
       depth: configuration.get<number>('graph.depth', 2),
@@ -212,8 +230,16 @@ function shell(): string {
     font-family: var(--vscode-editor-font-family, monospace);
   }
   .node { cursor: pointer; }
-  .node:hover rect { stroke: var(--vscode-focusBorder); }
-  .node:focus-visible rect { stroke: var(--vscode-focusBorder); stroke-width: 2; }
+  .node > rect:first-of-type:hover, .node:hover > rect:first-of-type { stroke: var(--vscode-focusBorder); }
+  .node:focus-visible > rect:first-of-type { stroke: var(--vscode-focusBorder); stroke-width: 2; }
+  /* Revealed on hover or focus: an arrow on every box at rest would be a column
+     of chrome competing with the names. */
+  .goto rect { fill: transparent; stroke: none; opacity: 0; }
+  .goto .arrow { stroke: var(--vscode-descriptionForeground); stroke-width: 1.2; opacity: 0; }
+  .node:hover .goto rect, .node:focus-within .goto rect { opacity: .6; fill: var(--vscode-toolbar-hoverBackground); }
+  .node:hover .goto .arrow, .node:focus-within .goto .arrow { opacity: 1; }
+  .goto:hover .arrow { stroke: var(--vscode-foreground); }
+  .goto:focus-visible rect { opacity: 1; stroke: var(--vscode-focusBorder); }
   .elided { fill: var(--vscode-descriptionForeground); font-size: 9px; }
 </style>
 </head>
@@ -320,6 +346,32 @@ function shell(): string {
       const b = byXref.get(edge.to);
       if (!a || !b) continue;
 
+      // Siblings and citations cross no generation, so they can land in the same
+      // column too. Drawn as a left-to-right curve such an edge doubles back on
+      // itself and its label falls behind a box; it is routed down the side of
+      // the column instead, the way a marriage bar is.
+      if (a.x === b.x) {
+        const top = a.y <= b.y ? a : b;
+        const bottom = a.y <= b.y ? b : a;
+        const x = top.x;
+        const bulge = x - 14;
+        const y1 = top.y + NODE_HEIGHT / 2;
+        const y2 = bottom.y + NODE_HEIGHT / 2;
+
+        svg.appendChild(
+          el('path', {
+            class: 'edge',
+            d:
+              'M ' + x + ' ' + y1 +
+              ' C ' + bulge + ' ' + y1 + ', ' + bulge + ' ' + y2 + ', ' + x + ' ' + y2,
+            fill: 'none',
+          }),
+        );
+
+        labelled.push({ text: edge.label, x: bulge, y: (y1 + y2) / 2 });
+        continue;
+      }
+
       // Always draw left to right, whichever way the pointer happens to be
       // written. A relationship recorded from the far end would otherwise loop
       // backwards across the columns for no reason the reader can see.
@@ -361,16 +413,98 @@ function shell(): string {
       if (label) labelled.push({ text: label, x: mid, y: (y1 + y2) / 2 });
     }
 
-    // Labels after every curve, so no edge is drawn across one, and nudged apart
-    // where two would otherwise sit on the same spot.
+    for (const node of graph.nodes) {
+      const group = el('g', {
+        // A family has no box of its own, so putting the cursor in one
+        // highlights everybody it is about instead.
+        class: 'node' + ((graph.focused || []).indexOf(node.xref) >= 0 ? ' focus' : ''),
+        transform: 'translate(' + node.x + ',' + node.y + ')',
+        tabindex: '0',
+        role: 'button',
+        'aria-label': node.kind + ': ' + node.label + ', ' + node.detail,
+      });
+
+      group.appendChild(el('rect', { width: NODE_WIDTH, height: NODE_HEIGHT }));
+      group.appendChild(el('text', { class: 'label', x: 8, y: 17 }, truncate(node.label, 24)));
+
+      // Dates rather than the record type. A tree full of people sharing a name
+      // is unreadable without them, and "Individual" on every box says nothing
+      // that the shape of the graph has not already said.
+      group.appendChild(el('text', { class: 'tag', x: 8, y: 31 }, truncate(node.detail, 26)));
+
+      // Clicking selects: it recentres the graph and fills the details panel,
+      // and leaves the editor where it is. Reading down a line of descent means
+      // looking at a dozen people in a row, and jumping the editor to each in
+      // turn loses the reader's place in the file for nothing.
+      const select = () => vscode.postMessage({ type: 'select', xref: node.xref });
+      group.addEventListener('click', select);
+      group.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          select();
+        }
+      });
+
+      // Navigation is its own gesture, on its own button.
+      const goTo = el('g', {
+        class: 'goto',
+        transform: 'translate(' + (NODE_WIDTH - 20) + ',6)',
+        tabindex: '0',
+        role: 'button',
+        'aria-label': 'Go to @' + node.xref + '@ in the editor',
+      });
+      goTo.appendChild(el('rect', { width: 14, height: 14, rx: 2 }));
+      goTo.appendChild(
+        el('path', {
+          class: 'arrow',
+          d: 'M 4.5 9.5 L 9.5 4.5 M 5.5 4.5 L 9.5 4.5 L 9.5 8.5',
+          fill: 'none',
+        }),
+      );
+
+      const reveal = (event) => {
+        event.stopPropagation();
+        vscode.postMessage({ type: 'reveal', line: node.line });
+      };
+      goTo.addEventListener('click', reveal);
+      goTo.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          reveal(event);
+        }
+      });
+      group.appendChild(goTo);
+
+      const elided = (graph.elided || []).find((entry) => entry[0] === node.xref);
+      if (elided) {
+        group.appendChild(
+          el('text', { class: 'elided', x: NODE_WIDTH - 8, y: 31, 'text-anchor': 'end' }, '+' + elided[1]),
+        );
+      }
+
+      svg.appendChild(group);
+    }
+
+    // Labels last of all.
+    //
+    // Drawn before the boxes they were painted over by them, which is how a
+    // marriage year came to be half hidden behind the spouse below it. A label
+    // is the smallest thing on the drawing and the first thing to become
+    // useless when partly covered, so it goes on top of everything.
     const occupied = [];
     for (const label of labelled) {
       let y = label.y;
-      while (occupied.some((taken) => Math.abs(taken - y) < LABEL_HEIGHT)) y += LABEL_HEIGHT;
-      occupied.push(y);
+      // Only a label close in *both* directions is in the way; comparing y alone
+      // pushed labels apart that were nowhere near each other horizontally.
+      const collides = (candidate) =>
+        occupied.some(
+          (taken) =>
+            Math.abs(taken.y - candidate) < LABEL_HEIGHT && Math.abs(taken.x - label.x) < 90,
+        );
+      while (collides(y)) y += LABEL_HEIGHT;
+      occupied.push({ x: label.x, y: y });
 
       const group = el('g', { class: 'edge-label' });
-      const text = el('text', { x: label.x, y: y + 3, 'text-anchor': 'middle' }, label.text);
 
       // A backing plate, because a label sitting on a bundle of curves is
       // unreadable however it is coloured. Sized from the text, since SVG has no
@@ -386,43 +520,7 @@ function shell(): string {
           rx: 2,
         }),
       );
-      group.appendChild(text);
-      svg.appendChild(group);
-    }
-
-    for (const node of graph.nodes) {
-      const group = el('g', {
-        class: 'node' + (node.xref === graph.focus ? ' focus' : ''),
-        transform: 'translate(' + node.x + ',' + node.y + ')',
-        tabindex: '0',
-        role: 'button',
-        'aria-label': node.kind + ': ' + node.label + ', ' + node.detail,
-      });
-
-      group.appendChild(el('rect', { width: NODE_WIDTH, height: NODE_HEIGHT }));
-      group.appendChild(el('text', { class: 'label', x: 8, y: 17 }, truncate(node.label, 24)));
-
-      // Dates rather than the record type. A tree full of people sharing a name
-      // is unreadable without them, and "Individual" on every box says nothing
-      // that the shape of the graph has not already said.
-      group.appendChild(el('text', { class: 'tag', x: 8, y: 31 }, truncate(node.detail, 26)));
-
-      const reveal = () => vscode.postMessage({ type: 'reveal', line: node.line });
-      group.addEventListener('click', reveal);
-      group.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          reveal();
-        }
-      });
-
-      const elided = (graph.elided || []).find((entry) => entry[0] === node.xref);
-      if (elided) {
-        group.appendChild(
-          el('text', { class: 'elided', x: NODE_WIDTH - 8, y: 31, 'text-anchor': 'end' }, '+' + elided[1]),
-        );
-      }
-
+      group.appendChild(el('text', { x: label.x, y: y + 3, 'text-anchor': 'middle' }, label.text));
       svg.appendChild(group);
     }
   }
@@ -459,11 +557,36 @@ function shell(): string {
 </html>`;
 }
 
-/** Wires the panel to the editor, in whichever host is running. */
+/** Wires both panels to the editor, in whichever host is running. */
 export function registerGraphView(context: ExtensionContext): void {
-  const provider = new GedcomGraphViewProvider();
+  const selection = new SelectionStore();
+  const provider = new GedcomGraphViewProvider(selection);
+  const details = new GedcomDetailsViewProvider(selection);
+
+  /** The cursor moving is a selection too, and it overrides a panel click. */
+  const followCursor = (editor: TextEditor | undefined): void => {
+    if (!editor || editor.document.languageId !== 'gedcom') {
+      selection.set({ uri: undefined, xref: null });
+    } else {
+      const analysis = analyzeText(editor.document.getText());
+      selection.set({
+        uri: editor.document.uri,
+        xref: recordAt(analysis, editor.selection.active.line),
+      });
+    }
+    provider.update(editor);
+    details.refresh();
+  };
 
   context.subscriptions.push(
+    selection,
+    selection.onDidChange(() => {
+      provider.update(window.activeTextEditor);
+      details.refresh();
+    }),
+    window.registerWebviewViewProvider(DETAILS_VIEW_ID, details, {
+      webviewOptions: { retainContextWhenHidden: false },
+    }),
     // A panel view behind a `when` clause is close to undiscoverable: it appears
     // as one more tab beside Terminal and Output, only once a GEDCOM file happens
     // to be focused. An explicit command in the palette and a button on the
@@ -482,11 +605,16 @@ export function registerGraphView(context: ExtensionContext): void {
       // worth the memory cost of keeping it alive while hidden.
       webviewOptions: { retainContextWhenHidden: false },
     }),
-    window.onDidChangeActiveTextEditor((editor) => provider.update(editor)),
-    window.onDidChangeTextEditorSelection((event) => provider.update(event.textEditor)),
+    window.onDidChangeActiveTextEditor(followCursor),
+    window.onDidChangeTextEditorSelection((event) => followCursor(event.textEditor)),
     workspace.onDidChangeTextDocument((event) => {
       const editor = window.activeTextEditor;
-      if (editor && event.document === editor.document) provider.update(editor);
+      if (editor && event.document === editor.document) {
+        provider.update(editor);
+        details.refresh();
+      }
     }),
   );
+
+  followCursor(window.activeTextEditor);
 }

@@ -48,10 +48,38 @@ column with boxes that answered no question anyone had asked.
 - Sources, notes and media are left out unless `gedcom.graph.includeReferences`
   asks for them: a well-sourced person cites dozens, and they crowd out the
   family the panel exists to show.
+- **A family is never drawn as a box**, not even when it is the record under the
+  cursor. It is a join, not a person: no name, no dates, nothing to say that its
+  members do not say better. Putting the cursor in one shows that family — the
+  couple and their children — and highlights all of them.
 - Edges run left to right whichever way the pointer is written, and labels are
-  placed after the curves with a backing plate, nudged apart where two would
-  collide. The gutter between columns was widened so a label such as
-  `Married 1874` fits in it rather than being drawn over the boxes.
+  placed with a backing plate, nudged apart where two would collide. The gutter
+  between columns was widened so a label such as `Married 1874` fits in it, and
+  labels are drawn **after** the boxes: painted before them, a marriage year
+  ended up half hidden behind the spouse below it.
+- Relationships that cross no generation — siblings, citations, and a couple —
+  are routed down the side of their column. Drawn as a left-to-right curve such
+  an edge doubled back on itself and dropped its label behind a box.
+
+### The details panel
+
+A second view in the same **GEDCOM** panel, for everything the graph has to
+discard in order to stay readable.
+
+- **Selecting a person shows what they actually contain**: occupation,
+  residence, the place they were born, notes, citations, identifiers — composed
+  generically from the registry, so a tag nobody anticipated appears rather than
+  being dropped silently. Every field jumps to its line when clicked.
+- **With nothing selected it describes the file**: the program that wrote it,
+  the character set, the counts, and the submitter with their address and notes.
+  None of that is a person or a family, and drawn into the graph the submitter
+  became a box with no generation and no relationships. An unreferenced `SUBM`
+  is found too — PAF-era files carry one that the header never points at, and
+  Linguist's own `Royal92.ged` is one of them.
+- **Clicking a box in the graph now selects rather than navigates.** Reading down
+  a line of descent means looking at a dozen people in turn, and jumping the
+  editor to each one loses the reader's place in the file for no benefit.
+  Navigation is its own gesture, on a button that appears on the box.
 
 ### Added
 

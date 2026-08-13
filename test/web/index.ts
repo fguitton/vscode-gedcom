@@ -172,11 +172,12 @@ suite('the language server in a nested worker', () => {
 });
 
 suite('the graph panel under the web content security policy', () => {
-  test('the view is contributed and can be focused', async () => {
+  test('the views are contributed and can be focused', async () => {
     await open(TREE);
-    // The panel's HTML is inline behind a nonce. A CSP violation would fail here
-    // and nowhere else, because the Node host serves the same page more leniently.
+    // Their HTML is inline behind a nonce. A CSP violation would fail here and
+    // nowhere else, because the Node host serves the same page more leniently.
     await vscode.commands.executeCommand('gedcom.graph.focus');
+    await vscode.commands.executeCommand('gedcom.details.focus');
   });
 
   test('the commands are registered', async () => {

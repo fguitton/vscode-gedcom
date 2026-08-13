@@ -130,6 +130,14 @@ describe('graph panel', () => {
   });
 });
 
+describe('details panel', () => {
+  it('the view is contributed and can be focused', async () => {
+    await openFixture(SAMPLE);
+    // Throws if the view is not registered by the manifest.
+    await vscode.commands.executeCommand('gedcom.details.focus');
+  });
+});
+
 describe('discoverability', () => {
   it('contributes a Show Graph command', async () => {
     const all = await vscode.commands.getCommands(true);

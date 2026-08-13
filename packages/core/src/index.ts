@@ -57,6 +57,9 @@ export type { Statistics } from './stats.ts';
 export { describePayloadType } from './payload.ts';
 export type { PayloadDescription } from './payload.ts';
 
+export { recordDetails, documentDetails } from './details.ts';
+export type { Details, DetailSection, DetailField } from './details.ts';
+
 export { neighbourhood, recordAt } from './graph.ts';
 export type {
   Direction,

@@ -34,7 +34,11 @@ here exists to remove a reason to leave the line you are reading.
 - **A graph panel** drawing the family rather than the file. GEDCOM stores a
   marriage as a `FAM` record that everyone points at; the panel joins those out,
   so nodes are people, columns are generations, couples are joined by a marriage
-  bar and their children descend from it.
+  bar and their children descend from it. Clicking a box selects that person;
+  a button on it goes to their record.
+- **A details panel** beside it, carrying what the graph has to discard to stay
+  readable: occupations, places, notes, citations. With nothing selected it
+  describes the file itself — who submitted it, what wrote it, what is in it.
 - **Go to definition, find references, rename** across every pointer at once,
   **outline**, **completion**, and **folding by level number** — GEDCOM lines all
   start at column zero, so indentation-based folding does nothing for them.
