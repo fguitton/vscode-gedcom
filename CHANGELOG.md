@@ -3,6 +3,61 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.2]
+
+Tooling and documentation only — nothing in the extension itself changed.
+
+`0.5.1` was tagged and never shipped: the manifest was left at `0.5.0`, so the
+release workflow's version guard refused it, which is precisely what that guard
+is for.
+
+### Fixed
+
+- **The release workflow could not be re-run.** It skips the Marketplace when
+  `VSCE_PAT` is absent and tells you to add the secret and run it again — but
+  `gh release create` fails outright once the release exists, so the advice was
+  impossible to follow. An existing release is now updated in place.
+- `dist/preview/` no longer ships in the VSIX. It only exists once somebody has
+  run `vp run preview`, so the extension gained 40 kB of developer artifact on
+  some machines and not others.
+- **The README badges were dead.** shields.io has retired its entire
+  `visual-studio-marketplace` family — version, installs, downloads and rating
+  all answer "retired badge". They are replaced by a static Marketplace link
+  plus release, build and licence, none of which can rot.
+
+  The obvious substitute, `vsmarketplacebadges.dev`, works and was rejected: the
+  Marketplace renders images only from an allowlist of hosts, so those badges
+  would have looked right on GitHub and broken on the listing itself. Losing
+  version, installs and rating costs nothing there, since the Marketplace page
+  already shows all three.
+
+### Changed
+
+- Developer guidance moved from `README.md` to `CONTRIBUTING.md`. The README is
+  the Marketplace listing, so build instructions and package layout were being
+  shown to every prospective user.
+
+### Testing
+
+- **GitHub's rendering is now checked against GitHub's rendering.** The Primer
+  panel in `vp run preview` was a palette written from memory, which made the
+  central claim of the colour design — that the semantic classes stay distinct
+  where the palette is narrowest — one nobody could verify. It now runs the
+  committed grammar through [`starry-night`](https://github.com/wooorm/starry-night),
+  the open reimplementation of GitHub's highlighter, coloured from the tokens
+  `@primer/primitives` publishes.
+
+  It found two things the approximation was hiding. `markup.quote` and
+  `entity.name.tag` both resolve to `pl-ent`, so **a citation and a name are the
+  same colour on github.com**; and `variable.other` resolves to `pl-smi`, whose
+  colour is Primer's own foreground, so **linkage tags are indistinguishable
+  from ordinary text there**. Six semantic classes come out as four colours in
+  light and five in dark, not six. All of it is recorded in
+  `packages/grammar/test/prettylights.test.ts` rather than assumed away.
+
+  It also confirms the new payload-shape rules arrive as `pl-ii`, the class
+  GitHub paints as invalid, rather than as ordinary text.
+
 ## [0.5.0]
 
 The theme of this release is that a GEDCOM file is mostly opaque identifiers and
@@ -221,25 +276,6 @@ discard in order to stay readable.
   slug for `CENS` inside an `INDI` is `INDI-CENS`.
 
 ### Testing
-
-- **GitHub's rendering is now checked against GitHub's rendering.** The Primer
-  panel in `vp run preview` was a palette written from memory, which made the
-  central claim of the colour design — that the semantic classes stay distinct
-  where the palette is narrowest — one nobody could verify. It now runs the
-  committed grammar through [`starry-night`](https://github.com/wooorm/starry-night),
-  the open reimplementation of GitHub's highlighter, coloured from the tokens
-  `@primer/primitives` publishes.
-
-  It found two things the approximation was hiding. `markup.quote` and
-  `entity.name.tag` both resolve to `pl-ent`, so **a citation and a name are the
-  same colour on github.com**; and `variable.other` resolves to `pl-smi`, whose
-  colour is Primer's own foreground, so **linkage tags are indistinguishable
-  from ordinary text there**. Six semantic classes come out as four colours in
-  light and five in dark, not six. All of it is recorded in
-  `packages/grammar/test/prettylights.test.ts` rather than assumed away.
-
-  It also confirms the new payload-shape rules arrive as `pl-ii`, the class
-  GitHub paints as invalid, rather than as ordinary text.
 
 - **Integration tests in the web extension host**, headless via
   `@vscode/test-web` (`vp run test:web`), covering activation in the worker, the
