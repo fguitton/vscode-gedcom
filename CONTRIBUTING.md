@@ -115,12 +115,29 @@ This repository is vendored into
 whatever grammar Linguist last vendored. A grammar change therefore reaches
 GitHub only through a pull request there that bumps the submodule.
 
-`vp run preview` renders the grammar through an approximation of GitHub's
-PrettyLights palette alongside Dark+ and Light+, which is as close as the
-rendering can be checked without deploying — there is no way to preview a
-branch's grammar on github.com itself. That palette is the one that matters:
-Primer separates far fewer scope roots than a VS Code theme, so two classes can
-look distinct locally and identical on github.com.
+`vp run preview` renders the grammar four ways: Dark+ and Light+ for VS Code,
+and **GitHub's real rendering** in light and dark.
+
+The GitHub panels are not an approximation. github.com highlights server-side
+and sends HTML already marked up with PrettyLights classes — `pl-k`, `pl-s`,
+`pl-ent` — which Primer's CSS colours; the highlighter itself has never been
+open source. But both halves are obtainable:
+
+- [`@wooorm/starry-night`](https://github.com/wooorm/starry-night) is an open
+  reimplementation of it, built on the same `vscode-textmate` and
+  `vscode-oniguruma` this repository already uses. It takes the committed
+  grammar as it stands.
+- `@primer/primitives` publishes the palette, and starry-night ships the rules
+  mapping each class to a colour from it.
+
+`packages/grammar/test/prettylights.test.ts` asserts against that rather than
+against a palette written from memory — which matters, because Primer separates
+far fewer buckets than a VS Code theme and the collapses only show up there. It
+records exactly which semantic classes GitHub cannot tell apart.
+
+This is still a reimplementation and could drift from GitHub's service. There is
+no way to preview a branch's grammar on github.com itself; the rendering only
+changes once a Linguist pull request bumps the submodule.
 
 `scopeName` must stay `source.gedcom` and the language id `459577965`. Both are
 fixed by Linguist's `grammars.yml` and `languages.yml`, and changing either

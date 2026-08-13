@@ -27,6 +27,7 @@ const repoRoot = join(here, '..', '..', '..');
 const grammarPath = join(repoRoot, 'syntaxes', 'gedcom.tmLanguage.json');
 const outputPath = join(repoRoot, 'dist', 'preview', 'index.html');
 
+import { highlight, palette } from '../src/prettylights.ts';
 import { resolve, THEMES } from '../src/themes.ts';
 
 const escapeHtml = (text: string) =>
@@ -109,6 +110,31 @@ async function main(): Promise<void> {
     </section>`;
   });
 
+  // The real thing, rather than an approximation of it: GitHub's own classes
+  // from its own highlighter, coloured by GitHub's own published palette.
+  const github = await Promise.all(
+    (['light', 'dark'] as const).map(async (theme) => {
+      const colours = palette(theme);
+      const runs = await highlight(SAMPLE);
+
+      let html = '';
+      for (const run of runs) {
+        const text = escapeHtml(run.text);
+        if (run.classes.length === 0) {
+          html += text;
+          continue;
+        }
+        const title = escapeHtml(run.classes.join(' '));
+        html += `<span style="color:${colours.colourOf(run.classes)}" title="${title}">${text}</span>`;
+      }
+
+      return `<section>
+      <h2>GitHub PrettyLights (${theme}) — starry-night + @primer/primitives</h2>
+      <pre style="background:${colours.background};color:${colours.foreground}">${html}</pre>
+    </section>`;
+    }),
+  );
+
   const page = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>GEDCOM colour preview</title>
 <style>
@@ -124,16 +150,20 @@ async function main(): Promise<void> {
 <body>
 <h1>GEDCOM colour preview</h1>
 <p>The same sample tokenized by <code>syntaxes/gedcom.tmLanguage.json</code> and resolved against
-each theme's own rules. Hover any token to see the scope it resolved to. The third panel
-approximates GitHub's PrettyLights palette, which has fewer buckets than a VS Code theme — if two
-semantic classes look alike there, they will look alike on github.com.</p>
+each theme's own rules. Hover any token to see what it resolved to.</p>
+<p>The last two panels are <strong>not approximations</strong>. They run this grammar through
+<code>@wooorm/starry-night</code>, the open reimplementation of GitHub's highlighter, and colour the
+result with the PrettyLights palette published in <code>@primer/primitives</code> — so both the
+classes and the colours are GitHub's own. Primer separates far fewer buckets than a VS Code theme,
+so two semantic classes that look alike there will look alike on github.com.</p>
 ${panels.join('\n')}
+${github.join('\n')}
 </body></html>`;
 
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, page, 'utf8');
   console.log(`Wrote ${outputPath}`);
-  console.log(`  ${THEMES.length} themes, ${SAMPLE.split('\n').length} lines`);
+  console.log(`  ${panels.length + github.length} panels, ${SAMPLE.split('\n').length} lines`);
 }
 
 await main();

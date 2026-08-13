@@ -222,6 +222,25 @@ discard in order to stay readable.
 
 ### Testing
 
+- **GitHub's rendering is now checked against GitHub's rendering.** The Primer
+  panel in `vp run preview` was a palette written from memory, which made the
+  central claim of the colour design — that the semantic classes stay distinct
+  where the palette is narrowest — one nobody could verify. It now runs the
+  committed grammar through [`starry-night`](https://github.com/wooorm/starry-night),
+  the open reimplementation of GitHub's highlighter, coloured from the tokens
+  `@primer/primitives` publishes.
+
+  It found two things the approximation was hiding. `markup.quote` and
+  `entity.name.tag` both resolve to `pl-ent`, so **a citation and a name are the
+  same colour on github.com**; and `variable.other` resolves to `pl-smi`, whose
+  colour is Primer's own foreground, so **linkage tags are indistinguishable
+  from ordinary text there**. Six semantic classes come out as four colours in
+  light and five in dark, not six. All of it is recorded in
+  `packages/grammar/test/prettylights.test.ts` rather than assumed away.
+
+  It also confirms the new payload-shape rules arrive as `pl-ii`, the class
+  GitHub paints as invalid, rather than as ordinary text.
+
 - **Integration tests in the web extension host**, headless via
   `@vscode/test-web` (`vp run test:web`), covering activation in the worker, the
   language server answering from a nested worker, and the graph panel resolving

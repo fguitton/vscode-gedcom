@@ -71,26 +71,11 @@ export const THEMES: Theme[] = [
       { scope: 'invalid', settings: { foreground: '#cd3131' } },
     ],
   },
-  {
-    // The one that matters for GitHub. PrettyLights has far fewer buckets than a
-    // VS Code theme, which is the constraint the scope mapping was designed
-    // against — two classes collapsing here would be invisible on github.com.
-    name: 'GitHub Primer (dark) — approximates PrettyLights',
-    background: '#0d1117',
-    foreground: '#e6edf3',
-    rules: [
-      { scope: 'comment', settings: { foreground: '#8b949e' } },
-      { scope: 'keyword', settings: { foreground: '#ff7b72' } },
-      { scope: 'constant', settings: { foreground: '#79c0ff' } },
-      { scope: 'support', settings: { foreground: '#79c0ff' } },
-      { scope: 'entity.name.tag', settings: { foreground: '#7ee787' } },
-      { scope: 'entity', settings: { foreground: '#d2a8ff' } },
-      { scope: 'variable', settings: { foreground: '#ffa657' } },
-      { scope: 'string', settings: { foreground: '#a5d6ff' } },
-      { scope: 'markup.quote', settings: { foreground: '#a5d6ff' } },
-      { scope: 'invalid', settings: { foreground: '#f85149' } },
-    ],
-  },
+  // GitHub used to be approximated here, by a palette written from memory. It is
+  // now taken from the real thing instead — see prettylights.ts, which runs the
+  // grammar through GitHub's own highlighter and colours it from GitHub's own
+  // published tokens. The approximation flattered the design: it showed six
+  // distinct colours where the real palette gives four.
 ];
 
 /**

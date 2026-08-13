@@ -1,13 +1,14 @@
 /**
- * The colour design, checked against real theme palettes.
+ * The colour design, checked against the VS Code themes.
  *
  * The scope mapping makes a claim that scope names alone cannot verify: that the
  * semantic classes come out *visibly different* in the themes people actually
- * use. A mapping can be impeccable and still collapse to one colour, and the
- * narrower the palette the likelier that is — which is why GitHub's Primer, the
- * narrowest of the three, is the one that matters most here.
+ * use. A mapping can be impeccable and still collapse to one colour.
  *
- * `vp run preview` renders the same data as a page to look at.
+ * GitHub is checked separately, in `prettylights.test.ts`, against its real
+ * highlighter rather than a palette written from memory — which is where the
+ * narrow-palette collapses actually show up. `vp run preview` renders both as a
+ * page to look at.
  */
 
 import { describe, expect, it } from 'vitest';

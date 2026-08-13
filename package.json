@@ -41,11 +41,13 @@
     "check": "vp check"
   },
   "devDependencies": {
+    "@primer/primitives": "^11.10.0",
     "@types/node": "^26.2.0",
     "@types/vscode": "~1.91.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/test-web": "^0.0.81",
+    "@wooorm/starry-night": "^3.10.0",
     "tsdown": "^0.22.14",
     "vite-plus": "^0.2.9",
     "vscode-languageclient": "^10.1.0",
