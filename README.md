@@ -107,6 +107,37 @@ loads the current sources. The extension host executes the bundles in `dist/`
 rather than the TypeScript, so a launch without that rebuild looks exactly like
 a code change having had no effect.
 
+### Releasing
+
+Bump `version` in `package.json`, write the `## [x.y.z]` section in
+`CHANGELOG.md`, then tag:
+
+```bash
+git tag -a v0.5.0 -m "0.5.0" && git push origin v0.5.0
+```
+
+The tag triggers `.github/workflows/release.yml`, which refuses to proceed
+unless the tag, the manifest and the changelog agree, runs the whole gate again
+against the tagged commit, attaches the VSIX to a GitHub Release with the
+changelog entry as its notes, and publishes to the Marketplace.
+
+Publishing needs a `VSCE_PAT` repository secret — an Azure DevOps token for the
+`florianguitton` publisher, scoped to Marketplace → Manage. Without it the
+release is still made and the VSIX attached; only the upload is skipped.
+
+### Updating GitHub's rendering
+
+This repository is vendored into
+[Linguist](https://github.com/github-linguist/linguist) as
+`vendor/grammars/vscode-gedcom`, and github.com renders `.ged` files with
+whatever grammar Linguist last vendored. A grammar change therefore reaches
+GitHub only through a pull request there that bumps the submodule.
+
+`vp run preview` renders the grammar through an approximation of GitHub's
+PrettyLights palette alongside Dark+ and Light+, which is as close as the
+rendering can be checked without deploying — there is no way to preview a
+branch's grammar on github.com itself.
+
 ### Packages
 
 | Package            | Contents                                                                     |

@@ -1,0 +1,143 @@
+# Publishes a release, triggered by pushing a tag.
+#
+# The tag is the trigger and the source of truth for the version, but it is not
+# trusted: the first job refuses to go on unless the tag, the manifest and the
+# changelog all say the same thing. Tagging the wrong commit, or forgetting to
+# bump the manifest, is the mistake this catches — and it is one that cannot be
+# taken back once the Marketplace has the upload.
+#
+#   git tag -a v0.5.0 -m "0.5.0" && git push origin v0.5.0
+#
+# Requires a repository secret VSCE_PAT: an Azure DevOps personal access token
+# for the `florianguitton` publisher, scoped to Marketplace → Manage. Without it
+# the GitHub Release is still made and the VSIX attached; only the Marketplace
+# upload is skipped, so a missing token costs a re-run rather than a bad release.
+#
+# Everything here runs on the runner's own tooling — `gh` is preinstalled — so
+# publishing depends on no third-party action.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    name: The tag says what the repository says
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: version
+        name: Tag, manifest and changelog agree
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="$(node -p "require('./package.json').version")"
+
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json $manifest."
+            exit 1
+          fi
+
+          # A release with no changelog entry is one nobody can read afterwards.
+          if ! grep -qE "^## \[$manifest\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$manifest]' section."
+            exit 1
+          fi
+
+          echo "version=$manifest" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Verify, package and publish
+    needs: check
+    runs-on: ubuntu-latest
+
+    # At job level so the conditions below can read it. A step's own `env` is
+    # not in scope for that step's `if`, which is evaluated first.
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      VERSION: ${{ needs.check.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+
+      # The same gate as CI, repeated rather than referenced: a release is the
+      # one run where "it passed on the branch" will not do, because the tag may
+      # sit on a commit CI has never seen.
+      - name: Generated artifacts are up to date with the pinned registry
+        run: |
+          npx vp run grammar
+          npx vp run spec
+          git diff --exit-code -- syntaxes/gedcom.tmLanguage.json packages/core/src/spec/model.generated.ts
+
+      - name: Test
+        run: npx vp test
+
+      - name: Lint, format and type-check
+        run: npx vp check
+
+      - name: Bundle both extension hosts
+        run: npx vp run build
+
+      - name: Integration tests in a real VS Code
+        run: xvfb-run -a npx vscode-test
+
+      - name: Integration tests in the web extension host
+        run: |
+          npx playwright install --with-deps chromium
+          npx vscode-test-web --browser=chromium --headless --quality=stable \
+            --extensionDevelopmentPath=. \
+            --extensionTestsPath=./dist/web-tests/index.cjs \
+            fixtures
+
+      - name: Package
+        run: npx --yes @vscode/vsce package --no-git-tag-version --out "gedcom-$VERSION.vsix"
+
+      # The changelog entry, rather than a generated list of commits. It was
+      # written for a reader; the commit log was not.
+      - name: Release notes from the changelog
+        run: |
+          awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]" { inside = 1; next }
+            inside && /^## \[/ { exit }
+            inside { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if [ ! -s release-notes.md ]; then
+            echo "::error::Extracted no release notes for $VERSION."
+            exit 1
+          fi
+
+      # Before the Marketplace, so a packaging mistake is caught while it is
+      # still retractable. A GitHub Release can be deleted; a Marketplace version
+      # number can never be reused.
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "gedcom-$VERSION.vsix" \
+            --title "$VERSION" \
+            --notes-file release-notes.md
+
+      - name: Marketplace
+        if: ${{ env.VSCE_PAT != '' }}
+        run: npx --yes @vscode/vsce publish --packagePath "gedcom-$VERSION.vsix"
+
+      - name: Say so when the Marketplace step was skipped
+        if: ${{ env.VSCE_PAT == '' }}
+        run: |
+          echo "::warning::VSCE_PAT is not set, so nothing reached the Marketplace." \
+            "The VSIX is attached to the GitHub Release; add the secret and re-run this job."
