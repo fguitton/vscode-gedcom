@@ -44,6 +44,18 @@ jobs:
       - name: Integration tests in a real VS Code
         run: xvfb-run -a npx vscode-test
 
+      # The other host, which the Electron harness cannot reach: the extension
+      # runs as a web worker with no Node builtins, the server in a nested worker
+      # loaded by URL, and the panel under a stricter content security policy.
+      # This is where a bundle that cannot be loaded at all shows up.
+      - name: Integration tests in the web extension host
+        run: |
+          npx playwright install --with-deps chromium
+          npx vscode-test-web --browser=chromium --headless --quality=stable \
+            --extensionDevelopmentPath=. \
+            --extensionTestsPath=./dist/web-tests/index.cjs \
+            fixtures
+
       - name: Package
         run: npx --yes @vscode/vsce package --no-git-tag-version --out gedcom.vsix
 

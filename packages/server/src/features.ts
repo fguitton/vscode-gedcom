@@ -17,9 +17,9 @@ import {
   fullSpan,
   isExtensionTag,
   isRemovedInVersion,
-  labelOf,
   modelFor,
   payloadOf,
+  tagLabel,
   relationsOf,
   removalNote,
   resolveSubstructure,
@@ -294,9 +294,11 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
   const reference = referenceAt(analysis, position);
   if (reference) {
     const target = analysis.xrefs.definitions.get(reference.xref);
+    const model = modelFor(analysis.version);
     const value = target
       ? [
-          `**${target.tag}** \`@${reference.xref}@\``,
+          `**${tagLabel(model, target.tag, analysis.validation.resolutions.get(target)?.slug)}** ` +
+            `\`@${reference.xref}@\``,
           '',
           summarize(target, analysis),
           ...describeRecord(analysis, target),
@@ -318,9 +320,13 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
   const lines: string[] = [];
 
   const resolution = analysis.validation.resolutions.get(structure);
-  const label = resolution?.slug ? labelOf(model, resolution.slug) : undefined;
 
-  lines.push(`**${structure.tag}**${label ? ` — ${label}` : ''}`);
+  // The English name leads and the tag follows in code. The reader hovering a
+  // tag is asking what it means, and the tag is the part they can already see.
+  const name = tagLabel(model, structure.tag, resolution?.slug);
+  lines.push(
+    name === structure.tag ? `**${structure.tag}**` : `**${name}** — \`${structure.tag}\``,
+  );
 
   if (structure.xref !== null) {
     const uses = analysis.xrefs.referencesTo.get(structure.xref)?.length ?? 0;
@@ -343,10 +349,15 @@ export function hover(analysis: Analysis, position: Position): Hover | null {
     const payload = payloadOf(model, resolution.slug);
     if (payload) {
       if (payload.type === 'pointer') {
-        const target = payload.to ? (model.tags[payload.to] ?? payload.to) : undefined;
+        // Named in English first, with the tag in brackets. `a NOTE record` asks
+        // the reader to already know the vocabulary they came here to look up.
+        const tag = payload.to ? (model.tags[payload.to] ?? payload.to) : undefined;
+        const named = tag ? tagLabel(model, tag, payload.to) : undefined;
         lines.push(
           '',
-          target ? `Takes a pointer to a \`${target}\` record.` : 'Takes a pointer to a record.',
+          named && tag
+            ? `Points at a **${named}** record (\`${tag}\`).`
+            : 'Points at another record.',
         );
       } else {
         const described = describePayloadType(payload.type);
@@ -519,7 +530,9 @@ export function completion(
 
   return completionsFor(model, parentSlug ?? null).map((tag) => {
     const entry = model.subs[parentSlug ?? '']?.[tag];
-    const label = entry ? labelOf(model, entry.s) : undefined;
+    // The English name as the detail line, so the list can be read by meaning
+    // rather than by recognising four-letter tags.
+    const label = tagLabel(model, tag, entry?.s);
     return {
       label: tag,
       kind: CompletionItemKind.Property,
@@ -690,6 +703,9 @@ export function semanticTokens(analysis: Analysis): number[] {
  * The other two kinds answer the same shape of question — a code standing in for
  * something the reader would have to look up — for enumerations and for ages.
  */
+/** Non-breaking, so the client does not collapse it the way it would spaces. */
+const HINT_INDENT = '   ';
+
 export function inlayHints(analysis: Analysis, range: Range, settings: Settings): InlayHint[] {
   const kinds = settings.inlayHints;
   if (!kinds.pointers && !kinds.values && !kinds.ages) return [];
@@ -712,7 +728,11 @@ export function inlayHints(analysis: Analysis, range: Range, settings: Settings)
 
     hints.push({
       position: { line: span.line, character: span.end },
-      label,
+      // Set apart from the payload it annotates. Butted up against the line, an
+      // inlay hint reads as part of the data — as though the file itself said
+      // `1 SEX M male`. The gap is non-breaking spaces because `paddingLeft`
+      // yields a single space and ordinary ones would collapse.
+      label: `${HINT_INDENT}${label}`,
       kind: InlayHintKind.Parameter,
       paddingLeft: true,
     });

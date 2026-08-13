@@ -25,17 +25,76 @@ import {
   payloadOf,
   removalNote,
   resolveSubstructure,
+  tagLabel,
+  type ModelledVersion,
   type SpecModel,
 } from './spec/index.ts';
 import { asPointer, VOID_POINTER, type XrefIndex } from './xref.ts';
 
 export type Strictness = 'strict' | 'lenient';
 
+/**
+ * How the version being validated against was arrived at.
+ *
+ * This belongs in the diagnostic. "Not a tag in this version of GEDCOM" asks the
+ * reader to take on trust both which version that is and how we decided — and
+ * when the answer is "we guessed from the tags in use", they deserve to know,
+ * because the right fix may be to correct the header rather than the line.
+ */
+export type VersionSource =
+  /** Read from `HEAD.GEDC.VERS`, per the official detection algorithm. */
+  | 'declared'
+  /** Guessed from the vocabulary, because the file declares no version. */
+  | 'inferred'
+  /** Neither worked; the default vocabulary is in use. */
+  | 'unknown';
+
 export interface ValidateOptions {
   readonly version: GedcomVersion | null;
+  readonly versionSource?: VersionSource;
   /** Defaults to strict for 7.x and lenient for everything older. */
   readonly strictness?: Strictness;
   readonly xrefs?: XrefIndex;
+}
+
+/** Where a reader can check the vocabulary for themselves. */
+const SPEC_URLS: Record<ModelledVersion, string> = {
+  '7.0': 'https://gedcom.io/specifications/FamilySearchGEDCOMv7.html',
+  '5.5.1': 'https://gedcom.io/specifications/ged551.pdf',
+};
+
+/**
+ * A clause naming the version, where it came from, and where to read the rules.
+ *
+ * "Not a tag in this version of GEDCOM" asks the reader to take on trust both
+ * which version that is and how we decided. When the answer is "we guessed from
+ * the tags in use", they especially deserve to know, because the right fix may
+ * be to correct the header rather than the line.
+ */
+function provenance(version: GedcomVersion | null, source: VersionSource): string {
+  const modelled = modelledVersion(version);
+  const spec = `[the ${modelled} specification](${SPEC_URLS[modelled]})`;
+
+  const how = (): string => {
+    switch (source) {
+      case 'declared':
+        return version && version !== modelled
+          ? `this file declares ${version} in \`HEAD.GEDC.VERS\`, and ${modelled} is the closest vocabulary we model`
+          : `this file declares it in \`HEAD.GEDC.VERS\``;
+      case 'inferred':
+        return (
+          'inferred from the tags in use, because this file declares no version in ' +
+          '`HEAD.GEDC.VERS` — adding one will make this check exact'
+        );
+      default:
+        return (
+          'the default, because this file declares no version in `HEAD.GEDC.VERS` and its ' +
+          'vocabulary was not conclusive either'
+        );
+    }
+  };
+
+  return `Checked against GEDCOM ${modelled} (${how()}). See ${spec}.`;
 }
 
 /** A structure resolved against the specification. */
@@ -61,6 +120,8 @@ export function validate(document: Document, options: ValidateOptions): Validati
   const resolutions = new Map<Structure, Resolution>();
   const documented = collectSchemaTags(document);
 
+  const source = options.versionSource ?? 'unknown';
+
   for (const record of document.records) {
     visit(
       record,
@@ -68,6 +129,7 @@ export function validate(document: Document, options: ValidateOptions): Validati
       true,
       model,
       options.version,
+      source,
       strictness,
       documented,
       diagnostics,
@@ -113,6 +175,7 @@ function visit(
   contextKnown: boolean,
   model: SpecModel,
   version: GedcomVersion | null,
+  source: VersionSource,
   strictness: Strictness,
   documented: Set<string>,
   diagnostics: Diagnostic[],
@@ -129,7 +192,7 @@ function visit(
   });
 
   if (contextKnown && resolved === null) {
-    reportUnresolved(structure, model, version, strictness, documented, diagnostics);
+    reportUnresolved(structure, model, version, source, strictness, documented, diagnostics);
   }
 
   if (slug !== null) {
@@ -144,6 +207,7 @@ function visit(
       slug !== null,
       model,
       version,
+      source,
       strictness,
       documented,
       diagnostics,
@@ -157,6 +221,7 @@ function reportUnresolved(
   structure: Structure,
   model: SpecModel,
   version: GedcomVersion | null,
+  source: VersionSource,
   strictness: Strictness,
   documented: Set<string>,
   diagnostics: Diagnostic[],
@@ -182,9 +247,17 @@ function reportUnresolved(
     // A tag the other generation defines is not unknown, it is *removed* — and
     // saying which structure replaced it is what someone converting a file needs.
     const removed = removalNote(version, structure.tag);
+    // Naming the versions rather than saying "any version we model": a reader
+    // told their tag is unknown needs to know unknown *to what* before they can
+    // decide whether the tag or the checker is at fault.
+    const note =
+      removed ??
+      `\`${structure.tag}\` is not a tag in GEDCOM 7.0 or 5.5.1. If it is your own, prefix it ` +
+        'with an underscore and declare it in `HEAD.SCHMA`.';
+
     diagnostics.push({
       code: removed ? 'removed-in-version' : 'unknown-tag',
-      message: removed ?? `\`${structure.tag}\` is not a tag in this version of GEDCOM.`,
+      message: `${note} ${provenance(version, source)}`,
       severity: strictness === 'strict' ? 'error' : 'warning',
       span: structure.tagSpan,
     });
@@ -192,10 +265,19 @@ function reportUnresolved(
   }
 
   if (strictness === 'strict') {
-    const context = structure.parent ? `\`${structure.parent.tag}\`` : 'the document root';
+    // Naming the enclosing structure in English as well as by tag: the reader is
+    // being told a placement is wrong, and `\`FAMC\` is not permitted inside
+    // \`SOUR\`` reads as two more codes to look up.
+    const parent = structure.parent;
+    const context = parent
+      ? `\`${parent.tag}\` (${tagLabel(model, parent.tag)})`
+      : 'the document root';
+
     diagnostics.push({
       code: 'tag-not-allowed-here',
-      message: `\`${structure.tag}\` is not permitted inside ${context}.`,
+      message:
+        `\`${structure.tag}\` (${tagLabel(model, structure.tag)}) is not permitted inside ` +
+        `${context}. ${provenance(version, source)}`,
       severity: 'error',
       span: structure.tagSpan,
     });
@@ -239,10 +321,31 @@ function checkPayload(
     }
   }
 
-  if (spec.type !== 'pointer' || spec.to === undefined || !xrefs) return;
+  if (spec.type !== 'pointer') return;
 
   const pointer = asPointer(structure);
-  if (pointer === null || pointer === VOID_POINTER) return;
+
+  // A pointer payload must be *exactly* `@xref@`. Anything else — trailing text,
+  // a second token, a bare word — is not a pointer that happens to be untidy; it
+  // is a payload the specification does not admit, and nothing downstream will
+  // resolve it. This is reported at every strictness because it is unambiguous
+  // under any reading of any version.
+  if (pointer === null) {
+    diagnostics.push({
+      code: 'malformed-pointer',
+      message:
+        structure.payload === null
+          ? `\`${structure.tag}\` requires a pointer payload, such as \`@I1@\`.`
+          : `\`${structure.tag}\` takes a pointer and nothing else, but its payload is ` +
+            `\`${structure.payload.split('\n')[0]}\`. A pointer payload must be exactly ` +
+            '`@xref@`, with no text before or after it.',
+      severity: 'error',
+      span: structure.payloadSpan ?? structure.tagSpan,
+    });
+    return;
+  }
+
+  if (pointer === VOID_POINTER || spec.to === undefined || !xrefs) return;
 
   const target = xrefs.definitions.get(pointer);
   if (!target) return; // Dangling pointers are reported by the xref index.

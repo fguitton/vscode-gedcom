@@ -58,7 +58,15 @@ export { describePayloadType } from './payload.ts';
 export type { PayloadDescription } from './payload.ts';
 
 export { neighbourhood, recordAt } from './graph.ts';
-export type { Graph, GraphNode, GraphEdge, PositionedNode, NeighbourhoodOptions } from './graph.ts';
+export type {
+  Direction,
+  Graph,
+  GraphNode,
+  GraphEdge,
+  PositionedNode,
+  NeighbourhoodOptions,
+  RelationKind,
+} from './graph.ts';
 export type { DateKeyword, DateQualifier } from './date.ts';
 
 export { lex, splitLines } from './lexer.ts';
@@ -86,6 +94,7 @@ export {
   isRemovedInVersion,
   removalNote,
   labelOf,
+  tagLabel,
   modelFor,
   modelledVersion,
   payloadOf,
@@ -96,17 +105,30 @@ export {
 export type { SpecModel, PayloadSpec, Cardinality, ModelledVersion } from './spec/index.ts';
 
 export { validate } from './validate.ts';
-export type { ValidateOptions, ValidationResult, Resolution, Strictness } from './validate.ts';
+export type {
+  ValidateOptions,
+  ValidationResult,
+  Resolution,
+  Strictness,
+  VersionSource,
+} from './validate.ts';
 
 import { decode, detect, type GedcomVersion } from './detect.ts';
 import type { Diagnostic, Document } from './cst.ts';
 import { inferVersion } from './infer.ts';
 import { parse } from './parser.ts';
 import { indexXrefs, type XrefIndex } from './xref.ts';
-import { validate, type Strictness, type ValidationResult } from './validate.ts';
+import {
+  validate,
+  type Strictness,
+  type ValidationResult,
+  type VersionSource,
+} from './validate.ts';
 
 export interface Analysis {
   readonly version: GedcomVersion | null;
+  /** How that version was arrived at, so a diagnostic can say. */
+  readonly versionSource: VersionSource;
   readonly text: string;
   readonly document: Document;
   readonly xrefs: XrefIndex;
@@ -143,16 +165,22 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
 
   // Files without a GEDC structure cannot be detected but are common enough to
   // matter; fall back to inferring a generation from the vocabulary in use.
-  const version = detected ?? inferVersion(document);
+  const inferred = detected ?? inferVersion(document);
+  const versionSource: VersionSource =
+    detected !== null ? 'declared' : inferred !== null ? 'inferred' : 'unknown';
+
+  const version = inferred;
   const xrefs = indexXrefs(document);
   const validation = validate(document, {
     version,
+    versionSource,
     ...(options.strictness ? { strictness: options.strictness } : {}),
     xrefs,
   });
 
   return {
     version,
+    versionSource,
     text,
     document,
     xrefs,

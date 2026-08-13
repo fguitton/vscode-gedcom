@@ -19,3 +19,8 @@ package-lock.json
 
 # Source maps are for local debugging; they are larger than the code they map.
 dist/**/*.map
+
+# The web integration tests are bundled like an extension entry point, which puts
+# them in dist/. They are not part of the extension.
+dist/web-tests/**
+test/**

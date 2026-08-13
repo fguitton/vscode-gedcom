@@ -80,6 +80,7 @@ export type DiagnosticCode =
   | 'tag-not-allowed-here'
   | 'cardinality-violation'
   | 'enum-value-unknown'
+  | 'malformed-pointer'
   | 'pointer-target-mismatch';
 
 export function span(line: number, start: number, end: number): Span {

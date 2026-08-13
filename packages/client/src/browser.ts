@@ -12,14 +12,16 @@ import { LanguageClient } from 'vscode-languageclient/browser';
 
 import { registerCommands } from './commands.ts';
 import { registerGraphView } from './graph-view.ts';
+import { registerVersionStatus } from './version-status.ts';
 import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
 
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): void {
   registerCommands(context);
-  // The panel parses the document itself, so it works identically in both hosts.
+  // Both read the document directly, so they work identically in either host.
   registerGraphView(context);
+  registerVersionStatus(context);
 
   const serverPath = Uri.joinPath(context.extensionUri, 'dist', 'browser', 'server.js');
   const worker = new Worker(serverPath.toString(true));

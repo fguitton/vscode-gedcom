@@ -24,6 +24,8 @@
     "packages/*/src/**/*.ts",
     "packages/*/test/**/*.ts",
     "packages/*/scripts/**/*.ts",
+    "test/web/**/*.ts",
+    "tsdown.config.ts",
     "vite.config.ts"
   ]
 }

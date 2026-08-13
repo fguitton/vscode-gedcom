@@ -226,3 +226,68 @@ describe('tags removed between versions', () => {
     expect(codes(v7('0 @I1@ INDI\n1 ZZTOP x\n'))).toContain('unknown-tag');
   });
 });
+
+describe('pointer payloads', () => {
+  const messages = (input: Uint8Array) =>
+    analyze(input)
+      .diagnostics.filter((d) => d.code === 'malformed-pointer')
+      .map((d) => d.message);
+
+  it('accepts a payload that is exactly a pointer', () => {
+    expect(codes(v7('0 @I1@ INDI\n1 ASSO @I1@\n2 ROLE OTHER\n'))).not.toContain(
+      'malformed-pointer',
+    );
+  });
+
+  it('rejects trailing text after a pointer', () => {
+    // The case that slipped through: `asPointer` returns null, the reference is
+    // never indexed, and nothing downstream ever looks at the payload again.
+    const [message] = messages(v7('0 @I1@ INDI\n1 ASSO @I1@ df\n2 ROLE OTHER\n'));
+    expect(message).toContain('takes a pointer and nothing else');
+    expect(message).toContain('@I1@ df');
+  });
+
+  it('rejects a payload that is not a pointer at all', () => {
+    expect(messages(v7('0 @I1@ INDI\n1 FAMC nonsense\n'))).toHaveLength(1);
+  });
+
+  it('reports a missing pointer payload', () => {
+    expect(messages(v7('0 @I1@ INDI\n1 FAMC\n'))[0]).toContain('requires a pointer payload');
+  });
+
+  it('accepts @VOID@, which points nowhere on purpose', () => {
+    expect(messages(v7('0 @I1@ INDI\n1 FAMC @VOID@\n'))).toEqual([]);
+  });
+
+  it('applies to 5.5.1 too, since it is wrong under any reading', () => {
+    expect(messages(v5('0 @I1@ INDI\n1 FAMC @F1@ oops\n0 @F1@ FAM\n'))).toHaveLength(1);
+  });
+});
+
+describe('diagnostics say what they judged against', () => {
+  const message = (input: Uint8Array, code: string) =>
+    analyze(input).diagnostics.find((d) => d.code === code)?.message ?? '';
+
+  it('names the version and that the file declared it', () => {
+    const text = message(v7('0 @I1@ INDI\n1 FLIB x\n'), 'unknown-tag');
+    expect(text).toContain('GEDCOM 7.0');
+    expect(text).toContain('HEAD.GEDC.VERS');
+    expect(text).toContain('declares');
+  });
+
+  it('says when the version was inferred, and how to make it exact', () => {
+    // No GEDC structure at all, but GEDCOM 7 vocabulary in use.
+    const text = message(
+      bytes('0 HEAD\n0 @I1@ INDI\n1 NAME John /Smith/\n2 TRAN Jean\n1 FLIB x\n0 TRLR\n'),
+      'unknown-tag',
+    );
+    expect(text).toMatch(/inferred|default/);
+    expect(text).toContain('HEAD.GEDC.VERS');
+  });
+
+  it('names both structures in English when a tag is misplaced', () => {
+    const text = message(v7('0 @I1@ INDI\n1 CHIL @I1@\n'), 'tag-not-allowed-here');
+    expect(text).toContain('Child');
+    expect(text).toContain('Individual');
+  });
+});

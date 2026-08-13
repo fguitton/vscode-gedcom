@@ -18,9 +18,70 @@
  * `source.gedcom` is fixed by GitHub Linguist's grammars.yml and must never change.
  */
 
-import { calendars, dateKeywords, epochs, months, tagsByClass, type TagClass } from './registry.ts';
+import {
+  calendars,
+  dateKeywords,
+  epochs,
+  months,
+  strictPointerTags,
+  tagsByClass,
+  type TagClass,
+} from './registry.ts';
 
 const TAGS_BY_CLASS = tagsByClass();
+
+/** Tags whose payload the registry says can only ever be a pointer. */
+const POINTER_ONLY_TAGS = strictPointerTags();
+
+/**
+ * Tags whose payload is a whole number in every context, in both generations.
+ *
+ * `ANCE` and `DESC` are 5.5.1 generation counts; the rest are child and marriage
+ * counts and image dimensions. None of them has a context that takes text.
+ */
+const INTEGER_TAGS = ['ANCE', 'DESC', 'HEIGHT', 'LEFT', 'NCHI', 'NMR', 'TOP', 'WIDTH'];
+
+/**
+ * Enumerations whose value set is the same in every context and in both
+ * generations, so a payload outside the set is wrong however the file is read.
+ *
+ * `TYPE` is absent because it is enumerated under `NAME` and free text under
+ * `EVEN`; `MEDI` because 5.5.1 wrote its values in lower case and 7.0 in upper,
+ * and a rule that cannot tell a version cannot tell those apart safely.
+ */
+const ENUM_VALUES: Record<string, string> = {
+  SEX: 'M|F|U|X',
+  QUAY: '[0-3]',
+  PEDI: 'ADOPTED|BIRTH|FOSTER|SEALING|OTHER',
+  // The one enumeration that takes a list.
+  RESN: '(?:CONFIDENTIAL|LOCKED|PRIVACY)(?:[ ]*,[ ]*(?:CONFIDENTIAL|LOCKED|PRIVACY))*',
+};
+
+/**
+ * A line whose tag pins the payload's shape, given a payload that does not fit.
+ *
+ * Built as a negative lookahead so the rule fires only on the mismatch, leaving
+ * every well-formed line to the ordinary tag rule. Values are matched
+ * case-insensitively because 5.5.1 wrote several of these in lower case; tags are
+ * not, because GEDCOM tags are upper case and a lower-case one is a different
+ * problem, already reported as an unknown tag.
+ *
+ * Extension values are always let through: GEDCOM 7 admits an underscore tag or a
+ * URI wherever it admits an enumerated value.
+ */
+function badPayloadRule(tags: string, permitted: string) {
+  return {
+    name: 'meta.line.gedcom',
+    match:
+      `^${INDENT}${LEVEL}${D}(${tags})${DP}` +
+      `(?!(?i:${permitted})[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$`,
+    captures: {
+      '2': levelCapture,
+      '3': tagCapture,
+      '4': { name: 'invalid.illegal.value.gedcom' },
+    },
+  };
+}
 
 /**
  * Semantic class to TextMate scope. This mapping *is* the colour design.
@@ -149,6 +210,10 @@ export function buildGrammar(): Grammar {
           { include: '#date-line' },
           { include: '#name-line' },
           { include: '#pointer-line' },
+          { include: '#broken-pointer-line' },
+          { include: '#bad-enum-line' },
+          { include: '#bad-integer-line' },
+          { include: '#bad-format-line' },
           { include: '#tag-line' },
           { include: '#invalid-line' },
         ],
@@ -234,6 +299,69 @@ export function buildGrammar(): Grammar {
               '4': xrefRefCapture,
             },
           },
+        ],
+      },
+
+      /**
+       * `1 ASSO @I1@ df` — a tag that takes only a pointer, given something else.
+       *
+       * Without this the line falls through to the generic tag rule and is
+       * coloured as ordinary text: the payload merely changes colour, which reads
+       * as the editor losing its place rather than as the error it is. Restricted
+       * to the tags that take a pointer in *every* context — `SOUR` is a pointer
+       * under `INDI` and free text under `HEAD`, and marking that wrong would
+       * paint correct files red.
+       */
+      'broken-pointer-line': {
+        patterns: [
+          {
+            name: 'meta.line.gedcom',
+            match: `^${INDENT}${LEVEL}${D}(${POINTER_ONLY_TAGS.join('|')})${DP}(.+)$`,
+            captures: {
+              '2': levelCapture,
+              '3': tagCapture,
+              '4': { name: 'invalid.illegal.pointer.gedcom' },
+            },
+          },
+        ],
+      },
+
+      /**
+       * Payloads with a shape fixed in every context they appear in.
+       *
+       * The same reasoning as the broken pointer rule, applied to the other kinds
+       * of payload the registry pins down. A tag qualifies only when no context
+       * gives it a different payload type and no version disagrees about the
+       * values — `TYPE` is enumerated under `NAME` and free text under `EVEN`, so
+       * it is not here, and neither is `MEDI`, whose values 5.5.1 wrote in lower
+       * case and 7.0 in upper.
+       *
+       * Extension values are always admitted: GEDCOM 7 lets an enumeration take
+       * an underscore tag or a URI in place of a standard value.
+       */
+      'bad-enum-line': {
+        patterns: Object.entries(ENUM_VALUES).map(([tag, values]) => badPayloadRule(tag, values)),
+      },
+
+      /** `1 NCHI three` — counts, which are whole numbers wherever they appear. */
+      'bad-integer-line': {
+        patterns: [badPayloadRule(INTEGER_TAGS.join('|'), '\\d+')],
+      },
+
+      /**
+       * `2 AGE 20y 6m` and `2 TIME 14:30:00`.
+       *
+       * Both notations are compact, easy to mistype, and used in exactly one way
+       * each. `AGE` also admits the three words 5.5.1 allowed in place of a
+       * duration.
+       */
+      'bad-format-line': {
+        patterns: [
+          badPayloadRule(
+            'AGE',
+            `(?:[<>][ ]*)?\\d+[ ]*[ymwd](?:[ ]*\\d+[ ]*[ymwd])*|(?i:CHILD|INFANT|STILLBORN)`,
+          ),
+          badPayloadRule('TIME', `\\d{1,2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:[ ]*(?i:AM|PM))?`),
         ],
       },
 

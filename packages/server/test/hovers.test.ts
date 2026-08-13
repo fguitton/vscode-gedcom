@@ -240,3 +240,50 @@ describe('pointers', () => {
     expect(text).toMatch(/1 spouse/);
   });
 });
+
+describe('plain English', () => {
+  it('leads with the name of the structure, not its tag', () => {
+    expect(hoverText(PERSON, '1 FAMS', 'FAMS')).toContain('**Family spouse**');
+  });
+
+  it('says what a pointer points at in words', () => {
+    // `Takes a pointer to a NOTE record` asks the reader to already know the
+    // vocabulary they came here to look up.
+    const source = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 ASSO @I2@',
+      '2 ROLE OTHER',
+      '0 @I2@ INDI',
+      '0 TRLR',
+      '',
+    ].join('\n');
+
+    const text = hoverText(source, '1 ASSO', 'ASSO');
+    expect(text).toContain('**Associates**');
+    expect(text).toMatch(/Points at an? \*\*Individual\*\* record/);
+  });
+
+  it('qualifies a maintenance date instead of copying it', () => {
+    const source = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 CHAN',
+      '2 DATE 1 JAN 2010',
+      '0 TRLR',
+      '',
+    ].join('\n');
+
+    const text = hoverText(source, '1 CHAN', 'CHAN');
+    expect(text).toMatch(/Last changed on \*\*1 JAN 2010\*\* — \d+ years ago\./);
+  });
+
+  it('writes an event as a sentence rather than as its fields', () => {
+    const text = hoverText(PERSON, '1 CENS', 'CENS');
+    expect(text).toMatch(/^.*[Cc]ensus recorded on \*\*2 APR 1911\*\* at \*\*Chelsea/m);
+  });
+});

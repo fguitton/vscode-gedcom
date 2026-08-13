@@ -9,6 +9,33 @@ The theme of this release is that a GEDCOM file is mostly opaque identifiers and
 undocumented codes, and every feature below removes a reason to leave the line
 you are reading.
 
+### The graph panel now draws the family, not the file
+
+GEDCOM stores a marriage as a `FAM` record that both spouses and every child
+point at. Drawn literally that put a nameless join record between every pair of
+relatives, made a grandparent four hops from a grandchild, and filled the third
+column with boxes that answered no question anyone had asked.
+
+- **Families are collapsed.** Nodes are people; edges are the relationships
+  between them, derived by joining through the `FAM` records and then discarding
+  them. A spouse and a child are now one hop away, not two.
+- **Marriages are shown**, labelled with their year, alongside parent and child
+  links. Siblings are drawn only where a family records no parents, since
+  otherwise they are already two hops apart through one.
+- **Boxes carry dates** — `1901–1975`, or `b. 1930` where only one is known.
+  A tree full of people sharing a name is unreadable without them.
+- **A family is still shown as itself when it is the record under the cursor**,
+  with its members around it and their roles named. Collapsing is right for
+  families travelled _through_ and wrong for the one being looked at.
+- **Ancestors / Descendants / Both** buttons, because tracing a line back is a
+  different task from following it forward, and each is half the graph.
+- Sources, notes and media are left out unless `gedcom.graph.includeReferences`
+  asks for them: a well-sourced person cites dozens, and they crowd out the
+  family the panel exists to show.
+- Edges run left to right whichever way the pointer is written, labels are
+  placed after the curves with a backing plate and nudged apart where two would
+  collide, and columns are ordered by the barycentre heuristic to cut crossings.
+
 ### Added
 
 - **Inlay hints**, off the back of that: what each pointer names
@@ -16,7 +43,9 @@ you are reading.
   (`1 SEX M` → `male`, `2 QUAY 3` → `primary`), a language tag's language, and how
   old the subject was at an event, computed against their own `BIRT` date. Each
   kind has its own setting, because the resolved names are indispensable in an
-  unfamiliar file and noise in your own.
+  unfamiliar file and noise in your own. An age carries the verb of its event —
+  `died age 73`, `married age 24` — and every hint is set apart from the payload
+  so it does not read as though the file itself said `1 SEX M male`.
 - **Code lens** above each record: its shape in the tree, a clickable reference
   count that peeks every pointer to it, and a link into the graph panel. Above
   `HEAD`, the dataset summary the header does not carry — record counts and the
@@ -45,8 +74,61 @@ you are reading.
   - A **migration note** on any tag the file's version removed, carrying the
     replacement — `ROMN` says to use `TRAN`.
 - Cardinality stated in words: "Required, exactly one" rather than `{1:1}`.
+- **The detected version, in the status bar.** It governs how every line in the
+  file is read and is frequently _guessed_ rather than declared, so a reader who
+  disagrees with the guess needs to see it before anything else makes sense. An
+  inferred version is flagged with the warning background; the tooltip explains
+  how it was arrived at and what the file contains.
+- **Payload shapes checked in the grammar**, so a wrong value is coloured as
+  wrong while it is being typed rather than only appearing as a squiggle:
+  - a pointer-only tag given anything but a pointer (`1 ASSO @I1@ df`),
+  - `SEX`, `QUAY`, `PEDI` and `RESN` given a value outside their set,
+  - `NCHI`, `NMR` and the other counts given something that is not a number,
+  - `AGE` and `TIME` given something that does not fit their notation.
+
+  Each rule covers only tags whose payload shape is fixed in _every_ context and
+  in both generations, and extension values are always let through. `SOUR` is a
+  pointer under `INDI` and free text under `HEAD`, so it is not checked; `MEDI`
+  is not, because 5.5.1 wrote its values in lower case and 7.0 in upper. A scan
+  of the whole fixture corpus finds no line these rules fire on.
+
+- **English names everywhere a tag was shown raw**: hover titles lead with the
+  name and keep the tag alongside, pointer targets read "Points at an
+  **Individual** record", completion details carry the name, and misplacement
+  diagnostics name both structures. Twelve 5.5.1-era tags the registry labels
+  nowhere are named here.
 
 ### Fixed
+
+- **A pointer payload with anything after it was silently accepted.**
+  `1 ASSO @I1@ df` parsed as text, was never indexed as a reference, and drew no
+  diagnostic — the payload simply stopped being a pointer and nothing said so.
+  Every structure the registry types as a pointer now requires its payload to be
+  exactly `@xref@`, at every strictness, because it is wrong under any reading of
+  any version.
+- **Vocabulary diagnostics never said what they were judging against.** "Not a
+  tag in this version of GEDCOM" asked the reader to take on trust both which
+  version that was and how it had been decided — and when the answer is "we
+  guessed from the tags in use", that is exactly what they need to know, because
+  the right fix may be to correct the header rather than the line. Every such
+  message now names the version, says whether it was declared, inferred or
+  defaulted, and links to the specification.
+- Hovers on `CHAN` copied the date from two lines below instead of qualifying it.
+  Events read as sentences now, and maintenance dates say how long ago.
+- **The extension could not load in the web extension host at all** — the same
+  class of failure as 0.4.0's, in the other host, and found the same way: by
+  writing the test that could see it. The worker host decides a module's kind
+  with
+
+  ```js
+  path.endsWith('.mjs') || (extension.type === 'module' && !path.endsWith('.cjs'));
+  ```
+
+  and then refuses ESM outright, because it supports none. This repository is
+  `"type": "module"`, so `dist/browser/extension.js` was read as ESM and threw
+  before activation. The browser entry is now `.cjs`, matching the Node one. The
+  server bundle stays `.js`: it is passed to `new Worker()` by URL, and a worker
+  script must be served with a JavaScript MIME type.
 
 - **Hovers showed the registry's internal type URIs.** A structure taking plain
   text was described as `XMLSchema#string` and a date as `type-DATE_VALUE`. Every
@@ -59,6 +141,24 @@ you are reading.
 - The age on an event hover named the event by its tag rather than its label,
   reading `CENS at 9 years old`. The label is keyed by the registry slug, and the
   slug for `CENS` inside an `INDI` is `INDI-CENS`.
+
+### Testing
+
+- **Integration tests in the web extension host**, headless via
+  `@vscode/test-web` (`vp run test:web`), covering activation in the worker, the
+  language server answering from a nested worker, and the graph panel resolving
+  under the browser content security policy. This closes the last host that
+  shipped without automated coverage — and found the activation bug above on its
+  first run.
+- Tests for every new module, including one that walks the whole registry and
+  fails if any payload type reaches a reader undescribed, and one that scans the
+  entire fixture corpus for a line the new grammar rules wrongly reject.
+- The web harness pins `--quality=stable`. `@vscode/test-web` otherwise fetches
+  whichever Insiders build is newest that day, so the same commit passes or fails
+  depending on when it runs — and a broken Insiders build hangs before invoking
+  any test module, printing nothing at all. Each web test is also raced against
+  a clock, because a runner that hangs silently is the worst failure mode there
+  is: it looks exactly like an environment problem and names no line.
 
 ### Changed
 

@@ -171,9 +171,13 @@ describe('inlay hints', () => {
 
     assert.ok(hints?.length, 'expected inlay hints');
 
-    // A hint's label is either a string or an array of parts.
+    // A hint's label is either a string or an array of parts. Trimmed, because
+    // each carries a leading indent so it does not read as part of the payload.
     const labelOf = (hint) =>
-      typeof hint.label === 'string' ? hint.label : hint.label.map((part) => part.value).join('');
+      (typeof hint.label === 'string'
+        ? hint.label
+        : hint.label.map((part) => part.value).join('')
+      ).trim();
 
     const onLine = (line) => hints.filter((hint) => hint.position.line === line).map(labelOf);
 
@@ -219,6 +223,20 @@ describe('document links', () => {
 
     assert.ok(links?.length, 'expected a document link');
     assert.equal(links[0].target?.toString(), 'https://example.org/parish');
+  });
+});
+
+describe('the detected version', () => {
+  it('contributes a command that explains it', async () => {
+    // The version governs how every line in the file is read, and is often
+    // guessed rather than declared. A reader who disagrees needs to see it.
+    const all = await vscode.commands.getCommands(true);
+    assert.ok(all.includes('gedcom.showVersion'), 'expected gedcom.showVersion');
+  });
+
+  it('the command runs without throwing', async () => {
+    await openFixture(SAMPLE);
+    await vscode.commands.executeCommand('gedcom.showVersion');
   });
 });
 

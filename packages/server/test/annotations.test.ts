@@ -59,9 +59,18 @@ const analysis = analyzeDocument(SOURCE);
 
 const WHOLE = { start: { line: 0, character: 0 }, end: { line: 40, character: 0 } };
 
-/** The hint rendered on a line, if any. */
-const hintOn = (line: number, settings: Settings = defaultSettings) =>
-  inlayHints(analysis, WHOLE, settings).find((hint) => hint.position.line === line)?.label;
+/**
+ * The hint rendered on a line, if any.
+ *
+ * Trimmed, because every hint carries a leading indent so it does not read as
+ * part of the payload it annotates; the indent has its own test.
+ */
+const hintOn = (line: number, settings: Settings = defaultSettings) => {
+  const label = inlayHints(analysis, WHOLE, settings).find(
+    (hint) => hint.position.line === line,
+  )?.label;
+  return typeof label === 'string' ? label.trim() : label;
+};
 
 describe('inlay hints', () => {
   it('resolves a pointer to what it names', () => {
@@ -85,9 +94,21 @@ describe('inlay hints', () => {
     expect(hintOn(3)).toBe('British English');
   });
 
-  it('gives the age at an event', () => {
-    expect(hintOn(10)).toBe('age 9');
-    expect(hintOn(12)).toBe('age 73');
+  it('says what the event did, not just how old they were', () => {
+    // `age 4` beside a death date is true and cold; the verb is the fact the
+    // reader is actually taking in.
+    expect(hintOn(12)).toBe('died age 73');
+    expect(hintOn(10)).toBe('recorded age 9');
+  });
+
+  it('sets the hint apart from the payload it annotates', () => {
+    // Butted up against the line, a hint reads as though the file itself said
+    // `1 SEX M male`.
+    const hint = inlayHints(analysis, WHOLE, defaultSettings).find(
+      (candidate) => candidate.position.line === 6,
+    );
+    expect(hint?.label).toMatch(/^\s{2,}male$/);
+    expect(hint?.paddingLeft).toBe(true);
   });
 
   it('does not put an age on the birth it is measured from', () => {

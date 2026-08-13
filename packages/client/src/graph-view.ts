@@ -10,7 +10,7 @@
  * the round trip, and it keeps the panel working even while the server restarts.
  */
 
-import { neighbourhood, recordAt, type Graph } from '@vscode-gedcom/core';
+import { neighbourhood, recordAt, type Direction, type Graph } from '@vscode-gedcom/core';
 import {
   commands,
   Range,
@@ -32,16 +32,21 @@ import { revealLine } from './commands.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
 
-/** Message from the webview when a node is clicked. */
-interface RevealMessage {
-  readonly type: 'reveal';
-  readonly line: number;
-}
+/** Messages from the webview: a node was clicked, or a control was used. */
+type PanelMessage =
+  | { readonly type: 'reveal'; readonly line: number }
+  | { readonly type: 'direction'; readonly value: Direction };
 
 export class GedcomGraphViewProvider implements WebviewViewProvider {
   private view: WebviewView | undefined;
   /** The document the panel is currently showing, so clicks reveal in the right one. */
   private documentUri: Uri | undefined;
+  /**
+   * Which way through the generations to travel. View state rather than a
+   * setting: it is something a reader flips while looking, not something they
+   * configure once.
+   */
+  private direction: Direction = 'both';
 
   resolveWebviewView(
     view: WebviewView,
@@ -52,8 +57,12 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     view.webview.options = { enableScripts: true, localResourceRoots: [] };
     view.webview.html = shell();
 
-    view.webview.onDidReceiveMessage((message: RevealMessage) => {
+    view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'reveal') void this.reveal(message.line);
+      else if (message.type === 'direction') {
+        this.direction = message.value;
+        this.update(window.activeTextEditor);
+      }
     });
 
     view.onDidChangeVisibility(() => {
@@ -77,10 +86,18 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
 
     const analysis = analyzeText(editor.document.getText());
     const focus = recordAt(analysis, editor.selection.active.line);
-    const depth = workspace.getConfiguration('gedcom').get<number>('graph.depth', 2);
-    const graph = neighbourhood(analysis, focus, { depth });
+    const configuration = workspace.getConfiguration('gedcom');
+    const graph = neighbourhood(analysis, focus, {
+      depth: configuration.get<number>('graph.depth', 2),
+      includeReferences: configuration.get<boolean>('graph.includeReferences', false),
+      direction: this.direction,
+    });
 
-    void this.view.webview.postMessage({ type: 'graph', graph: serialize(graph) });
+    void this.view.webview.postMessage({
+      type: 'graph',
+      graph: serialize(graph),
+      direction: this.direction,
+    });
   }
 
   private async reveal(line: number): Promise<void> {
@@ -142,12 +159,39 @@ function shell(): string {
     padding: 1rem;
     color: var(--vscode-descriptionForeground);
   }
-  #scroll { overflow: auto; width: 100%; height: 100vh; }
+  #controls {
+    display: flex;
+    gap: .25rem;
+    padding: .35rem .5rem;
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+  }
+  #controls button {
+    font-family: inherit;
+    font-size: calc(var(--vscode-font-size) * .9);
+    color: var(--vscode-foreground);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: .15rem .5rem;
+    cursor: pointer;
+  }
+  #controls button:hover { background: var(--vscode-toolbar-hoverBackground); }
+  #controls button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  #controls button[aria-pressed="true"] {
+    background: var(--vscode-inputOption-activeBackground);
+    border-color: var(--vscode-inputOption-activeBorder, var(--vscode-focusBorder));
+    color: var(--vscode-inputOption-activeForeground, var(--vscode-foreground));
+  }
+  /* The controls take a fixed strip; the drawing gets the rest. */
+  #scroll { overflow: auto; width: 100%; height: calc(100vh - 2rem); }
   .edge { stroke: var(--vscode-editorIndentGuide-activeBackground, currentColor); stroke-width: 1; opacity: .5; }
-  .edge-label {
+  .edge-label text {
     fill: var(--vscode-descriptionForeground);
     font-size: 9px;
-    font-family: var(--vscode-editor-font-family, monospace);
+  }
+  .edge-label-plate {
+    fill: var(--vscode-sideBar-background, var(--vscode-editor-background));
+    opacity: .85;
   }
   .node rect {
     fill: var(--vscode-editorWidget-background);
@@ -174,6 +218,11 @@ function shell(): string {
 </style>
 </head>
 <body>
+<div id="controls" role="group" aria-label="Direction of travel">
+  <button type="button" data-direction="both" aria-pressed="true">Both</button>
+  <button type="button" data-direction="ancestors" aria-pressed="false">Ancestors</button>
+  <button type="button" data-direction="descendants" aria-pressed="false">Descendants</button>
+</div>
 <div id="empty">Open a GEDCOM file and place the cursor in a record.</div>
 <div id="scroll"><svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg></div>
 <script nonce="${id}">
@@ -186,6 +235,8 @@ function shell(): string {
 
   const NODE_WIDTH = 170;
   const NODE_HEIGHT = 40;
+  /** Vertical space one edge label needs, for nudging collisions apart. */
+  const LABEL_HEIGHT = 13;
 
   function el(name, attrs, text) {
     const node = document.createElementNS(NS, name);
@@ -219,10 +270,18 @@ function shell(): string {
     const byXref = new Map(graph.nodes.map((n) => [n.xref, n]));
 
     // Edges first so nodes draw over them.
+    const labelled = [];
+
     for (const edge of graph.edges) {
-      const from = byXref.get(edge.from);
-      const to = byXref.get(edge.to);
-      if (!from || !to) continue;
+      const a = byXref.get(edge.from);
+      const b = byXref.get(edge.to);
+      if (!a || !b) continue;
+
+      // Always draw left to right, whichever way the pointer happens to be
+      // written. A relationship recorded from the far end would otherwise loop
+      // backwards across the columns for no reason the reader can see.
+      const from = a.x <= b.x ? a : b;
+      const to = a.x <= b.x ? b : a;
 
       const x1 = from.x + NODE_WIDTH;
       const y1 = from.y + NODE_HEIGHT / 2;
@@ -237,9 +296,40 @@ function shell(): string {
           fill: 'none',
         }),
       );
-      svg.appendChild(
-        el('text', { class: 'edge-label', x: mid, y: (y1 + y2) / 2 - 3, 'text-anchor': 'middle' }, edge.tag),
+
+      // The label reads from the left-hand node to the right-hand one, so it
+      // follows the direction the edge is actually drawn in.
+      const text = from.xref === edge.from ? edge.label : edge.reverseLabel;
+      labelled.push({ text: text, x: mid, y: (y1 + y2) / 2 });
+    }
+
+    // Labels after every curve, so no edge is drawn across one, and nudged apart
+    // where two would otherwise sit on the same spot.
+    const occupied = [];
+    for (const label of labelled) {
+      let y = label.y;
+      while (occupied.some((taken) => Math.abs(taken - y) < LABEL_HEIGHT)) y += LABEL_HEIGHT;
+      occupied.push(y);
+
+      const group = el('g', { class: 'edge-label' });
+      const text = el('text', { x: label.x, y: y + 3, 'text-anchor': 'middle' }, label.text);
+
+      // A backing plate, because a label sitting on a bundle of curves is
+      // unreadable however it is coloured. Sized from the text, since SVG has no
+      // way to ask for a background.
+      const width = label.text.length * 5.4 + 8;
+      group.appendChild(
+        el('rect', {
+          class: 'edge-label-plate',
+          x: label.x - width / 2,
+          y: y - 7,
+          width: width,
+          height: 13,
+          rx: 2,
+        }),
       );
+      group.appendChild(text);
+      svg.appendChild(group);
     }
 
     for (const node of graph.nodes) {
@@ -248,12 +338,16 @@ function shell(): string {
         transform: 'translate(' + node.x + ',' + node.y + ')',
         tabindex: '0',
         role: 'button',
-        'aria-label': node.tag + ' ' + node.label,
+        'aria-label': node.kind + ': ' + node.label + ', ' + node.detail,
       });
 
       group.appendChild(el('rect', { width: NODE_WIDTH, height: NODE_HEIGHT }));
       group.appendChild(el('text', { class: 'label', x: 8, y: 17 }, truncate(node.label, 24)));
-      group.appendChild(el('text', { class: 'tag', x: 8, y: 31 }, node.tag + ' @' + node.xref + '@'));
+
+      // Dates rather than the record type. A tree full of people sharing a name
+      // is unreadable without them, and "Individual" on every box says nothing
+      // that the shape of the graph has not already said.
+      group.appendChild(el('text', { class: 'tag', x: 8, y: 31 }, truncate(node.detail, 26)));
 
       const reveal = () => vscode.postMessage({ type: 'reveal', line: node.line });
       group.addEventListener('click', reveal);
@@ -275,10 +369,27 @@ function shell(): string {
     }
   }
 
+  const buttons = Array.from(document.querySelectorAll('#controls button'));
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const value = button.dataset.direction;
+      for (const other of buttons) {
+        other.setAttribute('aria-pressed', String(other === button));
+      }
+      vscode.postMessage({ type: 'direction', value: value });
+    });
+  }
+
   window.addEventListener('message', (event) => {
     const message = event.data;
-    if (message.type === 'graph') render(message.graph);
-    else if (message.type === 'empty') {
+    if (message.type === 'graph') {
+      // The host is the authority on which direction is active, so the buttons
+      // follow it rather than only their own clicks.
+      for (const button of buttons) {
+        button.setAttribute('aria-pressed', String(button.dataset.direction === message.direction));
+      }
+      render(message.graph);
+    } else if (message.type === 'empty') {
       empty.textContent = 'Open a GEDCOM file and place the cursor in a record.';
       empty.style.display = 'block';
       scroll.style.display = 'none';

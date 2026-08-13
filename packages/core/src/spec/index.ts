@@ -92,6 +92,50 @@ export function labelOf(model: SpecModel, slug: string): string | undefined {
   return model.labels[slug] ?? MODELS['7.0']?.labels[slug];
 }
 
+/**
+ * Names for the twelve tags the registry labels nowhere.
+ *
+ * All of them are 5.5.1-era structures that GEDCOM 7 dropped, so no 7.x label
+ * exists to fall back to. Without these, anything showing a tag by name — a
+ * hover title, a graph edge — has to print the tag itself, which is the thing
+ * the reader wanted translated.
+ */
+const UNLABELLED: Record<string, string> = {
+  ANCE: 'Ancestors',
+  CHAR: 'Character set',
+  DESC: 'Descendants',
+  EVEN: 'Event',
+  FACT: 'Fact',
+  FAMF: 'Family file',
+  FONE: 'Phonetic variation',
+  ORDI: 'Ordinance process flag',
+  RELA: 'Relationship to the individual',
+  ROMN: 'Romanised variation',
+  STAT: 'Status',
+  SUBN: 'Submission',
+};
+
+/**
+ * The English name of a tag, in the plainest form available.
+ *
+ * Tries the resolved slug first, since that is context-qualified and therefore
+ * the most precise; then the tag read as a slug, which covers most structures;
+ * then the table above. Falls back to the tag itself, which is never wrong,
+ * only unhelpful.
+ */
+export function tagLabel(model: SpecModel, tag: string, slug?: string | null): string {
+  return (
+    (slug ? labelOf(model, slug) : undefined) ??
+    labelOf(model, tag) ??
+    // Records are slugged `record-INDI`, never bare, so a caller that has only
+    // the tag — a diagnostic naming an enclosing structure, say — would
+    // otherwise never find a label for the commonest structures in the format.
+    labelOf(model, `record-${tag}`) ??
+    UNLABELLED[tag] ??
+    tag
+  );
+}
+
 /** Tags allowed directly inside a structure, for completion. */
 export function completionsFor(model: SpecModel, parentSlug: string | null): string[] {
   return Object.keys(model.subs[parentSlug ?? ''] ?? {}).sort();

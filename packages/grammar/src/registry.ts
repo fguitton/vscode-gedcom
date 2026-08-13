@@ -203,6 +203,41 @@ function linkageTags(): Set<string> {
   return tags;
 }
 
+/**
+ * Tags that can only ever carry a pointer, in every context they appear in.
+ *
+ * The strict subset of the linkage tags, and the difference matters: `SOUR` is a
+ * pointer under `INDI` and free text under `HEAD`, so a grammar rule insisting
+ * that every `SOUR` payload be a pointer would paint correct files red. A tag
+ * qualifies here only when no context gives it a text payload — contexts that
+ * allow no payload at all are fine, since a payload written there is wrong
+ * regardless of its shape.
+ *
+ * This is what lets `1 ASSO @I1@ df` be coloured as the error it is, rather than
+ * quietly falling through to the plain-text rule and merely changing colour.
+ */
+function pointerOnlyTags(): Set<string> {
+  const model = validationModel();
+
+  const kinds = new Map<string, Set<string>>();
+  for (const [uri, payload] of Object.entries(model.payload)) {
+    if (!uri.startsWith(V7)) continue;
+    const tag = uri.slice(V7.length).split('-').pop();
+    if (!tag) continue;
+
+    const kind = payload.type === 'pointer' ? 'pointer' : 'text';
+    const seen = kinds.get(tag) ?? new Set<string>();
+    seen.add(kind);
+    kinds.set(tag, seen);
+  }
+
+  const tags = new Set<string>();
+  for (const [tag, seen] of kinds) {
+    if (seen.has('pointer') && !seen.has('text')) tags.add(tag);
+  }
+  return tags;
+}
+
 /** Structures that may appear at level 0, plus the envelope that frames them. */
 function recordTagsFromRegistry(): Set<string> {
   const tags = new Set<string>();
@@ -306,4 +341,9 @@ export function tagsByClass(): Record<TagClass, string[]> {
   for (const [tag, tagClass] of classifyTags()) grouped[tagClass].push(tag);
   for (const list of Object.values(grouped)) list.sort();
   return grouped;
+}
+
+/** Tags whose payload must be a pointer wherever they appear, sorted. */
+export function strictPointerTags(): string[] {
+  return [...pointerOnlyTags()].filter((tag) => knownTags.includes(tag)).sort();
 }

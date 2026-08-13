@@ -27,19 +27,38 @@ const shared = {
 };
 
 /**
- * Node outputs must be named `.cjs`.
+ * Anything the extension host loads as a module must be named `.cjs`.
  *
- * The repository is `"type": "module"`, so Node reads a bare `.js` as ESM — and
- * these bundles are CommonJS. Naming them `.js` produces `ReferenceError: exports
- * is not defined in ES module scope` the moment VS Code loads the extension,
- * which no unit test can catch because nothing else ever loads the bundle. The
- * `.cjs` extension overrides the package type regardless of what it says.
+ * The repository is `"type": "module"`, and both hosts read that field — by
+ * different routes, to the same conclusion.
  *
- * The browser outputs are not loaded through Node's resolver at all — the web
- * extension host fetches and evaluates them — so they stay `.js`.
+ * Node reads a bare `.js` under a `"type": "module"` package as ESM, and these
+ * bundles are CommonJS, so it throws `ReferenceError: exports is not defined in
+ * ES module scope`. The web worker host reaches the same verdict by its own rule:
+ *
+ *     _isESM(extension, path) {
+ *       return path?.endsWith('.mjs')
+ *         || (extension?.type === 'module' && !path?.endsWith('.cjs'));
+ *     }
+ *
+ * and then `_loadESMModule` throws outright, because the worker host supports no
+ * ESM at all. In both cases `.cjs` is the escape hatch, and in both cases the
+ * fetch preserves the suffix — the host appends `.js` only to a path with no
+ * extension of its own.
+ *
+ * Neither failure is reachable from a unit test: nothing but a running extension
+ * host ever loads these files.
  */
-const nodeOutput = { outputOptions: { entryFileNames: '[name].cjs' } };
-const browserOutput = { outputOptions: { entryFileNames: '[name].js' } };
+const moduleOutput = { outputOptions: { entryFileNames: '[name].cjs' } };
+
+/**
+ * The browser *server* is the exception, and stays `.js`.
+ *
+ * It is not loaded as a module by anything. Our own client passes its URL to
+ * `new Worker()`, and a worker script must be served with a JavaScript MIME type
+ * — which static file servers key off the extension.
+ */
+const workerOutput = { outputOptions: { entryFileNames: '[name].js' } };
 
 /**
  * The language client and server packages gate their `./node` and `./browser`
@@ -58,7 +77,7 @@ export default defineConfig([
   {
     ...shared,
     ...conditions('node'),
-    ...nodeOutput,
+    ...moduleOutput,
     entry: { extension: 'packages/client/src/node.ts' },
     outDir: 'dist/node',
     format: 'cjs',
@@ -68,7 +87,7 @@ export default defineConfig([
   {
     ...shared,
     ...conditions('node'),
-    ...nodeOutput,
+    ...moduleOutput,
     entry: { server: 'packages/server/src/node.ts' },
     outDir: 'dist/node',
     format: 'cjs',
@@ -77,7 +96,7 @@ export default defineConfig([
   {
     ...shared,
     ...conditions('browser'),
-    ...browserOutput,
+    ...moduleOutput,
     entry: { extension: 'packages/client/src/browser.ts' },
     outDir: 'dist/browser',
     format: 'cjs',
@@ -86,10 +105,27 @@ export default defineConfig([
   {
     ...shared,
     ...conditions('browser'),
-    ...browserOutput,
+    ...workerOutput,
     entry: { server: 'packages/server/src/browser.ts' },
     outDir: 'dist/browser',
     format: 'iife',
+    platform: 'browser',
+  },
+  /**
+   * The web integration tests.
+   *
+   * `@vscode/test-web` loads `--extensionTestsPath` through the same code path
+   * as an extension entry point, and calls the `run` export. So this is bundled
+   * exactly like the browser client, `.cjs` suffix included — the host resolves
+   * the owning extension to decide the module kind, and finds this one.
+   */
+  {
+    ...shared,
+    ...conditions('browser'),
+    ...moduleOutput,
+    entry: { index: 'test/web/index.ts' },
+    outDir: 'dist/web-tests',
+    format: 'cjs',
     platform: 'browser',
   },
 ]);

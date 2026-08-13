@@ -113,5 +113,8 @@ dist
 # Bundled output
 dist/
 
-# Downloaded VS Code builds for integration tests
+# Downloaded VS Code builds for integration tests. The web one is a full
+# VS Code web distribution — a few hundred megabytes of JavaScript, which the
+# linter and formatter will happily walk into if it is not excluded.
 .vscode-test/
+.vscode-test-web/

@@ -37,6 +37,7 @@ import {
   relativeTime,
   signedDegrees,
   statistics,
+  tagLabel,
   type Analysis,
   type Structure,
 } from '@vscode-gedcom/core';
@@ -408,7 +409,7 @@ export function describeStructure(
 
   // Anything with a date or a place under it is an event or an attribute, and the
   // useful summary is the same for all of them: when, and where.
-  return describeEventLike(structure);
+  return describeEventLike(analysis, structure);
 }
 
 // --- inline annotations -----------------------------------------------------
@@ -466,6 +467,46 @@ export function valueAnnotation(
   return labels.every((label) => label !== undefined) ? labels.join(', ') : undefined;
 }
 
+/**
+ * What the event did to the person, in the past tense.
+ *
+ * `age 4` beside a death date is true and cold; `died age 4` is the fact the
+ * reader is actually taking in. The verb comes from the event, so the hint reads
+ * as a sentence about that line rather than as a number floating beside it.
+ */
+const EVENT_VERBS: Record<string, string> = {
+  DEAT: 'died',
+  BURI: 'buried',
+  CREM: 'cremated',
+  PROB: 'probate',
+  WILL: 'will written',
+  MARR: 'married',
+  MARB: 'banns read',
+  MARC: 'contract signed',
+  MARL: 'licence issued',
+  MARS: 'settlement signed',
+  ENGA: 'engaged',
+  DIV: 'divorced',
+  DIVF: 'divorce filed',
+  ANUL: 'annulled',
+  BAPM: 'baptised',
+  CHR: 'christened',
+  CHRA: 'christened',
+  CONF: 'confirmed',
+  FCOM: 'first communion',
+  BARM: 'bar mitzvah',
+  BASM: 'bas mitzvah',
+  BLES: 'blessed',
+  ADOP: 'adopted',
+  EMIG: 'emigrated',
+  IMMI: 'immigrated',
+  NATU: 'naturalised',
+  CENS: 'recorded',
+  GRAD: 'graduated',
+  ORDN: 'ordained',
+  RETI: 'retired',
+};
+
 /** How old the subject of the enclosing record was when this date fell. */
 export function ageAnnotation(structure: Structure): string | undefined {
   if (structure.tag !== 'DATE' && structure.tag !== 'SDATE') return undefined;
@@ -487,7 +528,9 @@ export function ageAnnotation(structure: Structure): string | undefined {
   // hint has no room to explain itself and would just look like a bug.
   if (!age || age.years < 0 || age.years > 125) return undefined;
 
-  return age.years === 0 ? 'under a year old' : `age ${age.years}`;
+  const verb = EVENT_VERBS[event.tag];
+  const measure = age.years === 0 ? 'under a year old' : `age ${age.years}`;
+  return verb ? `${verb} ${measure}` : measure;
 }
 
 /**
@@ -521,17 +564,40 @@ export function annotate(
   return undefined;
 }
 
-/** When and where, for anything that carries a date or a place. */
-function describeEventLike(structure: Structure): string[] {
+/**
+ * When and where, for anything that carries a date or a place.
+ *
+ * Written as a sentence rather than as the fields it is built from. A hover that
+ * answers `1 CHAN` with `1 JAN 2010` has copied a line from two lines below and
+ * told the reader nothing they could not read for themselves.
+ */
+function describeEventLike(analysis: Analysis, structure: Structure): string[] {
   if (structure.level === 0) return [];
 
-  const date = childPayload(structure, 'DATE');
-  const place = childPayload(structure, 'PLAC');
+  const date = childPayload(structure, 'DATE')?.trim();
+  const place = childPayload(structure, 'PLAC')?.trim();
   if (!date && !place) return [];
 
-  const parts: string[] = [];
-  if (date) parts.push(date.trim());
-  if (place) parts.push(place.split(',')[0]!.trim() || place.trim());
+  const name = tagLabel(
+    modelFor(analysis.version),
+    structure.tag,
+    analysis.validation.resolutions.get(structure)?.slug,
+  ).toLowerCase();
 
-  return parts.length ? [parts.join(' · ')] : [];
+  // Maintenance timestamps get the reading that answers the actual question:
+  // not when, but how long ago — is anyone still looking after this record.
+  if (structure.tag === 'CHAN' || structure.tag === 'CREA') {
+    const verb = structure.tag === 'CHAN' ? 'Last changed' : 'Created';
+    const ago = date ? relativeTime(date) : undefined;
+    if (date) return [`${verb} on **${date}**${ago ? ` — ${ago}` : ''}.`];
+    return [];
+  }
+
+  const when = date ? `on **${date}**` : undefined;
+  const where = place ? `at **${place}**` : undefined;
+
+  // "Recorded" rather than "happened": an attribute such as OCCU or RESI is not
+  // an event, and asserting that one occurred on a date would be wrong.
+  const clause = [when, where].filter(Boolean).join(' ');
+  return [`A ${name} recorded ${clause}.`];
 }

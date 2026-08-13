@@ -23,7 +23,7 @@
       "debugWebWorkerHost": true,
       "request": "launch",
       "preLaunchTask": "build",
-      "outFiles": ["${workspaceFolder}/dist/browser/**/*.js"],
+      "outFiles": ["${workspaceFolder}/dist/browser/**/*.cjs"],
       "args": [
         "--extensionDevelopmentKind=web",
         "--extensionDevelopmentPath=${workspaceFolder}",

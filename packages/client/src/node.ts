@@ -7,6 +7,7 @@ import { LanguageClient, TransportKind, type ServerOptions } from 'vscode-langua
 
 import { registerCommands } from './commands.ts';
 import { registerGraphView } from './graph-view.ts';
+import { registerVersionStatus } from './version-status.ts';
 import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
 
 let client: LanguageClient | undefined;
@@ -14,6 +15,7 @@ let client: LanguageClient | undefined;
 export function activate(context: ExtensionContext): void {
   registerCommands(context);
   registerGraphView(context);
+  registerVersionStatus(context);
 
   const module = context.asAbsolutePath(path.join('dist', 'node', 'server.cjs'));
 

@@ -68,6 +68,7 @@ npx vp test          # tokenize the corpus, parse it, assert scopes and diagnost
 npx vp check         # lint, format, type-check
 npx vp run preview   # render the grammar through real theme palettes, to look at
 npx vscode-test      # integration tests in a real VS Code
+npx vp run test:web  # integration tests in the web extension host, headless (stable build)
 npx vp run dev:web   # launch the web extension host in a browser, to eyeball it
 npx vp run verify    # all of the above
 ```

@@ -126,15 +126,17 @@ describe('rename', () => {
 });
 
 describe('hover', () => {
-  it('describes a tag with its specification label', () => {
-    const text = hover(analysis, at(3, 'INDI'))?.contents;
-    expect(JSON.stringify(text)).toContain('INDI');
-    expect(JSON.stringify(text)).toContain('Individual');
+  it('leads with the English name and keeps the tag alongside', () => {
+    // The reader hovering a tag is asking what it means; the tag is the part
+    // they can already see.
+    const text = JSON.stringify(hover(analysis, at(3, 'INDI'))?.contents);
+    expect(text).toContain('INDI');
+    expect(text).toContain('Individual');
   });
 
   it('describes what a pointer points at, not the tag again', () => {
     const text = JSON.stringify(hover(analysis, at(8, 'F1'))?.contents);
-    expect(text).toContain('FAM');
+    expect(text).toContain('Family record');
     expect(text).toContain('John Smith + Jane Doe');
   });
 

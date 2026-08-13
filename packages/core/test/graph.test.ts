@@ -17,17 +17,28 @@ const FAMILY = [
   '2 VERS 7.0',
   '0 @I1@ INDI',
   '1 NAME John /Smith/',
+  '1 BIRT',
+  '2 DATE 12 AUG 1901',
+  '1 DEAT',
+  '2 DATE 3 MAR 1975',
   '1 FAMS @F1@',
+  '1 SOUR @S1@',
   '0 @I2@ INDI',
   '1 NAME Jane /Doe/',
   '1 FAMS @F1@',
   '0 @I3@ INDI',
   '1 NAME Child /Smith/',
+  '1 BIRT',
+  '2 DATE 1930',
   '1 FAMC @F1@',
   '0 @F1@ FAM',
   '1 HUSB @I1@',
   '1 WIFE @I2@',
   '1 CHIL @I3@',
+  '1 MARR',
+  '2 DATE 4 JUN 1925',
+  '0 @S1@ SOUR',
+  '1 TITL Parish register',
   '0 @I9@ INDI',
   '1 NAME Unrelated /Person/',
   '0 TRLR',
@@ -43,24 +54,48 @@ describe('neighbourhood', () => {
     expect(graph.nodes.find((n) => n.xref === 'I1')?.distance).toBe(0);
   });
 
-  it('follows pointers in both directions', () => {
-    // I1 points at F1 via FAMS; F1 points back via HUSB. A reader does not care
-    // which way round the file wrote it.
-    const graph = neighbourhood(analysis, 'F1', { depth: 1 });
-    expect(graph.nodes.map((n) => n.xref).sort()).toEqual(['F1', 'I1', 'I2', 'I3']);
+  it('collapses the family record and connects the people directly', () => {
+    // The whole point. GEDCOM puts a FAM between every pair of relatives because
+    // that is how it stores a marriage; drawn literally, half the boxes have no
+    // names in them and a grandparent is four hops from a grandchild.
+    const graph = neighbourhood(analysis, 'I1', { depth: 1 });
+    expect(graph.nodes.map((n) => n.xref).sort()).toEqual(['I1', 'I2', 'I3']);
+    expect(graph.nodes.some((n) => n.tag === 'FAM')).toBe(false);
   });
 
-  it('reaches in-laws at depth two but not at depth one', () => {
-    expect(
-      neighbourhood(analysis, 'I1', { depth: 1 })
-        .nodes.map((n) => n.xref)
-        .sort(),
-    ).toEqual(['F1', 'I1']);
-    expect(
-      neighbourhood(analysis, 'I1', { depth: 2 })
-        .nodes.map((n) => n.xref)
-        .sort(),
-    ).toEqual(['F1', 'I1', 'I2', 'I3']);
+  it('reaches a spouse and a child in one hop, not two', () => {
+    const graph = neighbourhood(analysis, 'I1', { depth: 1 });
+    expect(graph.nodes.find((n) => n.xref === 'I2')?.distance).toBe(1);
+    expect(graph.nodes.find((n) => n.xref === 'I3')?.distance).toBe(1);
+  });
+
+  it('labels a marriage with its year and a parent link with the role', () => {
+    const graph = neighbourhood(analysis, 'I1', { depth: 1 });
+    const between = (a: string, b: string) =>
+      graph.edges.find((e) => (e.from === a && e.to === b) || (e.from === b && e.to === a));
+
+    expect(between('I1', 'I2')?.label).toBe('Married 1925');
+    expect(between('I1', 'I2')?.kind).toBe('spouse');
+
+    const child = between('I1', 'I3')!;
+    expect(child.kind).toBe('parent');
+    // Both readings are carried, so the drawing can label the edge whichever way
+    // round it ends up running.
+    expect([child.label, child.reverseLabel].sort()).toEqual(['Child', 'Parent']);
+  });
+
+  it('shows a family as itself when it is the record being looked at', () => {
+    // Collapsing is right for families travelled *through* and wrong for the one
+    // under the cursor, where the record is the subject.
+    const graph = neighbourhood(analysis, 'F1', { depth: 1 });
+    expect(graph.nodes.map((n) => n.xref).sort()).toEqual(['F1', 'I1', 'I2', 'I3']);
+    expect(graph.edges.map((e) => e.label).sort()).toEqual(['Child', 'Husband', 'Wife']);
+  });
+
+  it('draws every relationship once', () => {
+    const graph = neighbourhood(analysis, 'I1', { depth: 2 });
+    const pairs = graph.edges.map((e) => [e.from, e.to].sort().join(' '));
+    expect(new Set(pairs).size).toBe(pairs.length);
   });
 
   it('excludes records with no path to the focus', () => {
@@ -75,13 +110,32 @@ describe('neighbourhood', () => {
     expect(node.line).toBe(3);
   });
 
-  it('keeps every edge between included nodes, including cycles', () => {
-    // I1 -> F1 (FAMS) and F1 -> I1 (HUSB) are both real and both worth drawing.
-    const graph = neighbourhood(analysis, 'I1', { depth: 2 });
-    const between = graph.edges.filter(
-      (e) => (e.from === 'I1' && e.to === 'F1') || (e.from === 'F1' && e.to === 'I1'),
+  it('carries dates, which are what tell two people of a name apart', () => {
+    const graph = neighbourhood(analysis, 'I1', { depth: 1 });
+    expect(graph.nodes.find((n) => n.xref === 'I1')?.detail).toBe('1901–1975');
+    // Only a birth recorded.
+    expect(graph.nodes.find((n) => n.xref === 'I3')?.detail).toBe('b. 1930');
+    // No dates at all falls back to the record type.
+    expect(graph.nodes.find((n) => n.xref === 'I2')?.detail).toBe('Individual');
+  });
+
+  it('leaves sources out unless they are asked for', () => {
+    // A well-sourced person cites dozens of records, and they crowd out the
+    // family the panel exists to show.
+    expect(neighbourhood(analysis, 'I1', { depth: 1 }).nodes.map((n) => n.xref)).not.toContain(
+      'S1',
     );
-    expect(between.map((e) => e.tag).sort()).toEqual(['FAMS', 'HUSB']);
+
+    expect(
+      neighbourhood(analysis, 'I1', { depth: 1, includeReferences: true }).nodes.map((n) => n.xref),
+    ).toContain('S1');
+  });
+
+  it('names record types in English', () => {
+    const graph = neighbourhood(analysis, 'F1', { depth: 1 });
+    expect(graph.nodes.find((n) => n.xref === 'I1')?.kind).toBe('Individual');
+    expect(graph.nodes.find((n) => n.xref === 'F1')?.kind).toBe('Family record');
+    expect(graph.edges.every((edge) => edge.label.length > 0)).toBe(true);
   });
 
   it('returns nothing for an unknown or absent focus', () => {
@@ -97,12 +151,12 @@ describe('neighbourhood', () => {
 });
 
 describe('layout', () => {
-  const graph = neighbourhood(analysis, 'I1', { depth: 2 });
+  const graph = neighbourhood(analysis, 'F1', { depth: 2 });
 
   it('puts each node in a column matching its distance', () => {
     const byXref = new Map(graph.nodes.map((n) => [n.xref, n]));
-    expect(byXref.get('I1')!.x).toBeLessThan(byXref.get('F1')!.x);
-    expect(byXref.get('F1')!.x).toBeLessThan(byXref.get('I2')!.x);
+    expect(byXref.get('F1')!.x).toBeLessThan(byXref.get('I1')!.x);
+    expect(byXref.get('I1')!.x).toBe(byXref.get('I2')!.x);
   });
 
   it('never overlaps two nodes', () => {
@@ -134,7 +188,7 @@ describe('following the cursor', () => {
   it('finds the record containing a line', () => {
     expect(recordAt(analysis, 3)).toBe('I1');
     expect(recordAt(analysis, 5)).toBe('I1');
-    expect(recordAt(analysis, 13)).toBe('F1');
+    expect(recordAt(analysis, 19)).toBe('F1');
   });
 
   it('reports nothing inside a record with no identifier', () => {
@@ -160,5 +214,62 @@ describe('against a real file', () => {
     for (const xref of [...royal.xrefs.definitions.keys()].slice(0, 40)) {
       expect(neighbourhood(royal, xref, { depth: 3 }).nodes.length).toBeLessThanOrEqual(60);
     }
+  });
+});
+
+describe('direction of travel', () => {
+  const THREE_GENERATIONS = [
+    '0 HEAD',
+    '1 GEDC',
+    '2 VERS 7.0',
+    '0 @GP@ INDI',
+    '1 NAME Grand /Parent/',
+    '1 FAMS @F0@',
+    '0 @F0@ FAM',
+    '1 HUSB @GP@',
+    '1 CHIL @ME@',
+    '0 @ME@ INDI',
+    '1 NAME Me /Person/',
+    '1 FAMC @F0@',
+    '1 FAMS @F1@',
+    '0 @SP@ INDI',
+    '1 NAME My /Spouse/',
+    '1 FAMS @F1@',
+    '0 @F1@ FAM',
+    '1 HUSB @ME@',
+    '1 WIFE @SP@',
+    '1 CHIL @KID@',
+    '0 @KID@ INDI',
+    '1 NAME My /Child/',
+    '1 FAMC @F1@',
+    '0 TRLR',
+    '',
+  ].join('\n');
+
+  const tree = analyze(bytes(THREE_GENERATIONS));
+  const reached = (direction: 'both' | 'ancestors' | 'descendants') =>
+    neighbourhood(tree, 'ME', { depth: 3, direction })
+      .nodes.map((n) => n.xref)
+      .sort();
+
+  it('reaches both ways by default', () => {
+    expect(reached('both')).toEqual(['GP', 'KID', 'ME', 'SP']);
+  });
+
+  it('follows only the line back when tracing ancestors', () => {
+    expect(reached('ancestors')).not.toContain('KID');
+    expect(reached('ancestors')).toContain('GP');
+  });
+
+  it('follows only the line forward when tracing descendants', () => {
+    expect(reached('descendants')).not.toContain('GP');
+    expect(reached('descendants')).toContain('KID');
+  });
+
+  it('keeps spouses whichever way it is travelling', () => {
+    // A marriage belongs to a line of descent as much as to a line of ancestry;
+    // dropping it would leave half of every couple unexplained.
+    expect(reached('ancestors')).toContain('SP');
+    expect(reached('descendants')).toContain('SP');
   });
 });

@@ -26,6 +26,18 @@
 					"include": "#pointer-line"
 				},
 				{
+					"include": "#broken-pointer-line"
+				},
+				{
+					"include": "#bad-enum-line"
+				},
+				{
+					"include": "#bad-integer-line"
+				},
+				{
+					"include": "#bad-format-line"
+				},
+				{
 					"include": "#tag-line"
 				},
 				{
@@ -166,6 +178,174 @@
 									"include": "#xref-reference"
 								}
 							]
+						}
+					}
+				}
+			]
+		},
+		"broken-pointer-line": {
+			"patterns": [
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(ALIA|ANCI|ASSO|CHIL|DESI|FAMC|FAMS)[ ](.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.pointer.gedcom"
+						}
+					}
+				}
+			]
+		},
+		"bad-enum-line": {
+			"patterns": [
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(SEX)[ ](?!(?i:M|F|U|X)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.value.gedcom"
+						}
+					}
+				},
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(QUAY)[ ](?!(?i:[0-3])[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.value.gedcom"
+						}
+					}
+				},
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(PEDI)[ ](?!(?i:ADOPTED|BIRTH|FOSTER|SEALING|OTHER)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.value.gedcom"
+						}
+					}
+				},
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(RESN)[ ](?!(?i:(?:CONFIDENTIAL|LOCKED|PRIVACY)(?:[ ]*,[ ]*(?:CONFIDENTIAL|LOCKED|PRIVACY))*)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.value.gedcom"
+						}
+					}
+				}
+			]
+		},
+		"bad-integer-line": {
+			"patterns": [
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(ANCE|DESC|HEIGHT|LEFT|NCHI|NMR|TOP|WIDTH)[ ](?!(?i:\\d+)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.value.gedcom"
+						}
+					}
+				}
+			]
+		},
+		"bad-format-line": {
+			"patterns": [
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(AGE)[ ](?!(?i:(?:[<>][ ]*)?\\d+[ ]*[ymwd](?:[ ]*\\d+[ ]*[ymwd])*|(?i:CHILD|INFANT|STILLBORN))[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.value.gedcom"
+						}
+					}
+				},
+				{
+					"name": "meta.line.gedcom",
+					"match": "^(\\s*)(\\d+)[ ]+(TIME)[ ](?!(?i:\\d{1,2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:[ ]*(?i:AM|PM))?)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$",
+					"captures": {
+						"2": {
+							"name": "constant.numeric.integer.level.gedcom"
+						},
+						"3": {
+							"patterns": [
+								{
+									"include": "#tag"
+								}
+							]
+						},
+						"4": {
+							"name": "invalid.illegal.value.gedcom"
 						}
 					}
 				}
