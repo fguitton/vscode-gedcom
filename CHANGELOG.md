@@ -19,6 +19,22 @@ column with boxes that answered no question anyone had asked.
 - **Families are collapsed.** Nodes are people; edges are the relationships
   between them, derived by joining through the `FAM` records and then discarding
   them. A spouse and a child are now one hop away, not two.
+- **Columns are generations, not hop counts.** Laid out by hops, a sibling and a
+  grandparent shared a column because both are two steps from the focus — two
+  generations side by side, saying something false about the family. Ancestors
+  now run left of the focus and descendants right, the direction a family tree
+  is read in.
+- **Couples sit together, joined by a marriage bar, and every child descends
+  from one point on it.** Two parents fanning independently to four children
+  makes crossings unavoidable; one line per child from the marriage makes them
+  impossible. Columns are then ordered by barycentre sweeps in both directions,
+  with each couple treated as a single unit — ordering partners separately is
+  self-defeating, since both are pulled towards exactly the same children.
+
+  Measured over 300 neighbourhoods of Linguist's `Royal92.ged`: **71% are drawn
+  with no crossings at all and 87% with two or fewer**, against 54% and a mean
+  of 6.1 before. A test holds those figures.
+
 - **Marriages are shown**, labelled with their year, alongside parent and child
   links. Siblings are drawn only where a family records no parents, since
   otherwise they are already two hops apart through one.
@@ -32,9 +48,10 @@ column with boxes that answered no question anyone had asked.
 - Sources, notes and media are left out unless `gedcom.graph.includeReferences`
   asks for them: a well-sourced person cites dozens, and they crowd out the
   family the panel exists to show.
-- Edges run left to right whichever way the pointer is written, labels are
-  placed after the curves with a backing plate and nudged apart where two would
-  collide, and columns are ordered by the barycentre heuristic to cut crossings.
+- Edges run left to right whichever way the pointer is written, and labels are
+  placed after the curves with a backing plate, nudged apart where two would
+  collide. The gutter between columns was widened so a label such as
+  `Married 1874` fits in it rather than being drawn over the boxes.
 
 ### Added
 
@@ -162,6 +179,10 @@ column with boxes that answered no question anyone had asked.
 
 ### Changed
 
+- `devEngines.packageManager` takes a range (`>=11`) and warns rather than
+  failing. It pinned npm to one exact patch version, which no CI runner happens
+  to have, so `npm ci` aborted with `EBADDEVENGINES` before doing anything. The
+  real requirement was always "a modern npm".
 - `vp run build` is the build task. It was `bundle`, which nobody guesses.
 - <kbd>F5</kbd> now runs it first. The extension host loads the bundles in
   `dist/`, so launching without a rebuild looked exactly like a code change

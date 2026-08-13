@@ -44,6 +44,15 @@ export interface GraphNode {
   readonly detail: string;
   /** Hops from the focus. Zero is the focus itself. */
   readonly distance: number;
+  /**
+   * Generations from the focus: negative for ancestors, positive for
+   * descendants, zero for the focus, its spouses and its siblings.
+   *
+   * This, not the hop count, is what a column means. Laid out by distance, a
+   * sibling and a grandparent share a column because both are two hops away,
+   * which puts two generations side by side and reads as nonsense.
+   */
+  readonly generation: number;
   /** Line the record is defined on, for revealing it in the editor. */
   readonly line: number;
 }
@@ -92,6 +101,8 @@ interface Link {
   readonly kind: RelationKind;
   readonly label: string;
   readonly reverseLabel: string;
+  /** Generations crossed by following this link: -1 up, +1 down, 0 sideways. */
+  readonly step: number;
   readonly line: number;
 }
 
@@ -164,6 +175,7 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     links.set(from, [...(links.get(from) ?? []), link]);
   };
 
+  /** Records a relationship from both ends, with the generation step inverted. */
   const pair = (
     a: string,
     b: string,
@@ -171,10 +183,11 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     aToB: string,
     bToA: string,
     line: number,
+    step: number,
   ): void => {
     if (a === b) return;
-    add(a, { to: b, kind, label: aToB, reverseLabel: bToA, line });
-    add(b, { to: a, kind, label: bToA, reverseLabel: aToB, line });
+    add(a, { to: b, kind, label: aToB, reverseLabel: bToA, line, step });
+    add(b, { to: a, kind, label: bToA, reverseLabel: aToB, line, step: -step });
   };
 
   for (const [, record] of analysis.xrefs.definitions) {
@@ -188,13 +201,13 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
 
     for (const [index, a] of partners.entries()) {
       for (const b of partners.slice(index + 1)) {
-        pair(a, b, 'spouse', spouseLabel, spouseLabel, lineOf(record, 'MARR'));
+        pair(a, b, 'spouse', spouseLabel, spouseLabel, lineOf(record, 'MARR'), 0);
       }
     }
 
     for (const parent of partners) {
       for (const child of children) {
-        pair(parent, child, 'parent', 'Child', 'Parent', lineOf(record, 'CHIL'));
+        pair(parent, child, 'parent', 'Child', 'Parent', lineOf(record, 'CHIL'), 1);
       }
     }
 
@@ -206,7 +219,7 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     if (partners.length === 0) {
       for (const [index, a] of children.entries()) {
         for (const b of children.slice(index + 1)) {
-          pair(a, b, 'sibling', 'Sibling', 'Sibling', lineOf(record, 'CHIL'));
+          pair(a, b, 'sibling', 'Sibling', 'Sibling', lineOf(record, 'CHIL'), 0);
         }
       }
     }
@@ -232,20 +245,10 @@ function references(analysis: Analysis, model: ReturnType<typeof modelFor>): Map
     const pointer = asPointer(structure);
     if (pointer !== null && pointer !== 'VOID' && !FAMILY_TAGS.has(structure.tag)) {
       const label = tagLabel(model, structure.tag);
-      add(owner, {
-        to: pointer,
-        kind: 'reference',
-        label,
-        reverseLabel: label,
-        line: structure.span.line,
-      });
-      add(pointer, {
-        to: owner,
-        kind: 'reference',
-        label,
-        reverseLabel: label,
-        line: structure.span.line,
-      });
+      // A citation is not a generation, so it stays in the same column.
+      const shared = { kind: 'reference' as const, label, reverseLabel: label, step: 0 };
+      add(owner, { ...shared, to: pointer, line: structure.span.line });
+      add(pointer, { ...shared, to: owner, line: structure.span.line });
     }
     for (const child of structure.children) visit(owner, child);
   };
@@ -269,21 +272,23 @@ function references(analysis: Analysis, model: ReturnType<typeof modelFor>): Map
  */
 function familyLinks(family: Structure): Link[] {
   const links: Link[] = [];
-  const role = (tag: string, label: string, reverse: string): void => {
+  const role = (tag: string, label: string, reverse: string, step: number): void => {
     for (const xref of pointers(family, tag)) {
       links.push({
         to: xref,
         kind: 'parent',
         label,
         reverseLabel: reverse,
+        step,
         line: family.span.line,
       });
     }
   };
 
-  role('HUSB', 'Husband', 'Family spouse');
-  role('WIFE', 'Wife', 'Family spouse');
-  role('CHIL', 'Child', 'Family child');
+  // The couple sit level with the family; their children a generation below.
+  role('HUSB', 'Husband', 'Family spouse', 0);
+  role('WIFE', 'Wife', 'Family spouse', 0);
+  role('CHIL', 'Child', 'Family child', 1);
   return links;
 }
 
@@ -372,6 +377,9 @@ export function neighbourhood(
   };
 
   const distances = new Map<string, number>([[focusXref, 0]]);
+  // Generation runs alongside distance because they answer different questions:
+  // distance bounds the search, generation decides which column a person is in.
+  const generations = new Map<string, number>([[focusXref, 0]]);
   const order: string[] = [focusXref];
   const elided = new Map<string, number>();
 
@@ -390,6 +398,7 @@ export function neighbourhood(
         continue;
       }
       distances.set(link.to, distance + 1);
+      generations.set(link.to, generations.get(xref)! + link.step);
       order.push(link.to);
     }
 
@@ -407,6 +416,7 @@ export function neighbourhood(
       label: labelFor(record),
       detail: (record.tag === 'INDI' ? lifespanOf(record) : undefined) ?? kind,
       distance: distances.get(xref)!,
+      generation: generations.get(xref)!,
       line: record.span.line,
     };
   });
@@ -436,17 +446,28 @@ export function neighbourhood(
   return { focus: focusXref, ...layout(nodes, edges), edges, elided };
 }
 
-const COLUMN_WIDTH = 220;
+/**
+ * Wide enough for a relationship label to sit in the gutter between two columns.
+ * At 220 the gutter was fifty pixels and "Married 1874" was drawn over the boxes.
+ */
+const COLUMN_WIDTH = 280;
 const ROW_HEIGHT = 64;
 const MARGIN = 24;
 
 /**
- * Positions nodes in columns by distance from the focus.
+ * Positions nodes in columns by generation.
  *
- * Deliberately simple and deterministic. A force-directed layout would look
- * livelier and settle somewhere different every time it ran, which is the wrong
- * trade for a panel that redraws as the cursor moves: a node jumping to a new
- * position on every keystroke is worse than a plain arrangement that holds still.
+ * By generation rather than by hop count, which is the same distinction a
+ * pedigree chart makes. Laid out by hops, a sibling and a grandparent share a
+ * column because both are two steps away — so two generations sit side by side
+ * and the drawing says something false about the family. Ancestors now run left
+ * of the focus and descendants right, which is also the direction people read a
+ * family tree in.
+ *
+ * Deliberately deterministic. A force-directed layout would look livelier and
+ * settle somewhere different every time it ran, which is the wrong trade for a
+ * panel that redraws as the cursor moves: a node jumping position on every
+ * keystroke is worse than a plain arrangement that holds still.
  */
 function layout(
   nodes: GraphNode[],
@@ -454,7 +475,7 @@ function layout(
 ): { nodes: PositionedNode[]; width: number; height: number } {
   const columns = new Map<number, GraphNode[]>();
   for (const node of nodes) {
-    columns.set(node.distance, [...(columns.get(node.distance) ?? []), node]);
+    columns.set(node.generation, [...(columns.get(node.generation) ?? []), node]);
   }
 
   const ordered = [...columns.entries()].sort((a, b) => a[0] - b[0]);
@@ -469,69 +490,136 @@ function layout(
   const tallest = Math.max(...ordered.map(([, column]) => column.length), 1);
   const height = tallest * ROW_HEIGHT + MARGIN * 2;
 
+  // Generations are relative to the focus and go negative for ancestors; the
+  // leftmost becomes column zero.
+  const earliest = ordered[0]?.[0] ?? 0;
+
   const positioned: PositionedNode[] = [];
-  for (const [distance, column] of ordered) {
+  for (const [generation, column] of ordered) {
     // Centre each column vertically so the focus sits in the middle.
     const offset = (tallest - column.length) / 2;
     column.forEach((node, index) => {
       positioned.push({
         ...node,
-        x: MARGIN + distance * COLUMN_WIDTH,
+        x: MARGIN + (generation - earliest) * COLUMN_WIDTH,
         y: MARGIN + (offset + index) * ROW_HEIGHT,
       });
     });
   }
 
-  const width = (Math.max(...nodes.map((n) => n.distance), 0) + 1) * COLUMN_WIDTH + MARGIN;
+  const width = ordered.length * COLUMN_WIDTH + MARGIN;
   return { nodes: positioned, width, height };
 }
 
 /**
- * Reorders each column so its nodes sit near the ones they connect to.
+ * Orders each column so the lines between columns cross as little as possible.
  *
- * The standard barycentre heuristic: place each node at the average position of
- * its already-placed neighbours. One left-to-right pass, no iteration to
- * convergence — this has to be stable across redraws, and a node that settles
+ * The barycentre heuristic — put each thing at the average position of what it
+ * connects to — with two adaptations that matter for a family tree.
+ *
+ * The first is that a **couple is one unit**, not two nodes. Their children all
+ * descend from a single point on the marriage bar between them, so they have to
+ * stay adjacent for the drawing to read; and ordering them independently is
+ * self-defeating anyway, since both partners are pulled towards exactly the same
+ * children and land wherever the average puts them.
+ *
+ * The second is that it **sweeps both ways, several times**. One left-to-right
+ * pass only ever accounts for the column behind, so the leftmost ancestors never
+ * move at all and everything downstream inherits their arbitrary order.
+ *
+ * A fixed number of sweeps with deterministic tie-breaking, never iteration to
+ * convergence: the panel redraws as the cursor moves, and a node that settles
  * somewhere different on each keystroke is worse than a few crossings.
- *
- * Ties keep the alphabetical order they arrived in, so the result is a total
- * order and does not depend on sort stability.
  */
+const SWEEPS = 4;
+
+interface Unit {
+  readonly members: GraphNode[];
+  /** Keeps ties in the order they arrived, so sorting is a total order. */
+  readonly seed: number;
+}
+
 function reduceCrossings(columns: [number, GraphNode[]][], edges: GraphEdge[]): void {
-  const rank = new Map<string, number>();
+  const partners = new Map<string, string>();
+  for (const edge of edges) {
+    if (edge.kind !== 'spouse') continue;
+    // First marriage wins: someone married twice cannot sit beside both, and
+    // picking deterministically beats letting traversal order decide.
+    if (!partners.has(edge.from)) partners.set(edge.from, edge.to);
+    if (!partners.has(edge.to)) partners.set(edge.to, edge.from);
+  }
 
-  for (const [index, [, column]] of columns.entries()) {
-    if (index === 0) {
-      column.forEach((node, position) => rank.set(node.xref, position));
-      continue;
-    }
+  /** Neighbours of each node, for the barycentre. */
+  const adjacency = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.kind === 'spouse') continue;
+    adjacency.set(edge.from, [...(adjacency.get(edge.from) ?? []), edge.to]);
+    adjacency.set(edge.to, [...(adjacency.get(edge.to) ?? []), edge.from]);
+  }
 
-    const barycentre = new Map<string, number>();
+  /** A column as units: couples merged, everyone else alone. */
+  const unitsOf = (column: GraphNode[]): Unit[] => {
+    const present = new Map(column.map((node) => [node.xref, node]));
+    const taken = new Set<string>();
+    const units: Unit[] = [];
+
     for (const node of column) {
-      const positions: number[] = [];
-      for (const edge of edges) {
-        const other =
-          edge.from === node.xref ? edge.to : edge.to === node.xref ? edge.from : undefined;
-        const placed = other === undefined ? undefined : rank.get(other);
-        if (placed !== undefined) positions.push(placed);
+      if (taken.has(node.xref)) continue;
+      taken.add(node.xref);
+
+      const partner = partners.get(node.xref);
+      const beside = partner === undefined ? undefined : present.get(partner);
+      if (beside && !taken.has(beside.xref)) {
+        taken.add(beside.xref);
+        units.push({ members: [node, beside], seed: units.length });
+      } else {
+        units.push({ members: [node], seed: units.length });
       }
-      // A node with no placed neighbour keeps its alphabetical slot rather than
-      // being swept to the top.
-      barycentre.set(
-        node.xref,
-        positions.length === 0
-          ? column.indexOf(node)
-          : positions.reduce((sum, value) => sum + value, 0) / positions.length,
-      );
     }
 
-    const original = new Map(column.map((node, position) => [node.xref, position]));
-    column.sort(
-      (a, b) =>
-        barycentre.get(a.xref)! - barycentre.get(b.xref)! ||
-        original.get(a.xref)! - original.get(b.xref)!,
-    );
+    return units;
+  };
+
+  const rank = new Map<string, number>();
+  const recordRanks = (column: GraphNode[]): void => {
     column.forEach((node, position) => rank.set(node.xref, position));
+  };
+
+  for (const [, column] of columns) recordRanks(column);
+
+  for (let sweep = 0; sweep < SWEEPS; sweep++) {
+    // Alternate direction so every column is eventually ordered against both of
+    // its neighbours rather than only the one behind it.
+    const order = sweep % 2 === 0 ? columns : [...columns].reverse();
+
+    for (const [, column] of order) {
+      const units = unitsOf(column);
+
+      const barycentre = new Map<Unit, number>();
+      for (const unit of units) {
+        const positions: number[] = [];
+        for (const member of unit.members) {
+          for (const other of adjacency.get(member.xref) ?? []) {
+            const placed = rank.get(other);
+            if (placed !== undefined) positions.push(placed);
+          }
+        }
+        barycentre.set(
+          unit,
+          // Anything with nothing placed keeps the slot it already had rather
+          // than being swept to the top.
+          positions.length === 0
+            ? unit.seed
+            : positions.reduce((sum, value) => sum + value, 0) / positions.length,
+        );
+      }
+
+      units.sort((a, b) => barycentre.get(a)! - barycentre.get(b)! || a.seed - b.seed);
+
+      const flattened = units.flatMap((unit) => unit.members);
+      column.splice(0, column.length, ...flattened);
+      recordRanks(column);
+    }
   }
 }
 

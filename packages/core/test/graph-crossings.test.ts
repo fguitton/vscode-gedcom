@@ -1,0 +1,185 @@
+/**
+ * How tangled the drawing actually is.
+ *
+ * Crossing lines are the one graph defect that no amount of good labelling
+ * rescues: the reader cannot tell which line reaches which box, so the drawing
+ * stops answering the question it exists for. Ordering heuristics are easy to
+ * change and hard to reason about, so this measures the outcome on a real file
+ * rather than asserting anything about the method.
+ *
+ * The geometry here mirrors the webview's: a couple is joined by a marriage bar
+ * and their children all descend from one point on it, which is both the
+ * conventional pedigree drawing and the thing that removes most crossings.
+ */
+
+import { describe, expect, it } from 'vitest';
+
+import { neighbourhood, type Graph } from '../src/graph.ts';
+import { analyze } from '../src/index.ts';
+import { bytes, fixture } from './corpus.ts';
+
+/** Must match packages/client/src/graph-view.ts. */
+const NODE_WIDTH = 170;
+const NODE_HEIGHT = 40;
+
+interface Segment {
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+}
+
+/** The lines the panel draws between columns, after union-point routing. */
+function segments(graph: Graph): Segment[] {
+  const byXref = new Map(graph.nodes.map((node) => [node.xref, node]));
+
+  const unions = new Map<string, { partner: string; x: number; y: number }>();
+  for (const edge of graph.edges) {
+    if (edge.kind !== 'spouse') continue;
+    const a = byXref.get(edge.from);
+    const b = byXref.get(edge.to);
+    if (!a || !b || a.x !== b.x) continue;
+
+    const top = a.y <= b.y ? a : b;
+    const bottom = a.y <= b.y ? b : a;
+    const point = { x: top.x + NODE_WIDTH, y: (top.y + bottom.y) / 2 + NODE_HEIGHT / 2 };
+
+    unions.set(a.xref, { partner: b.xref, ...point });
+    unions.set(b.xref, { partner: a.xref, ...point });
+  }
+
+  const drawn = new Set<string>();
+  const found: Segment[] = [];
+
+  for (const edge of graph.edges) {
+    if (edge.kind === 'spouse') continue;
+    const a = byXref.get(edge.from);
+    const b = byXref.get(edge.to);
+    if (!a || !b) continue;
+
+    const from = a.x <= b.x ? a : b;
+    const to = a.x <= b.x ? b : a;
+
+    let x1 = from.x + NODE_WIDTH;
+    let y1 = from.y + NODE_HEIGHT / 2;
+
+    const union = edge.kind === 'parent' ? unions.get(from.xref) : undefined;
+    if (union) {
+      const key = `${[from.xref, union.partner].sort().join(' ')} ${to.xref}`;
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+      x1 = union.x;
+      y1 = union.y;
+    }
+
+    found.push({ x1, y1, x2: to.x, y2: to.y + NODE_HEIGHT / 2 });
+  }
+
+  return found;
+}
+
+const turnsLeft = (
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+): boolean => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
+
+function intersects(s: Segment, t: Segment): boolean {
+  const s1 = { x: s.x1, y: s.y1 };
+  const s2 = { x: s.x2, y: s.y2 };
+  const t1 = { x: t.x1, y: t.y1 };
+  const t2 = { x: t.x2, y: t.y2 };
+  return (
+    turnsLeft(s1, t1, t2) !== turnsLeft(s2, t1, t2) &&
+    turnsLeft(s1, s2, t1) !== turnsLeft(s1, s2, t2)
+  );
+}
+
+function crossings(graph: Graph): number {
+  const lines = segments(graph);
+  let count = 0;
+  for (let i = 0; i < lines.length; i++) {
+    for (let j = i + 1; j < lines.length; j++) {
+      if (intersects(lines[i]!, lines[j]!)) count++;
+    }
+  }
+  return count;
+}
+
+describe('against Royal92', () => {
+  const royal = analyze(fixture('v5/Royal92.ged').bytes);
+  const people = [...royal.xrefs.definitions]
+    .filter(([, record]) => record.tag === 'INDI')
+    .map(([xref]) => xref)
+    .slice(0, 300);
+
+  const measured = people
+    .map((xref) => neighbourhood(royal, xref, { depth: 2 }))
+    .filter((graph) => graph.nodes.length >= 3)
+    .map(crossings);
+
+  it('draws most neighbourhoods with no crossings at all', () => {
+    const clean = measured.filter((count) => count === 0).length;
+    expect(clean / measured.length).toBeGreaterThan(0.65);
+  });
+
+  it('keeps almost all of the rest to a couple of crossings', () => {
+    const nearly = measured.filter((count) => count <= 2).length;
+    expect(nearly / measured.length).toBeGreaterThan(0.8);
+  });
+
+  it('has a low mean, so a typical reader sees a clean drawing', () => {
+    const mean = measured.reduce((sum, count) => sum + count, 0) / measured.length;
+    expect(mean).toBeLessThan(4);
+  });
+});
+
+describe('a couple and their children', () => {
+  const FAMILY = [
+    '0 HEAD',
+    '1 GEDC',
+    '2 VERS 7.0',
+    '0 @P1@ INDI',
+    '1 NAME Father /X/',
+    '1 FAMS @F1@',
+    '0 @P2@ INDI',
+    '1 NAME Mother /X/',
+    '1 FAMS @F1@',
+    '0 @C1@ INDI',
+    '1 FAMC @F1@',
+    '0 @C2@ INDI',
+    '1 FAMC @F1@',
+    '0 @C3@ INDI',
+    '1 FAMC @F1@',
+    '0 @C4@ INDI',
+    '1 FAMC @F1@',
+    '0 @F1@ FAM',
+    '1 HUSB @P1@',
+    '1 WIFE @P2@',
+    '1 CHIL @C1@',
+    '1 CHIL @C2@',
+    '1 CHIL @C3@',
+    '1 CHIL @C4@',
+    '0 TRLR',
+    '',
+  ].join('\n');
+
+  const analysis = analyze(bytes(FAMILY));
+
+  it('draws four children from one point with nothing crossing', () => {
+    // Two parents fanning independently to four children makes crossings
+    // unavoidable; one line per child from the marriage bar makes them impossible.
+    const graph = neighbourhood(analysis, 'P1', { depth: 2 });
+    expect(segments(graph)).toHaveLength(4);
+    expect(crossings(graph)).toBe(0);
+  });
+
+  it('seats the couple together so the marriage bar joins them', () => {
+    const graph = neighbourhood(analysis, 'P1', { depth: 2 });
+    const p1 = graph.nodes.find((node) => node.xref === 'P1')!;
+    const p2 = graph.nodes.find((node) => node.xref === 'P2')!;
+
+    expect(p1.x).toBe(p2.x);
+    expect(Math.abs(p1.y - p2.y)).toBe(64);
+  });
+});

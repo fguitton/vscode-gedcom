@@ -233,6 +233,7 @@ function shell(): string {
   const scroll = document.getElementById('scroll');
   const NS = 'http://www.w3.org/2000/svg';
 
+  // Must match packages/core/src/graph.ts, which does the positioning.
   const NODE_WIDTH = 170;
   const NODE_HEIGHT = 40;
   /** Vertical space one edge label needs, for nudging collisions apart. */
@@ -262,7 +263,7 @@ function shell(): string {
     empty.style.display = 'none';
     scroll.style.display = 'block';
 
-    const width = graph.width + NODE_WIDTH;
+    const width = graph.width;
     svg.setAttribute('width', width);
     svg.setAttribute('height', graph.height);
     svg.setAttribute('viewBox', '0 0 ' + width + ' ' + graph.height);
@@ -272,7 +273,49 @@ function shell(): string {
     // Edges first so nodes draw over them.
     const labelled = [];
 
+    /**
+     * Couples, and the point their children descend from.
+     *
+     * A couple share a generation and therefore a column, so their edge is a
+     * marriage bar down the side rather than a curve across a gutter — which is
+     * how a pedigree chart has always drawn one. Every child then descends from
+     * the middle of that bar instead of from each parent separately, halving the
+     * lines and removing the crossings that two parents fanning independently to
+     * four children make unavoidable.
+     */
+    const unions = new Map();
+
     for (const edge of graph.edges) {
+      if (edge.kind !== 'spouse') continue;
+      const a = byXref.get(edge.from);
+      const b = byXref.get(edge.to);
+      if (!a || !b || a.x !== b.x) continue;
+
+      const top = a.y <= b.y ? a : b;
+      const bottom = a.y <= b.y ? b : a;
+      const point = { x: top.x + NODE_WIDTH, y: (top.y + bottom.y) / 2 + NODE_HEIGHT / 2 };
+
+      unions.set(a.xref, { partner: b.xref, point: point });
+      unions.set(b.xref, { partner: a.xref, point: point });
+
+      const x = top.x + NODE_WIDTH / 2;
+      svg.appendChild(
+        el('path', {
+          class: 'edge',
+          d: 'M ' + x + ' ' + (top.y + NODE_HEIGHT) + ' L ' + x + ' ' + bottom.y,
+          fill: 'none',
+        }),
+      );
+
+      labelled.push({ text: edge.label, x: x, y: (top.y + NODE_HEIGHT + bottom.y) / 2 });
+    }
+
+    /** Child edges already drawn from a union point, so the partner's is skipped. */
+    const drawnFromUnion = new Set();
+
+    for (const edge of graph.edges) {
+      if (edge.kind === 'spouse') continue;
+
       const a = byXref.get(edge.from);
       const b = byXref.get(edge.to);
       if (!a || !b) continue;
@@ -283,8 +326,26 @@ function shell(): string {
       const from = a.x <= b.x ? a : b;
       const to = a.x <= b.x ? b : a;
 
-      const x1 = from.x + NODE_WIDTH;
-      const y1 = from.y + NODE_HEIGHT / 2;
+      let x1 = from.x + NODE_WIDTH;
+      let y1 = from.y + NODE_HEIGHT / 2;
+      let label = from.xref === edge.from ? edge.label : edge.reverseLabel;
+
+      const union = edge.kind === 'parent' ? unions.get(from.xref) : undefined;
+      if (union) {
+        const key = union.partner < from.xref
+          ? union.partner + ' ' + from.xref + ' ' + to.xref
+          : from.xref + ' ' + union.partner + ' ' + to.xref;
+        if (drawnFromUnion.has(key)) continue;
+        drawnFromUnion.add(key);
+
+        x1 = union.point.x;
+        y1 = union.point.y;
+        // The bar above already says this is a marriage, and the column to the
+        // right is the next generation. A row of identical "Child" labels only
+        // crowds the drawing.
+        label = '';
+      }
+
       const x2 = to.x;
       const y2 = to.y + NODE_HEIGHT / 2;
       const mid = (x1 + x2) / 2;
@@ -297,10 +358,7 @@ function shell(): string {
         }),
       );
 
-      // The label reads from the left-hand node to the right-hand one, so it
-      // follows the direction the edge is actually drawn in.
-      const text = from.xref === edge.from ? edge.label : edge.reverseLabel;
-      labelled.push({ text: text, x: mid, y: (y1 + y2) / 2 });
+      if (label) labelled.push({ text: label, x: mid, y: (y1 + y2) / 2 });
     }
 
     // Labels after every curve, so no edge is drawn across one, and nudged apart

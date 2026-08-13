@@ -153,10 +153,29 @@ describe('neighbourhood', () => {
 describe('layout', () => {
   const graph = neighbourhood(analysis, 'F1', { depth: 2 });
 
-  it('puts each node in a column matching its distance', () => {
+  it('puts each node in a column matching its generation', () => {
+    // Not its hop count. A sibling and a grandparent are both two hops away, and
+    // a column that holds them both says something false about the family.
     const byXref = new Map(graph.nodes.map((n) => [n.xref, n]));
-    expect(byXref.get('F1')!.x).toBeLessThan(byXref.get('I1')!.x);
+
+    // The couple sit level with their family; the child a generation on.
     expect(byXref.get('I1')!.x).toBe(byXref.get('I2')!.x);
+    expect(byXref.get('I1')!.x).toBeLessThan(byXref.get('I3')!.x);
+  });
+
+  it('puts ancestors left of the focus and descendants right', () => {
+    const tree = neighbourhood(analysis, 'I3', { depth: 2 });
+    const byXref = new Map(tree.nodes.map((n) => [n.xref, n]));
+
+    expect(byXref.get('I1')!.x).toBeLessThan(byXref.get('I3')!.x);
+    expect(byXref.get('I2')!.x).toBeLessThan(byXref.get('I3')!.x);
+  });
+
+  it('seats a couple next to each other', () => {
+    // A marriage is drawn down the side of the column, which only reads as one
+    // when the two boxes are adjacent.
+    const byXref = new Map(graph.nodes.map((n) => [n.xref, n]));
+    expect(Math.abs(byXref.get('I1')!.y - byXref.get('I2')!.y)).toBeLessThanOrEqual(64);
   });
 
   it('never overlaps two nodes', () => {
