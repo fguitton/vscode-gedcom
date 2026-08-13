@@ -159,21 +159,30 @@ function shell(previews: boolean): string {
 <meta http-equiv="Content-Security-Policy"
       content="${contentSecurityPolicy({ nonce: id, images: previews })}">
 <style nonce="${id}">
-  :root { color-scheme: light dark; }
+  :root {
+    color-scheme: light dark;
+    /* Named once. The header has to paint the same ground as the page, and it
+       cannot inherit it: the header sits inside a plain div, so inheriting gives
+       it that div's transparency rather than the body's colour — and the panel
+       then scrolls underneath a header you can see straight through. */
+    --panel-background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  }
   body {
     margin: 0;
     padding: 0 0 1rem;
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
     color: var(--vscode-foreground);
-    background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+    background: var(--panel-background);
   }
   header {
     padding: .6rem .75rem .5rem;
     border-bottom: 1px solid var(--vscode-panel-border, transparent);
     position: sticky;
     top: 0;
-    background: inherit;
+    background: var(--panel-background);
+    /* Above anything that scrolls up to meet it, whatever order it appears in. */
+    z-index: 1;
   }
   h1 { font-size: calc(var(--vscode-font-size) * 1.1); margin: 0; font-weight: 600; }
   .subtitle { color: var(--vscode-descriptionForeground); font-size: calc(var(--vscode-font-size) * .9); }
