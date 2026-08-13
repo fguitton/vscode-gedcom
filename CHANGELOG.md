@@ -66,6 +66,22 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Changed
 
+- **A name is read rather than copied.** The slashes in `/Family/ Personal` are
+  how GEDCOM marks the surname, not punctuation, and the details panel was
+  printing them. It now shows the name without them, in the order the file wrote
+  — that order is itself information, since the format exists to carry names from
+  cultures that write the surname first — and lists the parts beneath, from the
+  `GIVN` and `SURN` substructures where the file states them and from its own
+  reading of the string where it does not.
+
+  Where a person holds several names, the `TYPE` beneath each becomes its label,
+  so two rows are no longer both called "Name".
+
+- **A structure carrying nothing says so.** `1 _MAYBE` with no payload and nothing
+  beneath it used to render as "recorded", a word the file never said. It is now
+  marked as having no value, in italic and dimmed, so that a tag someone wrote and
+  left blank is visible as exactly that.
+
 - **Coded values are shown in English.** The details panel expands an enumerated
   payload to its meaning — `Sex: Female`, not `Sex: F` — for every enumeration
   the extension models, not only `SEX`. Inlay hints capitalise the same labels,

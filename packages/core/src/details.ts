@@ -18,6 +18,7 @@ import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
 import { meaningOf, standalone } from './enums.ts';
 import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
+import { parsePersonalName } from './name.ts';
 import { modelFor, tagLabel } from './spec/index.ts';
 import { statistics } from './stats.ts';
 import { asPointer } from './xref.ts';
@@ -32,6 +33,15 @@ export interface DetailField {
    * flattened into a row it is unreadable.
    */
   readonly block?: boolean;
+  /**
+   * The structure is present and carries nothing.
+   *
+   * Worth showing rather than hiding: an extension tag with no payload and no
+   * substructures is a thing somebody wrote into the file, and a panel that drops
+   * it silently is the reason nobody notices. The panel marks it as empty rather
+   * than printing a word the file never said.
+   */
+  readonly empty?: boolean;
   /** Line to reveal when the field is activated, where one is meaningful. */
   readonly line?: number;
   /**
@@ -189,7 +199,11 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   }
   if (age) parts.push(`aged ${age.trim()}`);
 
-  return parts.length > 0 ? parts.join(' · ') : 'recorded';
+  // Nothing at all, which is a fact about the line rather than a failure to read
+  // it: `1 _MAYBE` with nothing beneath it is a tag somebody wrote and gave no
+  // value to. The panel says so in its own words; inventing one here — "recorded"
+  // — read as though the file had said something.
+  return parts.join(' · ');
 }
 
 /**
@@ -209,6 +223,64 @@ function addressLine(structure: Structure): string | undefined {
     .filter((part): part is string => part !== undefined && part.length > 0);
 
   return parts.length > 0 ? parts.join(', ') : undefined;
+}
+
+/**
+ * A name, read rather than copied.
+ *
+ * The slashes in `/Family/ Personal` are not punctuation: they are how GEDCOM
+ * marks which part of a name string is the surname, in a format that has to
+ * carry names from cultures that write the surname first, last, or not at all.
+ * Printing them verbatim shows the reader the file's markup instead of the name.
+ *
+ * The display keeps the order the file wrote, because that order is itself
+ * information — a name recorded surname-first was recorded that way on purpose.
+ * The parts follow underneath, which is where the slashes have something to say.
+ *
+ * A person may hold several names, and a row labelled "Name" twice tells the
+ * reader nothing about which is which; the `TYPE` beneath each one does, so it
+ * becomes the label.
+ */
+function personalName(
+  analysis: Analysis,
+  structure: Structure,
+  fallbackLabel: string,
+  line: number,
+): DetailField[] {
+  const parsed = parsePersonalName(structure.payload ?? '');
+
+  const type = child(structure, 'TYPE')?.payload?.trim();
+  const meaning = type ? meaningOf(null, 'TYPE', type, 'NAME') : undefined;
+  const label = meaning
+    ? standalone(meaning.label)
+    : type
+      ? `${fallbackLabel} (${type})`
+      : fallbackLabel;
+
+  const fields: DetailField[] = [{ label, value: parsed.display, line }];
+
+  // The substructures win where the file wrote them: they are what the exporting
+  // program meant, and the slashes are only our reading of the string.
+  const given = child(structure, 'GIVN')?.payload?.trim() ?? parsed.given;
+  const surname = child(structure, 'SURN')?.payload?.trim() ?? parsed.surname;
+
+  // Only worth stating where the file marked a surname. Without one there is
+  // nothing to distinguish: the whole payload is the given name by default, and
+  // repeating it under a second label would say the same thing twice.
+  if (!surname) return fields;
+
+  const prefix = child(structure, 'NPFX')?.payload?.trim() ?? parsed.prefix;
+  // The payload's grammar is `given /surname/ suffix`, so anything after the
+  // closing slash is read as a suffix. Shown rather than dropped: where that
+  // reading is not what the writer meant, seeing it is how a reader finds out.
+  const suffix = child(structure, 'NSFX')?.payload?.trim() ?? parsed.suffix;
+
+  if (prefix) fields.push({ label: 'Title', value: prefix, line });
+  if (given) fields.push({ label: 'Given name', value: given, line });
+  fields.push({ label: 'Surname', value: surname, line });
+  if (suffix) fields.push({ label: 'Suffix', value: suffix, line });
+
+  return fields;
 }
 
 /** Note text, whether written inline or pointed at. */
@@ -248,6 +320,11 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
 
     const label = tagLabel(model, tag, analysis.validation.resolutions.get(structure)?.slug);
     const line = structure.span.line;
+
+    if (tag === 'NAME' && structure.payload) {
+      facts.push(...personalName(analysis, structure, label, line));
+      continue;
+    }
 
     if (tag === 'NOTE' || tag === 'SNOTE') {
       const text = noteText(analysis, structure);
@@ -311,7 +388,8 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
       continue;
     }
 
-    facts.push({ label, value: valueOf(analysis, structure), line });
+    const value = valueOf(analysis, structure);
+    facts.push({ label, value, ...(value.length === 0 ? { empty: true } : {}), line });
   }
 
   return {

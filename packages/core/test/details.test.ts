@@ -192,6 +192,81 @@ describe('against Royal92', () => {
   });
 });
 
+describe('names', () => {
+  const person = (...lines: string[]) =>
+    recordDetails(
+      analyze(
+        bytes(['0 HEAD', '1 GEDC', '2 VERS 7.0', '0 @I1@ INDI', ...lines, '0 TRLR', ''].join('\n')),
+      ),
+      'I1',
+    )!;
+
+  it('reads the slashes rather than printing them', () => {
+    // The slashes are how GEDCOM marks the surname, not punctuation in the name.
+    const flat = fields(person('1 NAME Harriet Mae /Ashworth/'));
+    expect(flat['Facts/Name']).toBe('Harriet Mae Ashworth');
+    expect(flat['Facts/Given name']).toBe('Harriet Mae');
+    expect(flat['Facts/Surname']).toBe('Ashworth');
+  });
+
+  it('keeps the order the file wrote', () => {
+    // A name recorded surname-first was recorded that way on purpose, and the
+    // format exists to carry names from cultures that do exactly that.
+    expect(fields(person('1 NAME /Ashworth/ Harriet'))['Facts/Name']).toBe('Ashworth Harriet');
+  });
+
+  it('says nothing about parts when no surname is marked', () => {
+    // Mononyms are real, and plenty of exporters simply never wrote the slashes;
+    // repeating the whole payload as "given name" would say the same thing twice.
+    const flat = fields(person('1 NAME Pocahontas'));
+    expect(flat['Facts/Name']).toBe('Pocahontas');
+    expect(flat['Facts/Given name']).toBeUndefined();
+    expect(flat['Facts/Surname']).toBeUndefined();
+  });
+
+  it('prefers the parts the file states over its own reading of the string', () => {
+    const flat = fields(
+      person('1 NAME Harriet Mae /Ashworth/', '2 GIVN Harriet', '2 SURN Ashworth-Hale'),
+    );
+    expect(flat['Facts/Given name']).toBe('Harriet');
+    expect(flat['Facts/Surname']).toBe('Ashworth-Hale');
+  });
+
+  it('tells two names apart by their type', () => {
+    // A person may hold several; two rows both labelled "Name" say nothing about
+    // which is which.
+    const flat = fields(
+      person(
+        '1 NAME /Family/ Personal',
+        '2 TYPE PROFESSIONAL',
+        '1 NAME King /Kong/',
+        '2 TYPE Screen',
+      ),
+    );
+    expect(flat['Facts/Professional name']).toBe('Family Personal');
+    expect(flat['Facts/Name (Screen)']).toBe('King Kong');
+  });
+});
+
+describe('a structure that carries nothing', () => {
+  it('is marked empty rather than given a word the file never said', () => {
+    // `1 _MAYBE` with no payload and nothing beneath it is a tag somebody wrote
+    // and left blank. Dropping the row hides it; filling it in invents content.
+    const details = recordDetails(
+      analyze(
+        bytes(
+          ['0 HEAD', '1 GEDC', '2 VERS 7.0', '0 @I1@ INDI', '1 _MAYBE', '0 TRLR', ''].join('\n'),
+        ),
+      ),
+      'I1',
+    )!;
+
+    const field = details.sections.flatMap((section) => section.fields)[0];
+    expect(field?.value).toBe('');
+    expect(field?.empty).toBe(true);
+  });
+});
+
 describe('a date with a time under it', () => {
   it('shows the time as part of the date', () => {
     // TIME hangs under DATE rather than beside it, in 5.5.1 and in 7.0 alike, so

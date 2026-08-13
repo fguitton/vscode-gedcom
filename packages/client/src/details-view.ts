@@ -238,6 +238,12 @@ function shell(previews: boolean): string {
   .block.clickable pre { cursor: pointer; }
   .block.clickable pre:hover { border-color: var(--vscode-focusBorder); }
   .block pre:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  /* A tag that is present and says nothing. Set in italic and dimmed so it reads
+     as the panel's own word rather than as content from the file. */
+  .empty {
+    font-style: italic;
+    opacity: .6;
+  }
   a {
     color: var(--vscode-textLink-foreground);
     text-decoration: none;
@@ -404,7 +410,14 @@ function shell(previews: boolean): string {
         const label = document.createElement('dt');
         label.textContent = field.label;
         const value = document.createElement('dd');
-        value.replaceChildren(linkified(field.value));
+        if (field.empty) {
+          const nothing = document.createElement('span');
+          nothing.className = 'empty';
+          nothing.textContent = 'no value';
+          value.replaceChildren(nothing);
+        } else {
+          value.replaceChildren(linkified(field.value));
+        }
 
         row.append(label, value);
         activate(row);
