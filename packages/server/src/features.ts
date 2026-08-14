@@ -819,7 +819,11 @@ export function codeLenses(analysis: Analysis, uri: string, settings: Settings):
     if (record.tag === 'INDI' || record.tag === 'FAM') {
       lenses.push({
         range,
-        command: { title: 'graph', command: SHOW_GRAPH, arguments: [uri, record.span.line] },
+        command: {
+          title: 'see in the tree',
+          command: SHOW_GRAPH,
+          arguments: [uri, record.span.line],
+        },
       });
     }
   }

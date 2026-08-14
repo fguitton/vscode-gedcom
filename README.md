@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/fguitton/vscode-gedcom)](https://github.com/fguitton/vscode-gedcom/blob/master/LICENSE)
 
 GEDCOM language support for Visual Studio Code — syntax highlighting, validation,
-navigation and a family graph, for GEDCOM 5.5.1, GEDCOM 5.5.5 and FamilySearch
+navigation and a family tree, for GEDCOM 5.5.1, GEDCOM 5.5.5 and FamilySearch
 GEDCOM 7.
 
 This grammar is also the one GitHub uses. The repository is vendored into
@@ -22,7 +22,7 @@ here exists to remove a reason to leave the line you are reading.
 
 - **Inlay hints** put the answer at the end of the line: what a pointer names
   (`1 FAMS @F1@` → `John Smith + Jane Doe`), what a coded value means
-  (`1 SEX M` → `male`, `2 QUAY 3` → `primary`), and how old somebody was at an
+  (`1 SEX M` → `Male`, `2 QUAY 3` → `Primary`), and how old somebody was at an
   event (`died age 73`), computed against their own birth date.
 - **Hovers** answer the question the line provokes rather than restating the tag:
   the weekday of an exact date, what an approximate one is claiming, how many
@@ -30,13 +30,13 @@ here exists to remove a reason to leave the line you are reading.
   jurisdictions are according to `HEAD.PLAC.FORM`, and — for a removed tag —
   what to write instead.
 - **Code lens** above each record: its shape in the tree, a clickable reference
-  count, and a link into the graph.
-- **A graph panel** drawing the family rather than the file. GEDCOM stores a
+  count, and a link into the tree.
+- **A tree panel** drawing the family rather than the file. GEDCOM stores a
   marriage as a `FAM` record that everyone points at; the panel joins those out,
   so nodes are people, columns are generations, couples are joined by a marriage
   bar and their children descend from it. Clicking a box selects that person;
   a button on it goes to their record.
-- **A details panel** beside it, carrying what the graph has to discard to stay
+- **A details panel** beside it, carrying what the tree has to discard to stay
   readable: occupations, places, notes, citations. With nothing selected it
   describes the file itself — who submitted it, what wrote it, what is in it.
   Media it points at over `https` is opened with a click and previewed where it

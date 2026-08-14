@@ -177,7 +177,7 @@ describe('details panel', () => {
 });
 
 describe('discoverability', () => {
-  it('contributes a Show Graph command', async () => {
+  it('contributes a Show Tree command', async () => {
     const all = await vscode.commands.getCommands(true);
     assert.ok(all.includes('gedcom.showGraph'), 'expected gedcom.showGraph to be registered');
   });

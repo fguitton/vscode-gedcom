@@ -359,7 +359,7 @@ function shell(previews: boolean): string {
     if (!details.sections.length) {
       const nothing = document.createElement('div');
       nothing.id = 'empty';
-      nothing.textContent = 'Nothing recorded beyond the relationships in the graph.';
+      nothing.textContent = 'Nothing recorded beyond the relationships in the tree.';
       sections.appendChild(nothing);
       return;
     }

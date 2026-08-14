@@ -3,6 +3,39 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **The toolbar button did not open the panel** ([#5]). A menu never invokes a
+  command bare: the editor title bar passes the editor's resource and then its
+  own `{groupId, editorIndex}` context, while the code lens passes a URI string
+  and a line number. Read as the latter, the menu's context sent an object where
+  a line number belonged, and the editor was revealed at a nonsense position —
+  the scrolling the reporter saw. Revealing can also no longer take the panel
+  down with it.
+
+### Changed
+
+- **"Show Graph" is now "Show Tree", and the code lens says "see in the tree".**
+  The panel is called Tree. It draws a family, and genealogy has a word for that.
+  Setting keys and command identifiers are unchanged, so nothing anybody has
+  configured or bound a key to breaks.
+
+### Testing
+
+- The integration tests assert that the panel **opens** and that it **follows the
+  cursor**, rather than only that a command did not throw. A command that quietly
+  opens nothing throws nothing either, which is how [#5] shipped — the first
+  version of these tests passed against the broken code, because an earlier test
+  had already opened the panel and left it open.
+- The same suite now also runs against **Insiders** — `vp run test:vscode:insiders`
+  locally, an _Extension (desktop, Insiders)_ launch configuration for F5, and an
+  advisory CI job. [#5] came from Insiders on Linux, which was the one combination
+  nothing here had ever run against.
+
+[#5]: https://github.com/fguitton/vscode-gedcom/issues/5
+
 ## [0.6.0]
 
 Two themes. A GEDCOM file is allowed to indent itself, and files in the wild do —

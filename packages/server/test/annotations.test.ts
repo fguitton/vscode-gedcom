@@ -190,7 +190,8 @@ describe('code lenses', () => {
 
   it('links a person and a family into the graph panel', () => {
     const lens = codeLenses(analysis, URI, defaultSettings).find(
-      (candidate) => candidate.range.start.line === 20 && candidate.command?.title === 'graph',
+      (candidate) =>
+        candidate.range.start.line === 20 && candidate.command?.title === 'see in the tree',
     );
     expect(lens?.command?.command).toBe('gedcom.showGraph');
     expect(lens?.command?.arguments).toEqual([URI, 20]);

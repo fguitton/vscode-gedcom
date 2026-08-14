@@ -3,7 +3,7 @@
   "displayName": "GEDCOM Language",
   "version": "0.6.0",
   "private": false,
-  "description": "GEDCOM language support for VS Code: syntax highlighting, validation, navigation and a family graph for GEDCOM 5.5.1, 5.5.5 and FamilySearch GEDCOM 7",
+  "description": "GEDCOM language support for VS Code: syntax highlighting, validation, navigation and a family tree for GEDCOM 5.5.1, 5.5.5 and FamilySearch GEDCOM 7",
   "categories": [
     "Linters",
     "Programming Languages",
@@ -148,8 +148,8 @@
         {
           "type": "webview",
           "id": "gedcom.graph",
-          "name": "Graph",
-          "contextualTitle": "GEDCOM Graph",
+          "name": "Tree",
+          "contextualTitle": "GEDCOM Tree",
           "when": "editorLangId == gedcom || resourceLangId == gedcom"
         },
         {
@@ -169,12 +169,12 @@
           "minimum": 1,
           "maximum": 5,
           "default": 2,
-          "markdownDescription": "How many hops from the record at the cursor the graph panel shows.\n\nOne shows a person and their families; two also reaches spouses, children and parents. Beyond three the neighbourhood is usually larger than the panel can show usefully."
+          "markdownDescription": "How many hops from the record at the cursor the tree panel shows.\n\nOne shows a person and their families; two also reaches spouses, children and parents. Beyond three the neighbourhood is usually larger than the panel can show usefully."
         },
         "gedcom.graph.includeReferences": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Include sources, notes and media in the graph alongside relatives.\n\nOff by default: a well-sourced person cites dozens of records, and they crowd out the family the panel exists to show."
+          "markdownDescription": "Include sources, notes and media in the tree alongside relatives.\n\nOff by default: a well-sourced person cites dozens of records, and they crowd out the family the panel exists to show."
         },
         "gedcom.validation.strictness": {
           "type": "string",
@@ -209,7 +209,7 @@
         "gedcom.codeLens.enabled": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show a summary above each record: how many people depend on it, its shape in the tree, and a link into the graph panel."
+          "markdownDescription": "Show a summary above each record: how many people depend on it, its shape in the tree, and a link into the tree panel."
         },
         "gedcom.details.imagePreviews": {
           "type": "boolean",
@@ -231,7 +231,7 @@
     "commands": [
       {
         "command": "gedcom.showGraph",
-        "title": "Show Graph",
+        "title": "Show Tree",
         "category": "GEDCOM",
         "icon": "$(type-hierarchy)"
       },
