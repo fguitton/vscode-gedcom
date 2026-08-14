@@ -5,6 +5,16 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ## [Unreleased]
 
+### Fixed
+
+- **Show Tree did nothing at all when no GEDCOM file was in front of you** ([#5]).
+  The view is contributed behind `editorLangId == gedcom`, so there was no view
+  to focus and `.focus` resolved silently. It now says so, and where the view
+  exists but has not come up yet — activation, the context key and the click all
+  racing on a cold editor — the container is opened directly rather than the
+  result being assumed. An integration test covers the cold path, which every
+  other test warms past.
+
 ### Changed
 
 - The README lists every setting, with its default and what it does.

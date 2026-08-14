@@ -75,6 +75,26 @@ async function closePanel() {
   assert.equal((await hooks()).graphVisible(), false, 'the panel should start closed');
 }
 
+describe('cold start', () => {
+  // Deliberately first-ish contact: no fixture opened, no settling waited for.
+  // Every other test warms the extension before asking the panel for anything,
+  // so none of them can see the race issue #5 most likely describes — the click
+  // arriving while activation, the language context key and the view registration
+  // are all still settling.
+  it('opens the panel when asked before anything has warmed it', async () => {
+    // A GEDCOM file is open — the view is behind a when clause on that — but
+    // nothing has settled and no panel has ever been shown.
+    const [folder] = vscode.workspace.workspaceFolders ?? [];
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.joinPath(folder.uri, SAMPLE),
+    );
+    await vscode.window.showTextDocument(document);
+    await closePanel();
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    assert.ok(await graphVisible(), 'expected the panel to open from cold');
+  });
+});
+
 describe('activation', () => {
   it('the extension is present and activates', async () => {
     const extension = vscode.extensions.getExtension(EXTENSION_ID);

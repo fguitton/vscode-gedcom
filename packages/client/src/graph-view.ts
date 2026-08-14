@@ -664,6 +664,41 @@ function shell(): string {
 </html>`;
 }
 
+/** The panel container the two views live in, as VS Code names its command. */
+const CONTAINER_FOCUS = 'workbench.view.extension.gedcom';
+
+/**
+ * Opens the tree panel, and makes sure it actually opened.
+ *
+ * `<viewId>.focus` is the documented way and works from a warm editor. It is not
+ * enough from a cold one: the view is behind a `when` clause on the language of
+ * the active editor, and that context key, the extension's activation and the
+ * click all race. Losing the race is silent — `.focus` resolves, nothing appears,
+ * and the reader is left clicking a button that does nothing.
+ *
+ * So the result is checked rather than assumed, and the container is opened
+ * directly if the view did not come up. Reported as issue #5.
+ */
+async function reveal(provider: GedcomGraphViewProvider): Promise<void> {
+  await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
+  if (provider.visible) return;
+
+  // The view is contributed behind `editorLangId == gedcom`, so with no GEDCOM
+  // file in front of the reader there is no view to focus and nothing at all
+  // happens. Saying so beats a button that appears to be broken.
+  if (window.activeTextEditor?.document.languageId !== 'gedcom') {
+    void window.showInformationMessage('Open a GEDCOM file to see its tree.');
+    return;
+  }
+
+  // A tick for the view to resolve before deciding it did not.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  if (provider.visible) return;
+
+  await commands.executeCommand(CONTAINER_FOCUS);
+  await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
+}
+
 /**
  * What `activate` returns, for the integration tests to look at.
  *
@@ -734,7 +769,7 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
         }
       }
 
-      await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
+      await reveal(provider);
       provider.update(window.activeTextEditor);
     }),
     window.registerWebviewViewProvider(GRAPH_VIEW_ID, provider, {
