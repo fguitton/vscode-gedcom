@@ -81,6 +81,7 @@ export type DiagnosticCode =
   | 'cardinality-violation'
   | 'enum-value-unknown'
   | 'malformed-pointer'
+  | 'date-invalid'
   | 'pointer-target-mismatch';
 
 export function span(line: number, start: number, end: number): Span {

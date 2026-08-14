@@ -30,6 +30,7 @@ import {
   type ModelledVersion,
   type SpecModel,
 } from './spec/index.ts';
+import { dateProblems } from './date.ts';
 import { asPointer, VOID_POINTER, type XrefIndex } from './xref.ts';
 
 export type Strictness = 'strict' | 'lenient';
@@ -351,6 +352,20 @@ function checkPayload(
           `\`${item}\` is not a valid value for \`${structure.tag}\`. ` +
           `Expected one of: ${values.join(', ')}.`,
         severity: strictness === 'strict' ? 'error' : 'warning',
+        span: structure.payloadSpan ?? structure.tagSpan,
+      });
+    }
+  }
+
+  // A month that is not a month, or a day the month cannot have. Narrow on
+  // purpose — see `dateProblems` — because a date payload has a dozen legal
+  // shapes and a validator that guesses would condemn correct files.
+  if (/date/i.test(spec.type) && structure.payload !== null) {
+    for (const problem of dateProblems(structure.payload)) {
+      diagnostics.push({
+        code: 'date-invalid',
+        message: problem,
+        severity: 'error',
         span: structure.payloadSpan ?? structure.tagSpan,
       });
     }

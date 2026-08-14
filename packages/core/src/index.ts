@@ -20,6 +20,7 @@ export {
   isUncertain,
   parseExactDate,
   describeDate,
+  dateProblems,
   expandMonths,
   readableDate,
   yearOf,

@@ -165,6 +165,66 @@ function calendarOf(payload: string): string {
   return /^(FRENCH_R|HEBREW|JULIAN|GREGORIAN)\b/.exec(payload.trim())?.[1] ?? 'GREGORIAN';
 }
 
+/** Days in each month, for the day check. Leap February is allowed at 29. */
+const GREGORIAN_DAYS: Record<string, number> = {
+  JAN: 31,
+  FEB: 29,
+  MAR: 31,
+  APR: 30,
+  MAY: 31,
+  JUN: 30,
+  JUL: 31,
+  AUG: 31,
+  SEP: 30,
+  OCT: 31,
+  NOV: 30,
+  DEC: 31,
+};
+
+/**
+ * What is wrong with a date payload, if anything.
+ *
+ * Deliberately narrow: a word where a month belongs, or a day the month cannot
+ * have. Those are the mistakes a person makes typing a date, and both are
+ * unambiguous in any calendar and any version.
+ *
+ * Everything else is left alone. A GEDCOM date may be a range, a period, an
+ * approximation, a dual year, an interpreted date with a free-text phrase, or a
+ * year on its own, and a validator that does not know a form it meets should say
+ * nothing rather than call a correct file wrong.
+ */
+export function dateProblems(payload: string): string[] {
+  const problems: string[] = [];
+  const months = monthsOf(payload);
+  const calendar = calendarOf(payload);
+
+  // The phrase in `INT 1901 (a guess)` is free text and is not inspected.
+  const withoutPhrase = payload.replace(/\([^)]*\)/g, ' ');
+
+  for (const [, day, token] of withoutPhrase.matchAll(
+    /(?:\b(\d{1,2})\s+)?\b([A-Z][A-Z_]{1,4})\b/g,
+  )) {
+    // Keywords and calendar escapes are not months.
+    if (token! in KEYWORD_WORDS || /^(GREGORIAN|JULIAN|HEBREW|FRENCH_R|BCE)$/.test(token!))
+      continue;
+    if (/^@#D/.test(token!)) continue;
+
+    if (!(token! in months)) {
+      problems.push(
+        `\`${token}\` is not a month in the ${CALENDAR_NAMES[calendar] ?? 'Gregorian'} calendar.`,
+      );
+      continue;
+    }
+
+    const limit = GREGORIAN_DAYS[token!] ?? 30;
+    if (day !== undefined && Number(day) > limit) {
+      problems.push(`${token} has no day ${day}.`);
+    }
+  }
+
+  return problems;
+}
+
 function monthsOf(payload: string): Record<string, string> {
   const calendar = calendarOf(payload);
   if (calendar === 'FRENCH_R') return FRENCH_R_MONTHS;

@@ -7,16 +7,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Added
 
-- **Virtual indentation** ([#2]). `gedcom.virtualIndent.enabled` indents each line
-  by its level so a deep structure can be read at a glance. A GEDCOM line must
-  begin with its level number in column zero, so the format forbids the one thing
-  that would make it readable; this draws it as an editor decoration instead —
-  nothing is inserted, nothing is saved, copying a line copies what the file
-  actually holds, and turning it off leaves no trace. Off by default;
-  `gedcom.virtualIndent.width` sets the columns per level.
-
-  Lines that already carry their own indentation are left alone, so a file that
-  indents itself is not indented twice.
+- `gedcom.virtualIndent.enabled` indents each line by its level, as a decoration
+  that never touches the file ([#2]). `gedcom.virtualIndent.width` sets the
+  columns per level.
+- Dates are validated: a month that is not a month, or a day the month cannot
+  have. Every calendar, both spellings of the calendar escape.
 
 ## [0.7.1]
 
