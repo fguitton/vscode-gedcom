@@ -84,11 +84,28 @@ hangs the harness before it invokes any test module, printing nothing at all.
 
 ## Releasing
 
-Bump `version` in `package.json`, write the `## [x.y.z]` section in
-`CHANGELOG.md`, then tag:
+The exact sequence, in order. Every step is here because skipping one has broken
+a release before.
 
 ```bash
-git tag -a v0.5.0 -m "0.5.0" && git push origin v0.5.0
+# 1. Version. The lockfile carries it in TWO places, and `npm version` is what
+#    keeps them in step — editing package.json by hand leaves the lockfile stale
+#    and `npm ci` then fails on a version mismatch.
+npm version 0.7.0 --no-git-tag-version
+
+# 2. Changelog: rename `## [Unreleased]` to `## [0.7.0]`. The release workflow
+#    refuses to proceed without a section matching the manifest version.
+
+# 3. The whole gate, in both editors. Insiders is advisory in CI but not here:
+#    a release goes to people running it, and it is where the last bug report
+#    came from.
+npx vp run verify
+npx vp run test:vscode:insiders
+
+# 4. One commit, then the tag.
+git add -A && git commit -m "chore: release 0.7.0"
+git tag -s v0.7.0 -m "0.7.0"      # -a if you have no signing key
+git push origin master && git push origin v0.7.0
 ```
 
 The tag triggers `.github/workflows/release.yml`, which refuses to proceed
