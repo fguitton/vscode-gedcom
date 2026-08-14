@@ -15,6 +15,22 @@
       ]
     },
     {
+      // The same host, in Insiders. Bug reports arrive from Insiders often
+      // enough that reproducing one should not require installing anything by
+      // hand; `runtimeExecutable` points the launch at whichever Insiders is on
+      // PATH (`code-insiders`, or `Code - Insiders.exe` on Windows).
+      "name": "Extension (desktop, Insiders)",
+      "type": "extensionHost",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "runtimeExecutable": "code-insiders",
+      "outFiles": ["${workspaceFolder}/dist/node/**/*.cjs"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/fixtures"
+      ]
+    },
+    {
       // The web host runs the same code as a worker, under a stricter CSP and
       // with no Node builtins. Worth launching whenever the graph panel or the
       // server's bundling changes.

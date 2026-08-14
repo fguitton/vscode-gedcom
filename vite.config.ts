@@ -103,8 +103,15 @@ export default defineConfig({
       // Integration tests in a real VS Code. These cover what unit tests
       // cannot: that the manifest wires up and the bundles actually load.
       'test:vscode': {
-        command: 'vscode-test',
+        command: 'vscode-test --label stable',
         input: ['dist/**', 'test/integration/**', 'package.json'],
+      },
+      // The same tests against Insiders, which is where bug reports come from
+      // and which no test here had ever run against. Deliberately outside
+      // `verify`: Insiders is rebuilt daily, so a failure is a lead to follow
+      // rather than a reason to stop a commit.
+      'test:vscode:insiders': {
+        command: 'vscode-test --label insiders',
       },
       // Launches the extension in the web extension host, in a browser, for
       // eyeballing what only the web host can show — CSP behaviour in the graph

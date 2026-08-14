@@ -11,16 +11,16 @@ import { Uri, type ExtensionContext } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/browser';
 
 import { registerCommands } from './commands.ts';
-import { registerGraphView } from './graph-view.ts';
+import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
 import { registerVersionStatus } from './version-status.ts';
 import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
 
 let client: LanguageClient | undefined;
 
-export function activate(context: ExtensionContext): void {
+export function activate(context: ExtensionContext): GedcomTestHooks {
   registerCommands(context);
   // Both read the document directly, so they work identically in either host.
-  registerGraphView(context);
+  const hooks = registerGraphView(context);
   registerVersionStatus(context);
 
   const serverPath = Uri.joinPath(context.extensionUri, 'dist', 'browser', 'server.js');
@@ -34,6 +34,8 @@ export function activate(context: ExtensionContext): void {
   });
 
   void client.start();
+
+  return hooks;
 }
 
 export async function deactivate(): Promise<void> {

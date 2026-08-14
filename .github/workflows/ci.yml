@@ -42,7 +42,18 @@ jobs:
         run: npx vp run build
 
       - name: Integration tests in a real VS Code
-        run: xvfb-run -a npx vscode-test
+        run: xvfb-run -a npx vscode-test --label stable
+
+      # The build bug reports arrive from. Issue #5 came from Insiders on Linux
+      # and nothing here had ever run against Insiders at all, so the one
+      # environment a user was reporting from was the one combination untested.
+      #
+      # Advisory, not blocking: Insiders is whatever was built that day, and a
+      # release of this extension must not be at the mercy of it. A failure here
+      # is a lead to follow — which is the whole point of running it.
+      - name: Integration tests in VS Code Insiders
+        continue-on-error: true
+        run: xvfb-run -a npx vscode-test --label insiders
 
       # The other host, which the Electron harness cannot reach: the extension
       # runs as a web worker with no Node builtins, the server in a nested worker

@@ -18,6 +18,44 @@ async function openFixture(relative) {
   return document;
 }
 
+/**
+ * Whether the graph panel is on screen, asked of the extension itself.
+ *
+ * There is no API for the visibility of somebody else's webview view, so the
+ * extension returns a hook from `activate` for the tests to call. Without it the
+ * most a test could say is that the command did not throw — and a command that
+ * quietly opens nothing does not throw either, which is how issue #5 shipped.
+ */
+async function hooks() {
+  const extension = vscode.extensions.getExtension(EXTENSION_ID);
+  return extension.activate();
+}
+
+async function settle(ms = 1_000) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function graphVisible() {
+  // The panel is revealed asynchronously; the webview resolves a tick later.
+  await settle();
+  return (await hooks()).graphVisible();
+}
+
+/**
+ * Shuts the panel, so that a test asserting it opens is asserting *this*
+ * invocation opened it.
+ *
+ * Without this the state leaks between tests: the first one to open the panel
+ * leaves it open, every later assertion passes on its coat-tails, and a command
+ * that opens nothing goes unnoticed — which is exactly what happened here. The
+ * first version of these tests passed against the broken code.
+ */
+async function closePanel() {
+  await vscode.commands.executeCommand('workbench.action.closePanel');
+  await settle();
+  assert.equal((await hooks()).graphVisible(), false, 'the panel should start closed');
+}
+
 describe('activation', () => {
   it('the extension is present and activates', async () => {
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
@@ -144,9 +182,89 @@ describe('discoverability', () => {
     assert.ok(all.includes('gedcom.showGraph'), 'expected gedcom.showGraph to be registered');
   });
 
-  it('the command opens the panel without throwing', async () => {
+  it('the command opens the panel', async () => {
+    await openFixture(SAMPLE);
+    await closePanel();
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    assert.ok(await graphVisible(), 'expected the graph panel to be showing');
+  });
+
+  it('opens the panel when invoked the way the title bar invokes it', async () => {
+    // Reported as issue #5: the toolbar button "fails to do anything, except
+    // horizontally scroll the location pills". A menu never invokes a command
+    // bare — the editor title bar builds its actions with the resource URI as
+    // `arg` and forwards its own context after it:
+    //
+    //   arg: this.resourceContext.get()            // a Uri, not a string
+    //   getActionsContext: () => ({ groupId, editorIndex })
+    //
+    // So the handler is called as (Uri, {groupId, editorIndex}) while the code
+    // lens calls it as (uriString, lineNumber). Read as the latter, the menu's
+    // context sent an object where a line number belonged: the editor was
+    // revealed — which is the scrolling the reporter saw — and the panel never
+    // opened, because the call threw before reaching it.
+    const document = await openFixture(SAMPLE);
+    await closePanel();
+    await vscode.commands.executeCommand('gedcom.showGraph', document.uri, {
+      groupId: 1,
+      editorIndex: 0,
+    });
+    assert.ok(await graphVisible(), 'expected the graph panel to be showing');
+  });
+
+  it('opens the panel from a code lens, which does send a line', async () => {
+    const document = await openFixture(SAMPLE);
+    await closePanel();
+    await vscode.commands.executeCommand('gedcom.showGraph', document.uri.toString(), 0);
+    assert.ok(await graphVisible(), 'expected the graph panel to be showing');
+  });
+});
+
+describe('the graph panel', () => {
+  /** Moves the cursor to a line and lets the panel react. */
+  async function putCursorOn(line) {
+    const editor = vscode.window.activeTextEditor;
+    const position = new vscode.Position(line, 0);
+    editor.selection = new vscode.Selection(position, position);
+    await settle();
+  }
+
+  it('draws the record the cursor is in', async () => {
+    await openFixture(SAMPLE);
+    await closePanel();
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+
+    await putCursorOn(5); // 0 @I1@ INDI
+    assert.equal((await hooks()).graphShowing()?.focus, 'I1');
+  });
+
+  it('recentres when the cursor moves to another record', async () => {
+    // Being open is not the same as being right. The panel is a webview and its
+    // contents are opaque from out here, so what it was last asked to draw is
+    // the only way to tell a panel that follows the cursor from one stuck on
+    // whichever record happened to be under it when it opened.
     await openFixture(SAMPLE);
     await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+
+    await putCursorOn(5); // 0 @I1@ INDI
+    const first = (await hooks()).graphShowing();
+    assert.equal(first?.focus, 'I1');
+    assert.ok(first.nodes > 0, 'expected the graph to hold somebody');
+
+    await putCursorOn(28); // 0 @I4@ INDI
+    assert.equal((await hooks()).graphShowing()?.focus, 'I4');
+  });
+
+  it('keeps drawing after the panel is closed and reopened', async () => {
+    await openFixture(SAMPLE);
+    await closePanel();
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+
+    await putCursorOn(15); // 0 @I2@ INDI
+    assert.equal((await hooks()).graphShowing()?.focus, 'I2');
   });
 });
 

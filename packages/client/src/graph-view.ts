@@ -57,6 +57,29 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     this.selection = selection;
   }
 
+  /**
+   * Whether the panel is on screen.
+   *
+   * Exposed for the integration tests, which otherwise can only assert that
+   * `gedcom.showGraph` did not throw — and a command that opens nothing at all
+   * throws nothing either. That was the gap issue #5 fell through.
+   */
+  get visible(): boolean {
+    return this.view?.visible === true;
+  }
+
+  /**
+   * The record the panel is currently centred on, and how many it drew around
+   * it. Exposed for the same reason as `visible`: from outside, a webview is an
+   * opaque rectangle, so without this a test cannot tell a panel that follows
+   * the cursor from one that is merely open and stuck on the first record.
+   */
+  get showing(): { focus: string | null; nodes: number } | undefined {
+    return this.lastDrawn;
+  }
+
+  private lastDrawn: { focus: string | null; nodes: number } | undefined;
+
   resolveWebviewView(
     view: WebviewView,
     _context: WebviewViewResolveContext,
@@ -123,6 +146,8 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
       includeReferences: configuration.get<boolean>('graph.includeReferences', false),
       direction: this.direction,
     });
+
+    this.lastDrawn = { focus: graph.focus, nodes: graph.nodes.length };
 
     void this.view.webview.postMessage({
       type: 'graph',
@@ -639,8 +664,20 @@ function shell(): string {
 </html>`;
 }
 
+/**
+ * What `activate` returns, for the integration tests to look at.
+ *
+ * Not an API for other extensions; nothing here is documented or supported. It
+ * exists because a panel that fails to open is invisible to a test that can only
+ * call a command and see whether it threw.
+ */
+export interface GedcomTestHooks {
+  readonly graphVisible: () => boolean;
+  readonly graphShowing: () => { focus: string | null; nodes: number } | undefined;
+}
+
 /** Wires both panels to the editor, in whichever host is running. */
-export function registerGraphView(context: ExtensionContext): void {
+export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
   const selection = new SelectionStore();
   const provider = new GedcomGraphViewProvider(selection);
   const details = new GedcomDetailsViewProvider(selection);
@@ -677,8 +714,26 @@ export function registerGraphView(context: ExtensionContext): void {
     // The arguments are for the code lens above each record, which needs to say
     // *which* record; invoked from the palette or the title bar there are none,
     // and the panel follows the cursor as before.
-    commands.registerCommand('gedcom.showGraph', async (uri?: string, line?: number) => {
-      if (uri !== undefined && line !== undefined) await revealLine(uri, line);
+    commands.registerCommand('gedcom.showGraph', async (target?: unknown, at?: unknown) => {
+      // A menu never invokes a command bare. The editor title bar builds its
+      // actions with the editor's resource as `arg` and forwards its own context
+      // after it, so this handler is called as `(Uri, {groupId, editorIndex})`
+      // — while the code lens calls it as `(uriString, lineNumber)`.
+      //
+      // Read as the latter, the menu's context was passed where a line number
+      // belonged: the editor got revealed at a nonsense position and the panel
+      // never opened. Only the lens's own shape counts as a request to reveal.
+      if (typeof target === 'string' && typeof at === 'number') {
+        // Never at the cost of the panel: revealing is what the lens asks for on
+        // top of opening the graph, and a failure there must not swallow the
+        // thing the command is named after.
+        try {
+          await revealLine(target, at);
+        } catch {
+          // The record stays where it is; the graph still opens below.
+        }
+      }
+
       await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
       provider.update(window.activeTextEditor);
     }),
@@ -699,4 +754,6 @@ export function registerGraphView(context: ExtensionContext): void {
   );
 
   followCursor(window.activeTextEditor);
+
+  return { graphVisible: () => provider.visible, graphShowing: () => provider.showing };
 }
