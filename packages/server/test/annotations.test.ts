@@ -99,8 +99,8 @@ describe('inlay hints', () => {
   it('says what the event did, not just how old they were', () => {
     // `age 4` beside a death date is true and cold; the verb is the fact the
     // reader is actually taking in.
-    expect(hintOn(12)).toBe('died age 73');
-    expect(hintOn(10)).toBe('recorded age 9');
+    expect(hintOn(12)).toBe('Died age 73');
+    expect(hintOn(10)).toBe('Recorded age 9');
   });
 
   it('sets the hint apart from the payload it annotates', () => {

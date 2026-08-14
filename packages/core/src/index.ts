@@ -20,6 +20,7 @@ export {
   isUncertain,
   parseExactDate,
   describeDate,
+  expandMonths,
   yearOf,
   dayNumber,
   ageAt,

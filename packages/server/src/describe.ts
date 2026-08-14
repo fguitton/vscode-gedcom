@@ -566,7 +566,12 @@ export function annotate(
     if (value) return truncate(standalone(value), 42);
   }
 
-  if (kinds.ages) return ageAnnotation(structure);
+  // Capitalised for the same reason as a value hint: it is a caption beside the
+  // line, not a clause continuing it.
+  if (kinds.ages) {
+    const age = ageAnnotation(structure);
+    return age ? standalone(age) : undefined;
+  }
 
   return undefined;
 }

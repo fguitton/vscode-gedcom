@@ -66,6 +66,39 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const MONTH_NAMES: Record<string, string> = {
+  JAN: 'January',
+  FEB: 'February',
+  MAR: 'March',
+  APR: 'April',
+  MAY: 'May',
+  JUN: 'June',
+  JUL: 'July',
+  AUG: 'August',
+  SEP: 'September',
+  OCT: 'October',
+  NOV: 'November',
+  DEC: 'December',
+};
+
+/**
+ * A date payload with its month written out.
+ *
+ * For reading, not for writing: `14 FEB 1998` is what the file says and what the
+ * editor shows, but a panel is prose and `14 February 1998` is how a date is
+ * written in prose.
+ *
+ * Deliberately a substitution rather than a parse. A payload may be a range, an
+ * approximation, a dual year, an interpreted date or a phrase, and every one of
+ * those forms carries its months the same way — so replacing the month tokens
+ * handles all of them, and anything unrecognised passes through untouched. The
+ * other calendars name their months differently and are left alone rather than
+ * half-translated.
+ */
+export function expandMonths(payload: string): string {
+  return payload.replace(/\b([A-Z]{3})\b/g, (token) => MONTH_NAMES[token] ?? token);
+}
+
 export interface ExactDate {
   readonly day: number;
   readonly month: number;

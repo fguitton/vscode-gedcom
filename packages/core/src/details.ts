@@ -16,6 +16,7 @@
 
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
+import { expandMonths } from './date.ts';
 import { meaningOf, standalone } from './enums.ts';
 import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
 import { parsePersonalName } from './name.ts';
@@ -180,8 +181,11 @@ function valueOf(analysis: Analysis, structure: Structure): string {
 
   const pointed = resolve(analysis, structure);
   if (pointed) parts.push(pointed);
-  else if (structure.payload)
-    parts.push(firstLine(coded(analysis, structure) ?? structure.payload));
+  else if (structure.payload) {
+    // A DATE shown as a field of its own reads like any other date in the panel.
+    const raw = coded(analysis, structure) ?? structure.payload;
+    parts.push(firstLine(structure.tag === 'DATE' ? expandMonths(raw) : raw));
+  }
 
   // The time of day hangs under the date rather than beside it — `2 DATE` then
   // `3 TIME` — in both 5.5.1 and 7.0, and reading only the date drops it. A
@@ -196,7 +200,12 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   const asserted = parts.length === 1 && parts[0] === 'Y';
   if (asserted && (date ?? place)) parts.length = 0;
 
-  if (date) parts.push(time ? `${date.trim()} at ${time.trim()}` : date.trim());
+  // Written out for reading: the panel is prose, and the editor a click away
+  // still shows exactly what the file holds.
+  if (date) {
+    const written = expandMonths(date.trim());
+    parts.push(time ? `${written} at ${time.trim()}` : written);
+  }
   if (place) parts.push(firstLine(place, 80));
   else {
     // A residence usually carries an ADDR rather than a PLAC, and the address

@@ -8,7 +8,14 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { ageAt, dayNumber, parseExactDate, relativeTime, yearOf } from '../src/date.ts';
+import {
+  ageAt,
+  dayNumber,
+  parseExactDate,
+  relativeTime,
+  yearOf,
+  expandMonths,
+} from '../src/date.ts';
 
 describe('yearOf', () => {
   it('reads a bare year', () => {
@@ -95,5 +102,29 @@ describe('relativeTime', () => {
   it('has no answer for a date that is not exact', () => {
     expect(relativeTime('ABT 2020', now)).toBeUndefined();
     expect(relativeTime('2020', now)).toBeUndefined();
+  });
+});
+
+describe('expandMonths', () => {
+  it('writes the month out', () => {
+    expect(expandMonths('14 FEB 1998')).toBe('14 February 1998');
+    expect(expandMonths('MAY 1901')).toBe('May 1901');
+  });
+
+  it('leaves every other part of the payload alone', () => {
+    // A substitution rather than a parse, so ranges, approximations and calendar
+    // escapes all keep their shape and only the months change.
+    expect(expandMonths('BET 1 JAN 1900 AND 31 DEC 1910')).toBe(
+      'BET 1 January 1900 AND 31 December 1910',
+    );
+    expect(expandMonths('@#DJULIAN@ 14 SEP 1752')).toBe('@#DJULIAN@ 14 September 1752');
+    expect(expandMonths('1901')).toBe('1901');
+  });
+
+  it('does not half-translate a calendar whose months it does not know', () => {
+    // French Republican and Hebrew months are different words entirely; a partial
+    // translation would be worse than none.
+    expect(expandMonths('@#DFRENCH R@ 2 VEND 1795')).toBe('@#DFRENCH R@ 2 VEND 1795');
+    expect(expandMonths('@#DHEBREW@ 15 TSH 5760')).toBe('@#DHEBREW@ 15 TSH 5760');
   });
 });

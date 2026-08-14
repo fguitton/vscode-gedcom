@@ -73,13 +73,14 @@ describe('a record', () => {
   it('reads an event as one line rather than as its parts', () => {
     // The payload alone is half the fact: an event keeps its detail in
     // substructures, so it has to be read as a whole to say anything.
-    expect(flat['Facts/Birth']).toBe('12 AUG 1901 · Chelsea, London, England');
+    // The month is written out: the panel is prose, not the file.
+    expect(flat['Facts/Birth']).toBe('12 August 1901 · Chelsea, London, England');
     expect(flat['Facts/Occupation']).toBe('Blacksmith · Sheffield');
   });
 
   it('drops the bare Y once there is a real date to show', () => {
     // `1 DEAT Y` asserts only that it happened, which is noise beside a date.
-    expect(flat['Facts/Death']).toBe('3 MAR 1975');
+    expect(flat['Facts/Death']).toBe('3 March 1975');
   });
 
   it('leaves out what the graph is already drawing', () => {
@@ -292,7 +293,7 @@ describe('a date with a time under it', () => {
       'I1',
     )!;
 
-    expect(fields(details)['Facts/Change']).toBe('14 FEB 1998 at 09:22:41');
+    expect(fields(details)['Facts/Change']).toBe('14 February 1998 at 09:22:41');
   });
 });
 

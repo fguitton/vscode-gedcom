@@ -166,6 +166,17 @@ answers "Text."
   marked as having no value, in italic and dimmed, so that a tag someone wrote and
   left blank is visible as exactly that.
 
+- **Months are written out in the details panel** — `14 February 1998`, not
+  `14 FEB 1998`. A substitution rather than a parse, so ranges, approximations,
+  dual years and calendar escapes keep their shape and only the months change;
+  the French Republican and Hebrew calendars name their months differently and
+  are left alone rather than half-translated. The editor, a click away, still
+  shows exactly what the file holds.
+
+- **Inlay hints read as captions.** `died age 73` is now `Died age 73`, matching
+  the enumerated values capitalised earlier: a hint sits beside the line rather
+  than continuing it.
+
 - **Coded values are shown in English.** The details panel expands an enumerated
   payload to its meaning — `Sex: Female`, not `Sex: F` — for every enumeration
   the extension models, not only `SEX`. Inlay hints capitalise the same labels,
