@@ -3,7 +3,7 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.8.1]
 
 ### Changed
 
