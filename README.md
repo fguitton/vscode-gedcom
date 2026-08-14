@@ -91,7 +91,8 @@ This extension runs in the desktop editor and unchanged on `vscode.dev` and
 | `gedcom.codeLens.enabled`        | `true`  | A summary above each record: who it is, its shape in the tree, a reference count, and a link into the tree.                                                                                                                |
 | `gedcom.details.imagePreviews`   | `true`  | Thumbnail media the file points at over `https`. Off means the panel is _not permitted_ to make the request, not merely disinclined — a photograph hosted elsewhere does not get to learn the file is being read.          |
 | `gedcom.details.noteFormat`      | `text`  | Whether a note holding HTML starts as characters or as rendered markup. The switch on the note itself changes it for the session. Rendering keeps a fixed list of formatting tags and `http(s)` links, and runs no script. |
-| `gedcom.trace.server`            | `off`   | Log the traffic between VS Code and the language server. For diagnosing this extension, not your file.                                                                                                                     |
+| `gedcom.virtualIndent.enabled`   | `false` | Indent each line by its level. Drawn by the editor, so the file is untouched — nothing is inserted, nothing is saved, and copying a line copies what the file holds. Lines that already indent themselves are left alone.  |
+| `gedcom.virtualIndent.width`     | `2`     | Columns of drawn indentation per level.                                                                                                                                                                                    |
 
 ## Installation
 
