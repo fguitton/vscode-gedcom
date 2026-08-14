@@ -275,6 +275,9 @@
       ]
     }
   },
+  "activationEvents": [
+    "onLanguage:gedcom"
+  ],
   "icon": "images/icon.png",
   "galleryBanner": {
     "color": "#003058",

@@ -10,6 +10,7 @@
       "preLaunchTask": "build",
       "outFiles": ["${workspaceFolder}/dist/node/**/*.cjs"],
       "args": [
+        "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}",
         "${workspaceFolder}/fixtures"
       ]
@@ -27,6 +28,7 @@
       "outFiles": ["${workspaceFolder}/dist/node/**/*.cjs"],
       "args": [
         "--profile-temp",
+        "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}",
         "${workspaceFolder}/fixtures"
       ]
@@ -43,6 +45,7 @@
       "runtimeExecutable": "code-insiders",
       "outFiles": ["${workspaceFolder}/dist/node/**/*.cjs"],
       "args": [
+        "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}",
         "${workspaceFolder}/fixtures"
       ]
@@ -59,6 +62,7 @@
       "outFiles": ["${workspaceFolder}/dist/browser/**/*.cjs"],
       "args": [
         "--extensionDevelopmentKind=web",
+        "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}",
         "${workspaceFolder}/fixtures"
       ]

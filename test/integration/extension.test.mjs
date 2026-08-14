@@ -75,6 +75,23 @@ async function closePanel() {
   assert.equal((await hooks()).graphVisible(), false, 'the panel should start closed');
 }
 
+describe('activation without being asked', () => {
+  // Every other test calls extension.activate() first, which is exactly what
+  // F5 does NOT do. If VS Code does not activate us on its own, the panel never
+  // registers for a real user while the whole suite still passes.
+  it('activates on opening a GEDCOM file, with nobody calling activate()', async () => {
+    const [folder] = vscode.workspace.workspaceFolders ?? [];
+    const document = await vscode.workspace.openTextDocument(
+      vscode.Uri.joinPath(folder.uri, SAMPLE),
+    );
+    await vscode.window.showTextDocument(document);
+    await settle(3_000);
+
+    const extension = vscode.extensions.getExtension(EXTENSION_ID);
+    assert.equal(extension.isActive, true, 'VS Code did not activate the extension by itself');
+  });
+});
+
 describe('cold start', () => {
   // Deliberately first-ish contact: no fixture opened, no settling waited for.
   // Every other test warms the extension before asking the panel for anything,
