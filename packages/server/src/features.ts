@@ -18,9 +18,11 @@ import {
   glossOf,
   isExtensionTag,
   isRemovedInVersion,
+  meaningOf,
   modelFor,
   payloadOf,
   recordNoun,
+  standalone,
   tagLabel,
   relationsOf,
   removalNote,
@@ -204,7 +206,9 @@ export function renameEdits(
  */
 export function summarize(record: Structure, analysis?: Analysis): string {
   const name = record.children.find((c) => c.tag === 'NAME')?.payload;
-  if (name) return name.replace(/\//g, '');
+  // Whitespace collapsed as well as slashes removed: `Victoria  /Hanover/`, with
+  // an empty middle slot, otherwise comes out with a gap in the middle of it.
+  if (name) return name.replace(/\//g, ' ').replace(/\s+/g, ' ').trim();
 
   const title = record.children.find((c) => c.tag === 'TITL')?.payload;
   if (title) return title;
@@ -245,8 +249,11 @@ function describeRecord(analysis: Analysis, record: Structure): string[] {
 
   if (record.tag === 'INDI') {
     const span = lifespan(analysis, xref);
-    const sex = record.children.find((c) => c.tag === 'SEX')?.payload;
-    const facts = [sex, span].filter(Boolean);
+    // In English: a lens reading "F · 1901–1975" is the file's own shorthand, and
+    // the point of a lens is to save the reader decoding the line below it.
+    const coded = record.children.find((c) => c.tag === 'SEX')?.payload;
+    const meaning = coded ? meaningOf(null, 'SEX', coded) : undefined;
+    const facts = [meaning ? standalone(meaning.label) : coded, span].filter(Boolean);
     if (facts.length) lines.push(facts.join(' · '));
 
     const relations = relationsOf(analysis, xref);
@@ -801,8 +808,13 @@ export function codeLenses(analysis: Analysis, uri: string, settings: Settings):
 
     if (record.xref === null) continue;
 
-    const summary = describeRecord(analysis, record)
-      .filter((line) => !line.startsWith('_'))
+    // The name leads. A lens sits above `0 @I500037@ INDI`, which says who this
+    // is only to a reader willing to look three lines further down for the NAME.
+    const named =
+      record.tag === 'INDI' || record.tag === 'FAM' ? summarize(record, analysis) : undefined;
+
+    const summary = [named, ...describeRecord(analysis, record).filter((l) => !l.startsWith('_'))]
+      .filter(Boolean)
       .join(' · ');
     if (summary) lenses.push({ range, command: { title: summary, command: '' } });
 

@@ -37,6 +37,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 - Dates are said in words, in every calendar GEDCOM defines. `ABT 3 NOV 1901`
   reads "About 3 November 1901"; a French Republican or Hebrew date keeps its own
   month names and is labelled with its calendar. Gregorian carries no label.
+- The lens above a record leads with the name, then the sex in English and the
+  years: `Victoria Hanover · Female · 1819–1901 · 2 parents · 1 spouse`.
 - Inlay hints read as captions: `Died age 73`, `Male`.
 
 ### Testing
