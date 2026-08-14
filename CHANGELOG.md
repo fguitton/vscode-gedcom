@@ -5,6 +5,25 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ## [Unreleased]
 
+### Added
+
+- **A note holding markup can be rendered instead of read as characters** ([#2]).
+  Notes with HTML in them get a Text / HTML switch; the choice applies to the
+  whole panel and lasts the session, and `gedcom.details.noteFormat` decides
+  where the session starts. It defaults to `text`, because what the file contains
+  is the honest default.
+
+  The switch appears only where there is markup to render — declared by `MIME` in
+  7.0, recognised by a tag in 5.5.1, and never on `5 < 7`, which is arithmetic.
+
+  Rendering copies the parsed tree through a fixed allowlist of formatting tags
+  rather than stripping what looks dangerous: the copy is built by tag name, so
+  the only attribute that exists on it anywhere is `href`, and only on `http(s)`.
+  `script`, `style`, `iframe`, `object`, `form` and `svg` are dropped with their
+  contents. A GEDCOM file is untrusted input, and the panel's content security
+  policy — no script without a nonce, no remote loads — is the second line, not
+  the first.
+
 ### Fixed
 
 - **An inline note was reported as a broken pointer** ([#2]). GEDCOM 5.5.1 defines
@@ -43,6 +62,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   opens nothing throws nothing either, which is how [#5] shipped — the first
   version of these tests passed against the broken code, because an earlier test
   had already opened the panel and left it open.
+- The integration run now **fails on an unhandled rejection or uncaught
+  exception** anywhere in the extension host. The tests share a process with the
+  extension, so a promise we drop surfaces there; nothing was watching before, and
+  a dropped promise means a feature quietly does nothing with no trace but a line
+  in a log nobody has open.
 - The same suite now also runs against **Insiders** — `vp run test:vscode:insiders`
   locally, an _Extension (desktop, Insiders)_ launch configuration for F5, and an
   advisory CI job. [#5] came from Insiders on Linux, which was the one combination

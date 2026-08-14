@@ -216,6 +216,19 @@
           "default": true,
           "markdownDescription": "Show a thumbnail in the details panel for media the file points at over `http` or `https`.\n\nTurning this off leaves the link, and the panel then makes no network request of its own: a photograph hosted by a genealogy site is fetched from that site, which tells it the file is being read and from where."
         },
+        "gedcom.details.noteFormat": {
+          "type": "string",
+          "enum": [
+            "text",
+            "html"
+          ],
+          "enumDescriptions": [
+            "Show the characters the file actually contains.",
+            "Render recognised markup, sanitised — a fixed list of formatting tags and links, and nothing else."
+          ],
+          "default": "text",
+          "markdownDescription": "How to show a note whose text is HTML.\n\nSome exporters write markup into notes, and GEDCOM 7 lets a note declare it with `MIME text/html`. This is the starting choice; the button on the note itself switches either way for the rest of the session.\n\nRendering never runs script, loads a remote resource, or keeps anything but a fixed list of formatting tags and `http(s)` links — a GEDCOM file is untrusted input."
+        },
         "gedcom.trace.server": {
           "type": "string",
           "enum": [

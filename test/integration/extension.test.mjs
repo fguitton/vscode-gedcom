@@ -4,6 +4,25 @@ import * as vscode from 'vscode';
 const EXTENSION_ID = 'florianguitton.vscode-gedcom';
 const SAMPLE = 'unicode/names-multiscript.ged';
 
+/**
+ * Anything that blew up without being awaited.
+ *
+ * These tests run inside the extension host, in the same process as the
+ * extension, so a promise our code drops surfaces here. Nothing was watching for
+ * that before: an `await` we never wrote fails silently, the feature quietly does
+ * nothing, and the only trace is a line in a log nobody has open.
+ *
+ * Registered at import time so it covers activation itself, which is where most
+ * of our unawaited work happens.
+ */
+const escaped = [];
+process.on('unhandledRejection', (reason) => {
+  escaped.push(`unhandled rejection: ${reason?.stack ?? reason}`);
+});
+process.on('uncaughtException', (error) => {
+  escaped.push(`uncaught exception: ${error?.stack ?? error}`);
+});
+
 /** Opens a fixture from the workspace folder and waits for the server to settle. */
 async function openFixture(relative) {
   const [folder] = vscode.workspace.workspaceFolders ?? [];
@@ -389,5 +408,18 @@ describe('hovers', () => {
       .join('\n');
 
     assert.match(text, /Monday/, `expected a weekday in the hover, saw ${text}`);
+  });
+});
+
+/**
+ * Last, so everything above has had its chance to misbehave.
+ *
+ * Mocha reports a failing assertion here rather than letting a dropped promise
+ * scroll past in the extension host log, which is where this class of bug has
+ * been living.
+ */
+describe('nothing escaped', () => {
+  it('no unhandled rejection or uncaught exception during the run', () => {
+    assert.deepEqual(escaped, []);
   });
 });

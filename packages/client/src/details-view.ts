@@ -40,12 +40,24 @@ export const DETAILS_VIEW_ID = 'gedcom.details';
 /** The setting that governs whether the panel fetches anything from the network. */
 const PREVIEWS = 'gedcom.details.imagePreviews';
 
+/** The setting that chooses how a note carrying markup is shown to begin with. */
+const NOTE_FORMAT = 'gedcom.details.noteFormat';
+
+type NoteFormat = 'text' | 'html';
+
 type PanelMessage =
   | { readonly type: 'reveal'; readonly line: number }
-  | { readonly type: 'open'; readonly url: string };
+  | { readonly type: 'open'; readonly url: string }
+  | { readonly type: 'format'; readonly value: NoteFormat };
 
 function previewsEnabled(): boolean {
   return workspace.getConfiguration().get<boolean>(PREVIEWS, true);
+}
+
+function configuredFormat(): NoteFormat {
+  return workspace.getConfiguration().get<NoteFormat>(NOTE_FORMAT, 'text') === 'html'
+    ? 'html'
+    : 'text';
 }
 
 export class GedcomDetailsViewProvider implements WebviewViewProvider {
@@ -53,6 +65,15 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
   private uri: Uri | undefined;
   private readonly selection: SelectionStore;
   private readonly subscriptions: Disposable[] = [];
+  /**
+   * How the reader last chose to see a note carrying markup.
+   *
+   * Held here rather than in the panel because the panel is thrown away whenever
+   * it is hidden, and rather than in settings because it is a way of looking at
+   * the record in front of you, not a preference about GEDCOM files in general.
+   * The setting decides where the session starts; this decides where it went.
+   */
+  private format: NoteFormat = configuredFormat();
 
   constructor(selection: SelectionStore) {
     this.selection = selection;
@@ -66,6 +87,10 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'reveal') void this.reveal(message.line);
       else if (message.type === 'open') void this.open(message.url);
+      else if (message.type === 'format') {
+        this.format = message.value === 'html' ? 'html' : 'text';
+        this.refresh();
+      }
     });
 
     view.onDidChangeVisibility(() => {
@@ -114,7 +139,7 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     const details: Details =
       (xref === null ? undefined : recordDetails(analysis, xref)) ?? documentDetails(analysis);
 
-    void this.view.webview.postMessage({ type: 'details', details });
+    void this.view.webview.postMessage({ type: 'details', details, format: this.format });
   }
 
   /**
@@ -238,6 +263,49 @@ function shell(previews: boolean): string {
   .block.clickable pre { cursor: pointer; }
   .block.clickable pre:hover { border-color: var(--vscode-focusBorder); }
   .block pre:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  /* The switch between the characters in the file and the markup they spell. */
+  .switch {
+    display: flex;
+    justify-content: flex-end;
+    gap: .25rem;
+    margin-bottom: .2rem;
+  }
+  .switch button {
+    font-family: inherit;
+    font-size: calc(var(--vscode-font-size) * .85);
+    color: var(--vscode-descriptionForeground);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 0 .4rem;
+    cursor: pointer;
+  }
+  .switch button:hover { background: var(--vscode-toolbar-hoverBackground, rgba(127,127,127,.16)); }
+  .switch button[aria-pressed="true"] {
+    color: var(--vscode-foreground);
+    border-color: var(--vscode-focusBorder);
+  }
+  .switch button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  /* Rendered markup, in the panel's own font rather than the editor's: it is
+     prose now, not the characters the file happens to hold. */
+  .rendered {
+    padding: .5rem .6rem;
+    background: rgba(127, 127, 127, .14);
+    border: 1px solid rgba(127, 127, 127, .22);
+    border-radius: 4px;
+    max-height: 22rem;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+  }
+  .rendered p { margin: 0 0 .5rem; }
+  .rendered p:last-child { margin-bottom: 0; }
+  .rendered ul, .rendered ol { margin: 0 0 .5rem; padding-left: 1.2rem; }
+  .rendered blockquote {
+    margin: 0 0 .5rem;
+    padding-left: .6rem;
+    border-left: 2px solid rgba(127, 127, 127, .4);
+  }
+  .rendered code, .rendered pre { font-family: var(--vscode-editor-font-family, monospace); }
   /* A tag that is present and says nothing. Set in italic and dimmed so it reads
      as the panel's own word rather than as content from the file. */
   .empty {
@@ -284,6 +352,8 @@ function shell(previews: boolean): string {
   const content = document.getElementById('content');
   const sections = document.getElementById('sections');
   const previews = ${previews ? 'true' : 'false'};
+  /** Text or markup, for the whole panel. Replaced by every details message. */
+  let format = 'text';
 
   /** Bare http(s) URLs, stopping before punctuation that ends a sentence. */
   const URL_PATTERN = /https?:\\/\\/[^\\s<>"']+[^\\s<>"'.,;:!?)\\]]/g;
@@ -332,6 +402,93 @@ function shell(previews: boolean): string {
     return fragment;
   }
 
+  /**
+   * Tags kept when rendering a note, and the attributes each may carry.
+   *
+   * An allowlist, so a tag nobody thought about is dropped rather than passed
+   * through. The content security policy already refuses to run script and to
+   * load anything remote, but a policy is the second line: this is the first.
+   * Images are absent deliberately — a note is text, and an <img> would reach
+   * the network on behalf of a file the reader may only have been sent.
+   */
+  const ALLOWED = {
+    A: ['href'], ABBR: [], B: [], BLOCKQUOTE: [], BR: [], CODE: [], DD: [], DIV: [], DL: [],
+    DT: [], EM: [], H1: [], H2: [], H3: [], H4: [], H5: [], H6: [], HR: [], I: [], LI: [],
+    OL: [], P: [], PRE: [], SMALL: [], SPAN: [], STRONG: [], SUB: [], SUP: [], TABLE: [],
+    TBODY: [], TD: [], TH: [], THEAD: [], TR: [], U: [], UL: [],
+  };
+
+  /**
+   * Elements dropped along with everything inside them.
+   *
+   * Everything else unrecognised keeps its contents and loses only its tag, which
+   * is right for a stray <font> and wrong for these: the text inside a <script>
+   * or a <style> is code, and showing it as prose would be nonsense even though
+   * it cannot run. Compared case-insensitively because a foreign-namespace
+   * element reports a lower-case tagName.
+   */
+  const DROP_ENTIRELY = new Set([
+    'SCRIPT', 'STYLE', 'TEMPLATE', 'IFRAME', 'FRAME', 'FRAMESET', 'OBJECT',
+    'EMBED', 'APPLET', 'NOSCRIPT', 'FORM', 'INPUT', 'BUTTON', 'SELECT',
+    'TEXTAREA', 'SVG', 'MATH', 'LINK', 'META', 'BASE', 'TITLE',
+  ]);
+
+  /** A copy of a node tree holding only what ALLOWED admits. */
+  function sanitize(node, into) {
+    for (const child of node.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        into.appendChild(document.createTextNode(child.nodeValue));
+        continue;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+
+      const tag = child.tagName.toUpperCase();
+      if (DROP_ENTIRELY.has(tag)) continue;
+
+      const permitted = ALLOWED[tag];
+      if (!permitted) {
+        // Unrecognised: drop the tag, keep what it wrapped.
+        sanitize(child, into);
+        continue;
+      }
+
+      // Built by name from the allowlist rather than cloned, so no attribute,
+      // event handler or property of the original can ride along. An onclick, an
+      // onerror or a style is not stripped — it is simply never copied, because
+      // the only attributes on the copy are the ones named here, and the only
+      // one named anywhere is href.
+      const copy = document.createElement(tag);
+      for (const name of permitted) {
+        const value = child.getAttribute(name);
+        if (value === null) continue;
+        // Only the web, and only on a link: everything else is dropped outright.
+        if (name === 'href' && !/^https?:\\/\\//i.test(value.trim())) continue;
+        copy.setAttribute(name, value);
+      }
+
+      if (copy.tagName === 'A' && copy.hasAttribute('href')) {
+        const url = copy.getAttribute('href');
+        copy.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openExternally(url);
+        });
+      }
+
+      sanitize(child, copy);
+      into.appendChild(copy);
+    }
+  }
+
+  /** The note as markup, or nothing if it will not parse. */
+  function rendered(text) {
+    const parsed = new DOMParser().parseFromString(text, 'text/html');
+    const holder = document.createElement('div');
+    holder.className = 'rendered';
+    sanitize(parsed.body, holder);
+    return holder;
+  }
+
   function thumbnail(field) {
     if (!previews || !field.url) return undefined;
     if (!field.mediaType || field.mediaType.slice(0, 6) !== 'image/') return undefined;
@@ -345,6 +502,36 @@ function shell(previews: boolean): string {
     image.addEventListener('error', () => { image.classList.add('broken'); });
     image.src = field.url;
     return image;
+  }
+
+  /**
+   * The two-way switch shown above a note that holds markup.
+   *
+   * Choosing sends the choice to the extension, which holds it for the session
+   * and asks for a redraw — so every note in the panel switches together, and
+   * the choice survives the panel being hidden and rebuilt.
+   */
+  function chooser() {
+    const bar = document.createElement('div');
+    bar.className = 'switch';
+
+    for (const [value, label, title] of [
+      ['text', 'Text', 'Show the characters the file contains'],
+      ['html', 'HTML', 'Render the markup, sanitised'],
+    ]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.title = title;
+      button.setAttribute('aria-pressed', String(format === value));
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        vscode.postMessage({ type: 'format', value });
+      });
+      bar.appendChild(button);
+    }
+
+    return bar;
   }
 
   function render(details) {
@@ -387,19 +574,35 @@ function shell(previews: boolean): string {
 
         // Multi-line text gets the width of the panel and keeps its own breaks;
         // squeezed into the value column it is unreadable.
-        if (field.block) {
+        if (field.block || field.html) {
           const wrapper = document.createElement('div');
           wrapper.className = 'block' + (clickable ? ' clickable' : '');
 
           const name = document.createElement('div');
           name.className = 'name';
           name.textContent = field.label;
+          wrapper.appendChild(name);
 
-          const body = document.createElement('pre');
-          body.replaceChildren(linkified(field.value));
-          activate(body);
+          // Only where there is markup to render. Offering the choice on an
+          // address would be offering to render something that is not there.
+          if (field.html) wrapper.appendChild(chooser());
 
-          wrapper.append(name, body);
+          const show = () => {
+            const previous = wrapper.querySelector('pre, .rendered');
+            const body =
+              field.html && format === 'html'
+                ? rendered(field.value)
+                : (() => {
+                    const pre = document.createElement('pre');
+                    pre.replaceChildren(linkified(field.value));
+                    return pre;
+                  })();
+            activate(body);
+            if (previous) previous.replaceWith(body);
+            else wrapper.appendChild(body);
+          };
+
+          show();
           list.appendChild(wrapper);
           continue;
         }
@@ -432,7 +635,12 @@ function shell(previews: boolean): string {
 
   window.addEventListener('message', (event) => {
     const message = event.data;
-    if (message.type === 'details') render(message.details);
+    if (message.type === 'details') {
+      // The extension owns the choice, so a rebuilt panel is handed it back
+      // rather than starting again from the setting.
+      format = message.format === 'html' ? 'html' : 'text';
+      render(message.details);
+    }
     else {
       content.hidden = true;
       empty.hidden = false;

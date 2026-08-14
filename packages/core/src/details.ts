@@ -42,6 +42,14 @@ export interface DetailField {
    * than printing a word the file never said.
    */
   readonly empty?: boolean;
+  /**
+   * The value is markup — declared by a `MIME` substructure, or recognisable as
+   * such in a version that has no way to declare it.
+   *
+   * A panel may offer to render it. It is not a promise that the markup is well
+   * formed: plenty of it is not, and neither specification says it must be.
+   */
+  readonly html?: boolean;
   /** Line to reveal when the field is activated, where one is meaningful. */
   readonly line?: number;
   /**
@@ -283,6 +291,30 @@ function personalName(
   return fields;
 }
 
+/**
+ * Whether a note's text is markup rather than prose that happens to contain a
+ * pointy bracket.
+ *
+ * GEDCOM 7 says so outright with `MIME`, and where it does, that is the answer:
+ * the file is entitled to declare its own payload, including declaring HTML that
+ * turns out to be malformed. 5.5.1 has no way to say, and exporters put HTML in
+ * notes anyway — MyHeritage does it routinely — so there the text is all there
+ * is to go on.
+ *
+ * The guess is deliberately narrow: a recognised tag, opened and closed, not
+ * merely an angle bracket. `5 < 7 and 7 > 5` is arithmetic, and a reader who is
+ * offered a "render as HTML" button on it has been told something false.
+ */
+const MARKUP =
+  /<(p|br|b|i|em|strong|u|ul|ol|li|a|h[1-6]|div|span|blockquote|pre|code|table)\b[^>]*>/i;
+
+function looksLikeMarkup(structure: Structure, text: string): boolean {
+  const mime = child(structure, 'MIME')?.payload?.trim().toLowerCase();
+  if (mime) return mime === 'text/html';
+
+  return MARKUP.test(text);
+}
+
 /** Note text, whether written inline or pointed at. */
 function noteText(analysis: Analysis, structure: Structure): string | undefined {
   const pointer = asPointer(structure);
@@ -328,7 +360,15 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
 
     if (tag === 'NOTE' || tag === 'SNOTE') {
       const text = noteText(analysis, structure);
-      if (text) notes.push({ label, value: text, block: isBlock(text), line });
+      if (text) {
+        notes.push({
+          label,
+          value: text,
+          block: isBlock(text),
+          ...(looksLikeMarkup(structure, text) ? { html: true } : {}),
+          line,
+        });
+      }
       continue;
     }
 
