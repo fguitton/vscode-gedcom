@@ -664,9 +664,6 @@ function shell(): string {
 </html>`;
 }
 
-/** The panel container the two views live in, as VS Code names its command. */
-const CONTAINER_FOCUS = 'workbench.view.extension.gedcom';
-
 /**
  * Opens the tree panel, and makes sure it actually opened.
  *
@@ -679,23 +676,27 @@ const CONTAINER_FOCUS = 'workbench.view.extension.gedcom';
  * So the result is checked rather than assumed, and the container is opened
  * directly if the view did not come up. Reported as issue #5.
  */
-async function reveal(provider: GedcomGraphViewProvider): Promise<void> {
-  await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
-  if (provider.visible) return;
-
+async function reveal(
+  provider: GedcomGraphViewProvider,
+  editor: TextEditor | undefined,
+): Promise<void> {
   // The view is contributed behind `editorLangId == gedcom`, so with no GEDCOM
   // file in front of the reader there is no view to focus and nothing at all
   // happens. Saying so beats a button that appears to be broken.
-  if (window.activeTextEditor?.document.languageId !== 'gedcom') {
+  //
+  // Decided *before* focusing anything: focusing a panel view clears
+  // `window.activeTextEditor`, so a check made afterwards sees no editor at all
+  // and reports "open a GEDCOM file" to somebody looking straight at one.
+  if (editor?.document.languageId !== 'gedcom') {
     void window.showInformationMessage('Open a GEDCOM file to see its tree.');
     return;
   }
 
-  // A tick for the view to resolve before deciding it did not.
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  if (provider.visible) return;
-
-  await commands.executeCommand(CONTAINER_FOCUS);
+  // `.focus` is the whole of it. An earlier version re-opened the container when
+  // the view did not report itself visible immediately — but a webview resolves
+  // asynchronously, so it often has not, and firing the container command at an
+  // already-open panel *toggles* it: the reader was thrown back to the Terminal
+  // tab, intermittently, by the code meant to make the panel appear.
   await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
 }
 
@@ -769,8 +770,16 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
         }
       }
 
-      await reveal(provider);
-      provider.update(window.activeTextEditor);
+      // Captured before anything below can move focus. Focusing the panel makes
+      // `window.activeTextEditor` undefined, and the update would then draw an
+      // empty panel for a reader who has a file open in front of them.
+      const editor =
+        window.activeTextEditor?.document.languageId === 'gedcom'
+          ? window.activeTextEditor
+          : window.visibleTextEditors.find((e) => e.document.languageId === 'gedcom');
+
+      await reveal(provider, editor);
+      provider.update(editor);
     }),
     window.registerWebviewViewProvider(GRAPH_VIEW_ID, provider, {
       // The panel is cheap to rebuild from the document, so there is no state
