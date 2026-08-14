@@ -107,8 +107,9 @@ describe('the file', () => {
   const flat = fields(documentDetails(analysis));
 
   it('counts what is in it', () => {
-    expect(flat['Contents/Individual']).toBe('2');
-    expect(flat['Contents/Family record']).toBe('1');
+    // The label agrees in number with the count beside it.
+    expect(flat['Contents/Individuals']).toBe('2');
+    expect(flat['Contents/Family']).toBe('1');
   });
 
   it('describes the submitter, who is nobody in the family', () => {

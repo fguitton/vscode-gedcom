@@ -158,7 +158,7 @@ describe('code lenses', () => {
 
   it('summarises the dataset above the header', () => {
     const [title] = lensesOn(0);
-    expect(title).toContain('2 INDI');
+    expect(title).toContain('2 individuals');
     expect(title).toContain('1901–1975');
   });
 

@@ -17,6 +17,13 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Changed
 
+- **Records are counted in English.** The lens above the header read
+  `3,010 INDI · 1,422 FAM · 1 SUBM`, which is the file talking to itself; it now
+  reads `3,010 individuals · 1,422 families · 1 submitter`. The same wording is
+  used by the header hover and the details panel's contents, all three from one
+  table, and the label agrees in number with the count beside it. A record kind
+  nobody anticipated still shows its tag rather than an invented plural.
+
 - **"Show Graph" is now "Show Tree", and the code lens says "see in the tree".**
   The panel is called Tree. It draws a family, and genealogy has a word for that.
   Setting keys and command identifiers are unchanged, so nothing anybody has

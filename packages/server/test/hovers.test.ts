@@ -186,8 +186,8 @@ describe('counts', () => {
 describe('the header', () => {
   it('answers "what is in this file"', () => {
     const text = hoverText(PERSON, '0 HEAD', 'HEAD');
-    expect(text).toContain('3 INDI');
-    expect(text).toContain('1 FAM');
+    expect(text).toContain('3 individuals');
+    expect(text).toContain('1 family');
     expect(text).toMatch(/1901.*1975/);
   });
 });

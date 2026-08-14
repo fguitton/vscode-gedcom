@@ -100,6 +100,7 @@ export {
   glossOf,
   removalNote,
   labelOf,
+  recordNoun,
   tagLabel,
   modelFor,
   modelledVersion,

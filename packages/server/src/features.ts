@@ -20,6 +20,7 @@ import {
   isRemovedInVersion,
   modelFor,
   payloadOf,
+  recordNoun,
   tagLabel,
   relationsOf,
   removalNote,
@@ -778,11 +779,15 @@ export function codeLenses(analysis: Analysis, uri: string, settings: Settings):
 
     if (record.tag === 'HEAD') {
       const stats = statistics(analysis);
+      const model = modelFor(analysis.version);
       const counts = Object.entries(stats.records)
         .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
         .sort((a, b) => b[1] - a[1])
         .slice(0, 4)
-        .map(([tag, count]) => `${count.toLocaleString('en')} ${tag}`);
+        .map(
+          ([tag, count]) =>
+            `${count.toLocaleString('en')} ${recordNoun(tag, count, tagLabel(model, tag))}`,
+        );
 
       const period =
         stats.earliest !== undefined && stats.latest !== undefined

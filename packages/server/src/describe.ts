@@ -32,6 +32,7 @@ import {
   parseCoordinate,
   parseExactDate,
   parsePersonalName,
+  recordNoun,
   placeFormOf,
   relationsOf,
   relativeTime,
@@ -257,7 +258,10 @@ function describeHeader(analysis: Analysis): string[] {
   const counts = Object.entries(stats.records)
     .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
     .sort((a, b) => b[1] - a[1])
-    .map(([tag, count]) => `${count.toLocaleString('en')} ${tag}`);
+    .map(
+      ([tag, count]) =>
+        `${count.toLocaleString('en')} ${recordNoun(tag, count, tagLabel(modelFor(analysis.version), tag))}`,
+    );
 
   const lines: string[] = [];
   if (counts.length) lines.push(counts.join(' · '));

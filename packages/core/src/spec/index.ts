@@ -142,6 +142,46 @@ export const VENDOR_TAGS: Record<string, string> = {
 };
 
 /**
+ * What a record is called when you are counting them.
+ *
+ * `3,010 INDI · 1,422 FAM` is the file talking to itself. A reader wants
+ * "3,010 individuals · 1,422 families", and the registry's own labels do not
+ * give that: they are singular, title-cased, and sometimes name the record
+ * rather than the thing ("Family record").
+ */
+const RECORD_NOUNS: Record<string, readonly [string, string]> = {
+  INDI: ['individual', 'individuals'],
+  FAM: ['family', 'families'],
+  SUBM: ['submitter', 'submitters'],
+  SOUR: ['source', 'sources'],
+  REPO: ['repository', 'repositories'],
+  OBJE: ['media object', 'media objects'],
+  NOTE: ['note', 'notes'],
+  SNOTE: ['note', 'notes'],
+  SUBN: ['submission', 'submissions'],
+};
+
+/**
+ * The plain English word for a kind of record, in the right number.
+ *
+ * A file may hold records nobody anticipated — a vendor's `_LOC`, say — so the
+ * label is used where there is one and the tag itself where there is not. A tag
+ * is a poor word but an honest one; an invented plural of an unknown noun is
+ * neither.
+ */
+export function recordNoun(tag: string, count: number, label?: string): string {
+  const known = RECORD_NOUNS[tag];
+  if (known) return count === 1 ? known[0] : known[1];
+
+  if (label && label !== tag) {
+    const lower = label.toLowerCase();
+    return count === 1 ? lower : `${lower}s`;
+  }
+
+  return tag;
+}
+
+/**
  * The English name of a tag, in the plainest form available.
  *
  * Tries the resolved slug first, since that is context-qualified and therefore

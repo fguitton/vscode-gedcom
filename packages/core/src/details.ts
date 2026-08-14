@@ -19,7 +19,7 @@ import type { Structure } from './cst.ts';
 import { meaningOf, standalone } from './enums.ts';
 import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
 import { parsePersonalName } from './name.ts';
-import { modelFor, tagLabel } from './spec/index.ts';
+import { modelFor, recordNoun, tagLabel } from './spec/index.ts';
 import { statistics } from './stats.ts';
 import { asPointer } from './xref.ts';
 
@@ -523,7 +523,8 @@ export function documentDetails(analysis: Analysis): Details {
     .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
     .sort((a, b) => b[1] - a[1])
     .map(([tag, count]) => ({
-      label: tagLabel(model, tag),
+      // A count wants the plural: "Individuals — 3,010", not "Individual — 3,010".
+      label: standalone(recordNoun(tag, count, tagLabel(model, tag))),
       value: count.toLocaleString('en'),
     }));
 
