@@ -15,6 +15,23 @@
       ]
     },
     {
+      // A throwaway profile, which is the only way to be sure you are looking at
+      // the extension rather than at leftover workbench state. Panel containers
+      // can be hidden from the tab strip, and that choice persists across every
+      // reload and rebuild — a hidden GEDCOM panel is indistinguishable from one
+      // that never registered, and has cost real debugging time.
+      "name": "Extension (desktop, clean profile)",
+      "type": "extensionHost",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "outFiles": ["${workspaceFolder}/dist/node/**/*.cjs"],
+      "args": [
+        "--profile-temp",
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/fixtures"
+      ]
+    },
+    {
       // The same host, in Insiders. Bug reports arrive from Insiders often
       // enough that reproducing one should not require installing anything by
       // hand; `runtimeExecutable` points the launch at whichever Insiders is on
