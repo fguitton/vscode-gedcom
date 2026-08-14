@@ -16,6 +16,7 @@ Linguist never intended to take from this project.
 | `v5/Royal92.ged` | [github-linguist/linguist](https://github.com/github-linguist/linguist/blob/main/samples/GEDCOM/Royal92.ged) `samples/GEDCOM/` | Linguist sample corpus |
 | `unicode/*.ged` | Authored for this repository | Apache-2.0 |
 | `line-endings/*.ged` | Authored for this repository | Apache-2.0 |
+| `notes/*.ged`, `style/*.ged` | Authored for this repository | Apache-2.0 |
 
 `Royal92.ged` is the file GitHub itself uses as the GEDCOM language sample, which
 makes it the single most important regression target: whatever Linguist renders for
@@ -35,6 +36,9 @@ GEDCOM on github.com is rendered by this grammar over that file.
 | `unicode/names-multiscript.ged` | Names, places and notes across a dozen writing systems, including combining marks and characters outside the basic multilingual plane. |
 | `unicode/utf16{le,be}-multiscript.ged` | The same content as UTF-16 with a byte-order mark, in both orders. |
 | `unicode/xref-nonlatin.ged` | Cross-reference identifiers outside ASCII. No specification permits these; files in the wild contain them, and losing a record over one is worse than accepting it. |
+| `notes/html-5.5.1.ged` | A note holding HTML, split mid-URL by `CONC` — the shape reported in issue #2. Well-formed, unclosed and crossed markup side by side, because no GEDCOM rule inspects any of it. |
+| `notes/html-7.0.ged` | The same ground in 7.0, where markup is declared with `MIME` and `CONC` no longer exists. |
+| `style/indent-*.ged` | The same tree indented seven ways — spaces at three widths, tabs, and tabs-then-spaces at three tab widths. All seven must parse to one tree. |
 | `line-endings/{lf,crlf,cr,mixed}.ged` | The same document under each conformant terminator, plus one mixing all three. See the note below. |
 
 ## These files must not be normalised

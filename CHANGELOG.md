@@ -7,6 +7,13 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Fixed
 
+- **An inline note was reported as a broken pointer** ([#2]). GEDCOM 5.5.1 defines
+  `NOTE`, `SOUR`, `OBJE` and `REPO` twice over — once pointing at a record, once
+  carrying the content in place — and the registry we generate from models only
+  the pointer form. So `1 NOTE He was an accountant` was called malformed, which
+  is what most exporters actually write: MyHeritage, Ancestry and PAF files are
+  full of inline notes. Found by building the fixture for [#2].
+
 - **The toolbar button did not open the panel** ([#5]). A menu never invokes a
   command bare: the editor title bar passes the editor's resource and then its
   own `{groupId, editorIndex}` context, while the code lens passes a URI string
@@ -41,6 +48,13 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   advisory CI job. [#5] came from Insiders on Linux, which was the one combination
   nothing here had ever run against.
 
+- Two `fixtures/notes/` files for markup inside notes: the 5.5.1 shape reported in
+  [#2], where HTML is split mid-URL across `CONC` lines, and the 7.0 equivalent,
+  where markup is declared with `MIME` and `CONC` no longer exists. Both carry
+  well-formed, unclosed and crossed markup side by side, since no rule in either
+  specification inspects any of it.
+
+[#2]: https://github.com/fguitton/vscode-gedcom/issues/2
 [#5]: https://github.com/fguitton/vscode-gedcom/issues/5
 
 ## [0.6.0]

@@ -1,0 +1,29 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SOUR EXPORTER
+2 VERS 2.1
+0 @I1@ INDI
+1 NAME Cecil John /Rhodes/
+1 SEX M
+1 NOTE <p>He was an accountant for Consolidated Gold Fields.</p>
+2 MIME text/html
+2 LANG en
+1 NOTE <p>Declared as HTML and not well formed: the paragraph never closes.
+2 MIME text/html
+1 NOTE <p>Not declared as anything, so this is a paragraph tag being read as
+2 CONT four literal characters followed by a word. Undeclared means text/plain,
+2 CONT which makes the markup content rather than markup.</p>
+1 NOTE Plain text, said so.
+2 MIME text/plain
+0 @I2@ INDI
+1 NAME Alfred /Beit/
+1 SNOTE @N1@
+1 NOTE Line breaks are carried by CONT alone in this version.
+2 CONT CONC was removed in 7.0, so the 255-character line limit went with it and
+2 CONT a payload may simply be as long as it needs to be — this line is longer than
+2 CONT any 5.5.1 line was permitted to be, and it is entirely conformant here.
+0 @N1@ SNOTE <p>A shared note, which is where 7.0 puts text that many records cite.</p>
+1 MIME text/html
+1 LANG en
+0 TRLR

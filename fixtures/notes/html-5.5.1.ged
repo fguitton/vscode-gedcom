@@ -1,0 +1,49 @@
+0 HEAD
+1 SOUR MYHERITAGE
+2 NAME MyHeritage Family Tree Builder
+2 VERS 8.0
+2 CORP MyHeritage.com
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Notes carrying HTML, which the specification neither blesses nor forbids:
+2 CONT to GEDCOM 5.5.1 a note is text, and markup in it is text like any other.
+2 CONT The interesting part is CONC, which joins with no separator at all — so a
+2 CONT tag split across two lines is only whole once the lines are rejoined.
+0 @I1@ INDI
+1 NAME Cecil John /Rhodes/
+2 GIVN Cecil John
+2 SURN Rhodes
+1 SEX M
+1 BIRT
+2 DATE 5 JUL 1853
+2 PLAC Bishop's Stortford, Hertfordshire, England
+1 NOTE <p>He was an accountant for <a href="https://en.wikipedia.org/wiki/Cons
+2 CONC olidated_Gold_Fields">Consolidated Gold Fields</a>, founded in 1887.</p>
+1 NOTE <p>The company register is searchable at https://find-and-update.company
+2 CONC -information.service.gov.uk/advanced-search/get-results?companyNameInclud
+2 CONC es=Consolidated+Gold+Fields&amp;companyNameExcludes=&amp;status=active
+1 SOUR @S1@
+2 QUAY 3
+2 DATA
+3 TEXT Added by confirming a Smart Match
+2 EVEN Smart Matching
+3 ROLE I500007
+0 @I2@ INDI
+1 NAME Alfred /Beit/
+1 SEX M
+1 NOTE <p>Well formed, and closed where it should be.</p>
+1 NOTE <p>Unclosed, which no GEDCOM rule has anything to say about.
+1 NOTE Mixed <b>bold and <i>italic</i></b> nested correctly.
+1 NOTE Crossed <b>bold and <i>italic</b> here</i>, which is not well formed.
+1 NOTE 5 < 7 and 7 > 5, where the angle brackets are arithmetic rather than tags.
+1 NOTE An unescaped ampersand: Marks & Spencer, beside an escaped one: &amp;.
+1 NOTE @@ is how 5.5.1 escapes a literal at-sign, as in user@@example.org.
+0 @S1@ SOUR
+1 TITL Consolidated Gold Fields of South Africa
+1 NOTE <p>A source note, inline rather than pointing at a note record — which is
+2 CONT the form the specification lists second and exporters write first.</p>
+0 @N1@ NOTE An ordinary note record, pointed at from nowhere in particular.
+1 CONT It exists so the file carries both spellings of a note.
+0 TRLR

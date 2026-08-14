@@ -308,6 +308,17 @@ function reportUnresolved(
   }
 }
 
+/**
+ * Structures GEDCOM 5.5.1 lets you write either way.
+ *
+ * Each has a record form and an inline form: `NOTE_STRUCTURE`, `SOURCE_CITATION`,
+ * `MULTIMEDIA_LINK` and `SOURCE_REPOSITORY_CITATION` are all defined twice in the
+ * grammar, once pointing at a record and once carrying the content in place. The
+ * registry we generate from records only the pointer form, so a file using the
+ * other — which is most files — would otherwise be reported as broken.
+ */
+const INLINE_OR_POINTER = new Set(['NOTE', 'SOUR', 'OBJE', 'REPO']);
+
 function checkPayload(
   structure: Structure,
   slug: string,
@@ -365,6 +376,15 @@ function checkPayload(
     // but is not a pointer is still wrong, substructures or not: `1 ASSO @I1@ df`
     // does not become acceptable by having a `ROLE` beneath it.
     if (structure.payload === null && structure.children.length > 0) return;
+
+    // Except for the four structures 5.5.1 defines as *either* a pointer or the
+    // thing itself written out. `1 NOTE @N1@` and `1 NOTE He was an accountant`
+    // are both correct, and the second is what most exporters actually write —
+    // MyHeritage, Ancestry and PAF files are full of inline notes. GEDCOM 7 split
+    // the two apart (`SNOTE` points, `NOTE` holds text), so this only ever
+    // applies to 5.5.x, which is the only generation whose registry models these
+    // as pointers at all.
+    if (INLINE_OR_POINTER.has(structure.tag)) return;
 
     diagnostics.push({
       code: 'malformed-pointer',
