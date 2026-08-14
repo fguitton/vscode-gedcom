@@ -230,6 +230,18 @@
           "default": "text",
           "markdownDescription": "How to show a note whose text is HTML.\n\nSome exporters write markup into notes, and GEDCOM 7 lets a note declare it with `MIME text/html`. This is the starting choice; the button on the note itself switches either way for the rest of the session.\n\nRendering never runs script, loads a remote resource, or keeps anything but a fixed list of formatting tags and `http(s)` links — a GEDCOM file is untrusted input."
         },
+        "gedcom.virtualIndent.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Indent each line by its level, without changing the file.\n\nA GEDCOM line must begin with its level number in column zero, so the format forbids the indentation that would make a deep structure readable. This draws it as a decoration: nothing is inserted, nothing is saved, and copying a line copies what the file actually holds.\n\nLines that already carry indentation of their own are left alone."
+        },
+        "gedcom.virtualIndent.width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 2,
+          "markdownDescription": "Columns of drawn indentation per level, when `#gedcom.virtualIndent.enabled#` is on."
+        },
         "gedcom.trace.server": {
           "type": "string",
           "enum": [

@@ -3,6 +3,21 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Virtual indentation** ([#2]). `gedcom.virtualIndent.enabled` indents each line
+  by its level so a deep structure can be read at a glance. A GEDCOM line must
+  begin with its level number in column zero, so the format forbids the one thing
+  that would make it readable; this draws it as an editor decoration instead —
+  nothing is inserted, nothing is saved, copying a line copies what the file
+  actually holds, and turning it off leaves no trace. Off by default;
+  `gedcom.virtualIndent.width` sets the columns per level.
+
+  Lines that already carry their own indentation are left alone, so a file that
+  indents itself is not indented twice.
+
 ## [0.7.1]
 
 ### Fixed

@@ -6,6 +6,7 @@ import type { ExtensionContext } from 'vscode';
 import { LanguageClient, TransportKind, type ServerOptions } from 'vscode-languageclient/node';
 
 import { registerCommands } from './commands.ts';
+import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
 import { registerVersionStatus } from './version-status.ts';
 import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
@@ -16,6 +17,7 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
   registerCommands(context);
   const hooks = registerGraphView(context);
   registerVersionStatus(context);
+  registerVirtualIndent(context);
 
   const module = context.asAbsolutePath(path.join('dist', 'node', 'server.cjs'));
 
