@@ -58,6 +58,7 @@
   },
   "overrides": {
     "diff": "^8.0.4",
+    "glob": "^13.0.6",
     "serialize-javascript": "^7.1.0"
   },
   "contributes": {
@@ -289,6 +290,9 @@
   "engines": {
     "node": "^20.19.0 || ^22.18.0 || >=24.11.0",
     "vscode": "^1.91.0"
+  },
+  "allowScripts": {
+    "@playwright/browser-chromium@1.62.1": true
   },
   "capabilities": {
     "untrustedWorkspaces": {

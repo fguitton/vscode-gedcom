@@ -78,6 +78,21 @@ expression can answer it.
 This extension runs in the desktop editor and unchanged on `vscode.dev` and
 `github.dev`, where the language server runs in a web worker.
 
+## Settings
+
+| Setting                          | Default | What it does                                                                                                                                                                                                               |
+| -------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gedcom.graph.depth`             | `2`     | How many hops from the cursor the tree shows. One gives a person and their families; two also reaches spouses, children and parents.                                                                                       |
+| `gedcom.graph.includeReferences` | `false` | Draw sources, notes and media alongside relatives. Off by default: a well-sourced person cites dozens, and they crowd out the family.                                                                                      |
+| `gedcom.validation.strictness`   | `auto`  | `auto` follows the file's own version — strict for GEDCOM 7, lenient for 5.5.x. `strict` applies 7's rules to everything; `lenient` reports only what is unambiguously wrong.                                              |
+| `gedcom.inlayHints.pointers`     | `true`  | Show what each pointer names, after it. `1 FAMS @F1@` alone says nothing about the family.                                                                                                                                 |
+| `gedcom.inlayHints.values`       | `true`  | Show what a coded payload means — `SEX`, `QUAY`, `PEDI`, and language tags.                                                                                                                                                |
+| `gedcom.inlayHints.ages`         | `true`  | Show how old the subject was at an event, computed against their own `BIRT`.                                                                                                                                               |
+| `gedcom.codeLens.enabled`        | `true`  | A summary above each record: who it is, its shape in the tree, a reference count, and a link into the tree.                                                                                                                |
+| `gedcom.details.imagePreviews`   | `true`  | Thumbnail media the file points at over `https`. Off means the panel is _not permitted_ to make the request, not merely disinclined — a photograph hosted elsewhere does not get to learn the file is being read.          |
+| `gedcom.details.noteFormat`      | `text`  | Whether a note holding HTML starts as characters or as rendered markup. The switch on the note itself changes it for the session. Rendering keeps a fixed list of formatting tags and `http(s)` links, and runs no script. |
+| `gedcom.trace.server`            | `off`   | Log the traffic between VS Code and the language server. For diagnosing this extension, not your file.                                                                                                                     |
+
 ## Installation
 
 Search for **GEDCOM Language** in the Extensions view, or run:

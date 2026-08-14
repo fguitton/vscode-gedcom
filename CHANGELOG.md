@@ -3,6 +3,16 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The README lists every setting, with its default and what it does.
+- `glob` is pinned through `overrides` to 13. Mocha pulled 10, which npm warns is
+  unsupported; nothing else in the tree was on it, and no advisory was open.
+- `@playwright/browser-chromium` is approved under npm's install-script allowlist,
+  so `npm install` no longer stops to ask about it.
+
 ## [0.7.0]
 
 ### Added
