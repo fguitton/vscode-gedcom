@@ -776,6 +776,22 @@ const SHOW_GRAPH = 'gedcom.showGraph';
  * derived rather than stored. What goes there is what the record does not say
  * about itself: how many people depend on it, and what shape it has in the tree.
  */
+/** What a lens is, carried across the two halves of the protocol. */
+interface LensData {
+  readonly kind: 'header' | 'summary' | 'references' | 'tree';
+  /** The record's own line, which is how the resolve half finds it again. */
+  readonly line: number;
+  readonly uri: string;
+}
+
+/**
+ * Where the lenses go, without working out what any of them says.
+ *
+ * `Royal92.ged` has 4,435 records and so 13,298 lenses, and the client asks for
+ * all of them on every edit. Titles are the expensive half — a summary walks a
+ * person's whole family — and the client only ever shows the handful on screen,
+ * so they are left to `resolveCodeLens`, which VS Code calls per visible lens.
+ */
 export function codeLenses(analysis: Analysis, uri: string, settings: Settings): CodeLens[] {
   if (!settings.codeLens.enabled) return [];
 
@@ -783,44 +799,85 @@ export function codeLenses(analysis: Analysis, uri: string, settings: Settings):
 
   for (const record of analysis.document.records) {
     const range = toRange(record.tagSpan);
+    const line = record.tagSpan.line;
 
     if (record.tag === 'HEAD') {
-      const stats = statistics(analysis);
-      const model = modelFor(analysis.version);
-      const counts = Object.entries(stats.records)
-        .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .map(
-          ([tag, count]) =>
-            `${count.toLocaleString('en')} ${recordNoun(tag, count, tagLabel(model, tag))}`,
-        );
-
-      const period =
-        stats.earliest !== undefined && stats.latest !== undefined
-          ? `${stats.earliest}–${stats.latest}`
-          : undefined;
-
-      const title = [...counts, period].filter(Boolean).join(' · ');
-      if (title) lenses.push({ range, command: { title, command: '' } });
+      lenses.push({ range, data: { kind: 'header', line, uri } satisfies LensData });
       continue;
     }
 
     if (record.xref === null) continue;
 
+    lenses.push({ range, data: { kind: 'summary', line, uri } satisfies LensData });
+    lenses.push({ range, data: { kind: 'references', line, uri } satisfies LensData });
+
+    if (record.tag === 'INDI' || record.tag === 'FAM') {
+      lenses.push({ range, data: { kind: 'tree', line, uri } satisfies LensData });
+    }
+  }
+
+  return lenses;
+}
+
+/** The summary above the header: what is in this file. */
+function headerTitle(analysis: Analysis): string {
+  const stats = statistics(analysis);
+  const model = modelFor(analysis.version);
+  const counts = Object.entries(stats.records)
+    .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(
+      ([tag, count]) =>
+        `${count.toLocaleString('en')} ${recordNoun(tag, count, tagLabel(model, tag))}`,
+    );
+
+  const period =
+    stats.earliest !== undefined && stats.latest !== undefined
+      ? `${stats.earliest}–${stats.latest}`
+      : undefined;
+
+  return [...counts, period].filter(Boolean).join(' · ');
+}
+
+/**
+ * Works out what one lens says.
+ *
+ * Called by the client for the lenses it is actually about to draw. A lens whose
+ * title comes out empty is given an empty inert command rather than dropped:
+ * the client has already laid out a row for it, and refusing to resolve it
+ * leaves that row showing "no commands".
+ */
+export function resolveCodeLens(analysis: Analysis, lens: CodeLens): CodeLens {
+  const data = lens.data as LensData | undefined;
+  if (!data) return lens;
+
+  const inert = (title: string): CodeLens => ({ ...lens, command: { title, command: '' } });
+
+  if (data.kind === 'header') return inert(headerTitle(analysis));
+
+  const record = analysis.document.records.find(
+    (candidate) => candidate.tagSpan.line === data.line && candidate.xref !== null,
+  );
+  if (!record?.xref) return inert('');
+
+  if (data.kind === 'summary') {
     // The name leads. A lens sits above `0 @I500037@ INDI`, which says who this
     // is only to a reader willing to look three lines further down for the NAME.
     const named =
       record.tag === 'INDI' || record.tag === 'FAM' ? summarize(record, analysis) : undefined;
 
-    const summary = [named, ...describeRecord(analysis, record).filter((l) => !l.startsWith('_'))]
-      .filter(Boolean)
-      .join(' · ');
-    if (summary) lenses.push({ range, command: { title: summary, command: '' } });
+    return inert(
+      [named, ...describeRecord(analysis, record).filter((l) => !l.startsWith('_'))]
+        .filter(Boolean)
+        .join(' · '),
+    );
+  }
 
+  if (data.kind === 'references') {
     const uses = analysis.xrefs.referencesTo.get(record.xref) ?? [];
-    lenses.push({
-      range,
+    return {
+      ...lens,
       command: {
         title: uses.length === 1 ? '1 reference' : `${uses.length} references`,
         // Peeking nothing is confusing, so a record nothing points at gets an
@@ -828,24 +885,20 @@ export function codeLenses(analysis: Analysis, uri: string, settings: Settings):
         command: uses.length > 0 ? SHOW_REFERENCES : '',
         arguments:
           uses.length > 0
-            ? [uri, toRange(record.tagSpan).start, uses.map((use) => toRange(use.span))]
+            ? [data.uri, toRange(record.tagSpan).start, uses.map((use) => toRange(use.span))]
             : undefined,
       },
-    });
-
-    if (record.tag === 'INDI' || record.tag === 'FAM') {
-      lenses.push({
-        range,
-        command: {
-          title: 'see in the tree',
-          command: SHOW_GRAPH,
-          arguments: [uri, record.span.line],
-        },
-      });
-    }
+    };
   }
 
-  return lenses;
+  return {
+    ...lens,
+    command: {
+      title: 'see in the tree',
+      command: SHOW_GRAPH,
+      arguments: [data.uri, record.span.line],
+    },
+  };
 }
 
 // --- document links ---------------------------------------------------------

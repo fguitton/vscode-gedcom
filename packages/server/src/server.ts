@@ -18,6 +18,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   analyzeDocument,
   codeLenses,
+  resolveCodeLens,
   completion,
   defaultSettings,
   definition,
@@ -85,7 +86,7 @@ export function startServer(connection: Connection): void {
       },
       inlayHintProvider: true,
       documentLinkProvider: { resolveProvider: false },
-      codeLensProvider: { resolveProvider: false },
+      codeLensProvider: { resolveProvider: true },
     },
   }));
 
@@ -180,6 +181,12 @@ export function startServer(connection: Connection): void {
   connection.onCodeLens(({ textDocument }) => {
     const document = documentFor(textDocument.uri);
     return document ? codeLenses(analysisOf(document), textDocument.uri, settings) : [];
+  });
+
+  connection.onCodeLensResolve((lens) => {
+    const uri = (lens.data as { uri?: string } | undefined)?.uri;
+    const document = uri ? documentFor(uri) : undefined;
+    return document ? resolveCodeLens(analysisOf(document), lens) : lens;
   });
 
   documents.listen(connection);

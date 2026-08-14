@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   analyzeDocument,
   codeLenses,
+  resolveCodeLens,
   defaultSettings,
   documentLinks,
   inlayHints,
@@ -151,8 +152,11 @@ describe('inlay hints', () => {
 });
 
 describe('code lenses', () => {
+  const resolved = () =>
+    codeLenses(analysis, URI, defaultSettings).map((lens) => resolveCodeLens(analysis, lens));
+
   const lensesOn = (line: number) =>
-    codeLenses(analysis, URI, defaultSettings)
+    resolved()
       .filter((lens) => lens.range.start.line === line)
       .map((lens) => lens.command?.title);
 
@@ -167,7 +171,7 @@ describe('code lenses', () => {
   });
 
   it('offers the references as an action', () => {
-    const lens = codeLenses(analysis, URI, defaultSettings).find(
+    const lens = resolved().find(
       (candidate) =>
         candidate.range.start.line === 4 && /reference/.test(candidate.command?.title ?? ''),
     );
@@ -181,7 +185,7 @@ describe('code lenses', () => {
   });
 
   it('leaves a record nothing points at inert rather than peeking nothing', () => {
-    const lens = codeLenses(analysis, URI, defaultSettings).find(
+    const lens = resolved().find(
       (candidate) =>
         candidate.range.start.line === 27 && candidate.command?.title === '0 references',
     );
@@ -189,7 +193,7 @@ describe('code lenses', () => {
   });
 
   it('links a person and a family into the graph panel', () => {
-    const lens = codeLenses(analysis, URI, defaultSettings).find(
+    const lens = resolved().find(
       (candidate) =>
         candidate.range.start.line === 20 && candidate.command?.title === 'see in the tree',
     );

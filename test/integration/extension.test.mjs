@@ -374,6 +374,9 @@ describe('code lens', () => {
     const lenses = await vscode.commands.executeCommand(
       'vscode.executeCodeLensProvider',
       document.uri,
+      // Titles are filled in by codeLens/resolve, which the client calls only for
+      // the lenses it draws; ask for enough of them to assert on.
+      50,
     );
 
     assert.ok(lenses?.length, 'expected code lenses');

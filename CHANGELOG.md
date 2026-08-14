@@ -3,6 +3,13 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Code lens titles are computed on demand, per visible lens, instead of for every
+  record on every edit.
+
 ## [0.8.0]
 
 ### Added
