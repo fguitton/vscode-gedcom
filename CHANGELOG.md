@@ -166,12 +166,20 @@ answers "Text."
   marked as having no value, in italic and dimmed, so that a tag someone wrote and
   left blank is visible as exactly that.
 
-- **Months are written out in the details panel** — `14 February 1998`, not
-  `14 FEB 1998`. A substitution rather than a parse, so ranges, approximations,
-  dual years and calendar escapes keep their shape and only the months change;
-  the French Republican and Hebrew calendars name their months differently and
-  are left alone rather than half-translated. The editor, a click away, still
-  shows exactly what the file holds.
+- **Dates are said in words in the details panel.** `ABT 3 NOV 1901` becomes
+  `About 3 November 1901` and `BET 1 JAN 1900 AND 31 DEC 1910` becomes
+  `Between 1 January 1900 and 31 December 1910`: the keywords are as much
+  shorthand as the months are, and expanding one without the other only does half
+  the job. Only the first word is capitalised, which is what makes a range read
+  as a sentence.
+
+  Every calendar GEDCOM defines is named, from the registry's own month tokens —
+  `2 Vendémiaire 1795 (French Republican)`, `15 Tishrei 5760 (Hebrew)`,
+  `14 September 1752 (Julian)` — in both the 5.5.1 escape spelling and the bare
+  7.0 keyword. The French Republican months keep their French names, since they
+  have no English ones in use. Gregorian dates carry no label, being the default.
+
+  The editor, a click away, still shows exactly what the file holds.
 
 - **Inlay hints read as captions.** `died age 73` is now `Died age 73`, matching
   the enumerated values capitalised earlier: a hint sits beside the line rather

@@ -16,7 +16,7 @@
 
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
-import { expandMonths } from './date.ts';
+import { readableDate } from './date.ts';
 import { meaningOf, standalone } from './enums.ts';
 import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
 import { parsePersonalName } from './name.ts';
@@ -184,7 +184,7 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   else if (structure.payload) {
     // A DATE shown as a field of its own reads like any other date in the panel.
     const raw = coded(analysis, structure) ?? structure.payload;
-    parts.push(firstLine(structure.tag === 'DATE' ? expandMonths(raw) : raw));
+    parts.push(firstLine(structure.tag === 'DATE' ? readableDate(raw) : raw));
   }
 
   // The time of day hangs under the date rather than beside it — `2 DATE` then
@@ -203,7 +203,7 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   // Written out for reading: the panel is prose, and the editor a click away
   // still shows exactly what the file holds.
   if (date) {
-    const written = expandMonths(date.trim());
+    const written = readableDate(date.trim());
     parts.push(time ? `${written} at ${time.trim()}` : written);
   }
   if (place) parts.push(firstLine(place, 80));

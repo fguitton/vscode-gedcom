@@ -15,6 +15,7 @@ import {
   relativeTime,
   yearOf,
   expandMonths,
+  readableDate,
 } from '../src/date.ts';
 
 describe('yearOf', () => {
@@ -126,5 +127,33 @@ describe('expandMonths', () => {
     // translation would be worse than none.
     expect(expandMonths('@#DFRENCH R@ 2 VEND 1795')).toBe('@#DFRENCH R@ 2 VEND 1795');
     expect(expandMonths('@#DHEBREW@ 15 TSH 5760')).toBe('@#DHEBREW@ 15 TSH 5760');
+  });
+});
+
+describe('readableDate', () => {
+  it('says the keywords as words, and only capitalises the first', () => {
+    expect(readableDate('ABT 3 NOV 1901')).toBe('About 3 November 1901');
+    expect(readableDate('BET 1 JAN 1900 AND 31 DEC 1910')).toBe(
+      'Between 1 January 1900 and 31 December 1910',
+    );
+    expect(readableDate('FROM MAR 1914 TO NOV 1918')).toBe('From March 1914 to November 1918');
+  });
+
+  it('names the months of the other calendars too', () => {
+    // The French Republican months keep their French names; there are no English
+    // ones in use, and it is what a reader will find if they look one up.
+    expect(readableDate('@#DFRENCH R@ 2 VEND 1795')).toBe('2 Vendémiaire 1795 (French Republican)');
+    expect(readableDate('@#DHEBREW@ 15 TSH 5760')).toBe('15 Tishrei 5760 (Hebrew)');
+  });
+
+  it('reads the calendar in either spelling', () => {
+    // 5.5.1 writes an escape, 7.0 a bare keyword before the date.
+    expect(readableDate('HEBREW 15 TSH 5760')).toBe('15 Tishrei 5760 (Hebrew)');
+    expect(readableDate('@#DJULIAN@ 14 SEP 1752')).toBe('14 September 1752 (Julian)');
+  });
+
+  it('leaves a Gregorian date unlabelled, since that is the default', () => {
+    expect(readableDate('14 FEB 1998')).toBe('14 February 1998');
+    expect(readableDate('1901')).toBe('1901');
   });
 });

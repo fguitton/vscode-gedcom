@@ -21,6 +21,7 @@ export {
   parseExactDate,
   describeDate,
   expandMonths,
+  readableDate,
   yearOf,
   dayNumber,
   ageAt,

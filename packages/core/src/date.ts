@@ -82,6 +82,134 @@ const MONTH_NAMES: Record<string, string> = {
 };
 
 /**
+ * What each date keyword says, in words.
+ *
+ * Lower case because most of them appear inside a phrase — `FROM ABT 1900 TO
+ * 1910` reads "from about 1900 to 1910" — and only the first word of a payload
+ * is capitalised, by `readableDate`.
+ *
+ * `ABT` is "about" rather than "around" or "approximately": it is the word the
+ * specification's own prose uses, and the shortest of the three.
+ */
+const KEYWORD_WORDS: Record<string, string> = {
+  ABT: 'about',
+  EST: 'estimated',
+  CAL: 'calculated',
+  INT: 'interpreted as',
+  BEF: 'before',
+  AFT: 'after',
+  BET: 'between',
+  AND: 'and',
+  FROM: 'from',
+  TO: 'to',
+};
+
+/**
+ * The months of the calendars GEDCOM defines, from the registry's own tokens.
+ *
+ * The French Republican months keep their French names — they have no English
+ * ones in use, and "Vendémiaire" is what a reader will find if they look it up.
+ * `COMP` is not a month at all but the five or six days left over at the end of
+ * the year, so it is named as what it is.
+ */
+const FRENCH_R_MONTHS: Record<string, string> = {
+  VEND: 'Vendémiaire',
+  BRUM: 'Brumaire',
+  FRIM: 'Frimaire',
+  NIVO: 'Nivôse',
+  PLUV: 'Pluviôse',
+  VENT: 'Ventôse',
+  GERM: 'Germinal',
+  FLOR: 'Floréal',
+  PRAI: 'Prairial',
+  MESS: 'Messidor',
+  THER: 'Thermidor',
+  FRUC: 'Fructidor',
+  COMP: 'complementary days',
+};
+
+/** `ADS` is the second Adar, which only a leap year has. */
+const HEBREW_MONTHS: Record<string, string> = {
+  TSH: 'Tishrei',
+  CSH: 'Cheshvan',
+  KSL: 'Kislev',
+  TVT: 'Tevet',
+  SHV: 'Shevat',
+  ADR: 'Adar',
+  ADS: 'Adar II',
+  NSN: 'Nisan',
+  IYR: 'Iyar',
+  SVN: 'Sivan',
+  TMZ: 'Tammuz',
+  AAV: 'Av',
+  ELL: 'Elul',
+};
+
+const CALENDAR_NAMES: Record<string, string> = {
+  FRENCH_R: 'French Republican',
+  HEBREW: 'Hebrew',
+  JULIAN: 'Julian',
+};
+
+/**
+ * Which calendar a payload declares.
+ *
+ * 5.5.1 writes an escape — `@#DFRENCH R@`, with a space — and 7.0 writes the
+ * calendar as a bare keyword before the date. Both spellings are read here so
+ * the rest of the code never has to care which generation it is looking at.
+ */
+function calendarOf(payload: string): string {
+  const escaped = /@#D([A-Z_ ]+)@/.exec(payload)?.[1];
+  if (escaped) return escaped.trim().replace(/\s+/g, '_');
+
+  return /^(FRENCH_R|HEBREW|JULIAN|GREGORIAN)\b/.exec(payload.trim())?.[1] ?? 'GREGORIAN';
+}
+
+function monthsOf(payload: string): Record<string, string> {
+  const calendar = calendarOf(payload);
+  if (calendar === 'FRENCH_R') return FRENCH_R_MONTHS;
+  if (calendar === 'HEBREW') return HEBREW_MONTHS;
+  return MONTH_NAMES;
+}
+
+/**
+ * A date payload as a reader would say it.
+ *
+ * `ABT 3 NOV 1901` is a machine's spelling of "about 3 November 1901". The
+ * keywords are as much shorthand as the months are, and a panel that expands one
+ * but not the other has only done half the job.
+ *
+ * The first word is capitalised and the rest are not, which is what makes
+ * `BET 1 JAN 1900 AND 31 DEC 1910` come out as a sentence rather than as a row
+ * of proper nouns.
+ */
+export function readableDate(payload: string): string {
+  let first = true;
+  const months = monthsOf(payload);
+
+  const said = payload
+    // 5.5.1 writes the calendar as an escape and 7.0 as a bare keyword. Either
+    // way it has been read by now, and the reader is told which calendar it is
+    // in words at the end rather than in the middle of the date.
+    .replace(/@#D[A-Z_ ]+@\s*/g, '')
+    .replace(/^(FRENCH_R|HEBREW|JULIAN|GREGORIAN)\s+/, '')
+    .replace(/\b([A-Z][A-Z_]{1,4})\b/g, (token) => {
+      const month = months[token];
+      if (month) return month;
+
+      const word = KEYWORD_WORDS[token];
+      if (!word) return token;
+
+      const capitalised = first ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+      first = false;
+      return capitalised;
+    });
+
+  const calendar = calendarOf(payload);
+  return calendar === 'GREGORIAN' ? said : `${said} (${CALENDAR_NAMES[calendar] ?? calendar})`;
+}
+
+/**
  * A date payload with its month written out.
  *
  * For reading, not for writing: `14 FEB 1998` is what the file says and what the
