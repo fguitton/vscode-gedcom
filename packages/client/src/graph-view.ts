@@ -718,6 +718,24 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
   const provider = new GedcomGraphViewProvider(selection);
   const details = new GedcomDetailsViewProvider(selection);
 
+  /**
+   * Whether any GEDCOM file is open, as a context key the views are gated on.
+   *
+   * They used to be gated on `editorLangId == gedcom`, which is bound to the
+   * *active editor*. Restore a window with focus in the Search or SCM view and
+   * there is no active editor at that moment, so the clause is false, the views
+   * are not contributed, and the GEDCOM panel never appears — for a reader with
+   * a `.ged` file open right there. It came back only if they happened to click
+   * into the editor.
+   *
+   * A key of our own answers the question actually being asked — is there a
+   * GEDCOM file open — and does not depend on where focus happens to be.
+   */
+  const announce = (): void => {
+    const open = workspace.textDocuments.some((document) => document.languageId === 'gedcom');
+    void commands.executeCommand('setContext', 'gedcom.open', open);
+  };
+
   /** The cursor moving is a selection too, and it overrides a panel click. */
   const followCursor = (editor: TextEditor | undefined): void => {
     if (!editor || editor.document.languageId !== 'gedcom') {
@@ -797,6 +815,12 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
     }),
   );
 
+  context.subscriptions.push(
+    workspace.onDidOpenTextDocument(announce),
+    workspace.onDidCloseTextDocument(announce),
+  );
+
+  announce();
   followCursor(window.activeTextEditor);
 
   return { graphVisible: () => provider.visible, graphShowing: () => provider.showing };

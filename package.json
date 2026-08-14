@@ -151,14 +151,14 @@
           "id": "gedcom.graph",
           "name": "Tree",
           "contextualTitle": "GEDCOM Tree",
-          "when": "editorLangId == gedcom || resourceLangId == gedcom"
+          "when": "gedcom.open || editorLangId == gedcom || resourceLangId == gedcom"
         },
         {
           "type": "webview",
           "id": "gedcom.details",
           "name": "Details",
           "contextualTitle": "GEDCOM Details",
-          "when": "editorLangId == gedcom || resourceLangId == gedcom"
+          "when": "gedcom.open || editorLangId == gedcom || resourceLangId == gedcom"
         }
       ]
     },
@@ -276,7 +276,9 @@
     }
   },
   "activationEvents": [
-    "onLanguage:gedcom"
+    "onLanguage:gedcom",
+    "workspaceContains:**/*.ged",
+    "workspaceContains:**/*.gedcom"
   ],
   "icon": "images/icon.png",
   "galleryBanner": {
