@@ -3,6 +3,32 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.0]
+
+Genealogical plausibility diagnostics with automated quick fixes, one-click GEDCOM 5.5.1 to 7.0 modernizer, tree graph SVG export with concrete theme baking, and refined tree panel controls.
+
+### Added
+
+- **Genealogical plausibility & anomaly diagnostics.** Detects chronological and
+  biological contradictions: death before birth, implausible parent ages at child
+  birth, post-mortem births, marriage outside lifespan, and unrecorded deaths for
+  people born $> 120$ years ago.
+- **Plausibility quick fixes.** Automated 💡 Quick Fix to swap birth and death dates,
+  and to add missing `DEAT` records.
+- **Contiguous orphan line batch repair.** Quick Fix detects consecutive lines
+  missing level numbers from exporter defects (such as MyHeritage notes) and repairs
+  the entire block in a single click.
+- **One-click GEDCOM 5.5.1 $\rightarrow$ 7.0 modernizer command.** `GEDCOM: Upgrade File to GEDCOM 7.0`
+  migrates versions, removes legacy `CHAR` headers, converts `CONC` to `CONT`,
+  rewrites `RELA` to `ROLE`, collects custom `_TAG` extensions to synthesize a valid
+  `HEAD.SCHMA` header block, and ensures standard `0 TRLR`.
+- **Standalone tree SVG export.** Exports the active tree branch to a self-contained
+  SVG vector file with baked theme colors, solid background, and context-aware
+  default filenames (`tree-<xref>-<name>.svg`).
+- **Refined tree toolbar.** Replaced text buttons with a themed `<select>` dropdown
+  for branch traversal (`Both`, `Ancestors`, `Descendants`) and compact icon buttons
+  for Zoom-to-Fit (`⛶`), 100% Recenter (`⊙`), and SVG Export (`⤓ SVG`).
+
 ## [0.10.0]
 
 Workspace symbol search, snippets, automated quick fixes (Code Actions), document formatting, and multi-spouse layout optimization.
