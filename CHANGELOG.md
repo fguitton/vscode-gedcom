@@ -3,6 +3,30 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.2]
+
+Details panel webview event isolation, disposal lifecycle fixes, and language server performance optimizations.
+
+### Fixed
+
+- **The Details panel cleared itself unexpectedly on vscode.dev.** The webview's
+  message listener now specifically filters for internal empty events rather
+  than clearing on unrelated host window `postMessage` traffic.
+- **The Details webview provider retained stale references upon disposal.** The
+  provider resets its internal view and last-shown state when disposed so it
+  does not retain unmounted webviews.
+
+### Performance
+
+- **Semantic token computation avoided redundant full document line splits.**
+  Document lines are pre-split once per tokenization run rather than repeatedly
+  splitting the full text inside nested continuation line loops.
+- **Code Lens resolution uses binary search.** Resolving visible lenses now
+  locates records by line number in logarithmic time instead of scanning every
+  record in the document.
+- **Date year extraction streamlined.** `yearOf` extracts years in a single
+  linear regex scan without backtracking lookahead.
+
 ## [0.9.1]
 
 Files that are not GEDCOM at all, and panels that stay up while you look at
