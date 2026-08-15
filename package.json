@@ -85,6 +85,12 @@
         "path": "./syntaxes/gedcom.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "gedcom",
+        "path": "./snippets/gedcom.json"
+      }
+    ],
     "semanticTokenScopes": [
       {
         "language": "gedcom",
