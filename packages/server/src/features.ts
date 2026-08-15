@@ -1197,11 +1197,52 @@ export function codeActions(
       const lineIndex = diagRange.start.line;
       const structure = structureAt(analysis.document, lineIndex, 0);
       const targetLevel = structure ? structure.level + 1 : 2;
+
+      // Find contiguous lines with exporter-repair diagnostics
+      const repairDiags = analysis.diagnostics.filter((d) => d.code === 'exporter-repair');
+      const repairLineSet = new Set(repairDiags.map((d) => d.span.line));
+
+      let blockStart = lineIndex;
+      while (repairLineSet.has(blockStart - 1)) {
+        blockStart--;
+      }
+      let blockEnd = lineIndex;
+      while (repairLineSet.has(blockEnd + 1)) {
+        blockEnd++;
+      }
+
+      const contiguousDiags = repairDiags.filter(
+        (d) => d.span.line >= blockStart && d.span.line <= blockEnd,
+      );
+
+      if (contiguousDiags.length > 1) {
+        const title = `Prefix all ${contiguousDiags.length} contiguous lines with ${targetLevel} CONT`;
+        if (!actions.some((a) => a.title === title)) {
+          actions.push({
+            title,
+            kind: CodeActionKind.QuickFix,
+            diagnostics: [diagnostic],
+            isPreferred: true,
+            edit: {
+              changes: {
+                [uri]: contiguousDiags.map((d) => ({
+                  range: {
+                    start: { line: d.span.line, character: 0 },
+                    end: { line: d.span.line, character: 0 },
+                  },
+                  newText: `${targetLevel} CONT `,
+                })),
+              },
+            },
+          });
+        }
+      }
+
       actions.push({
         title: `Prefix line with ${targetLevel} CONT`,
         kind: CodeActionKind.QuickFix,
         diagnostics: [diagnostic],
-        isPreferred: true,
+        isPreferred: contiguousDiags.length === 1,
         edit: {
           changes: {
             [uri]: [
