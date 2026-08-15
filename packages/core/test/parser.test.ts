@@ -136,3 +136,57 @@ describe('the whole corpus parses', () => {
     }
   });
 });
+
+describe('CONT and CONC interleaved', () => {
+  // A WikiTree biography, which alternates the two within one payload. CONT
+  // begins a line; CONC continues the line already open. Nothing here was
+  // covered before: the existing tests use one or the other, never both.
+  const source = [
+    '0 HEAD',
+    '1 GEDC',
+    '2 VERS 5.5.1',
+    '0 @I1@ INDI',
+    '1 _BIO',
+    '2 TEXT CONT == Biography ==',
+    '3 CONT ',
+    '3 CONT John Doe was born in 1900.',
+    '3 CONT ',
+    "3 CONC ''No more info is currently available. Can you add to ",
+    "3 CONC his biography?''",
+    '3 CONT ',
+    '3 CONT == Sources ==',
+    '0 TRLR',
+    '',
+  ].join('\n');
+
+  const text = () => {
+    const document = parse(source);
+    return document.structures.find((s) => s.tag === 'TEXT')?.payload;
+  };
+
+  it('starts a line for each CONT and continues the open one for each CONC', () => {
+    expect(text()?.split('\n')).toEqual([
+      // The exporter wrote a literal "CONT" as the first word of the payload;
+      // it is text, not structure, and survives as text.
+      'CONT == Biography ==',
+      '',
+      'John Doe was born in 1900.',
+      "''No more info is currently available. Can you add to his biography?''",
+      '',
+      '== Sources ==',
+    ]);
+  });
+
+  it('joins CONC with nothing between, keeping the space the author wrote', () => {
+    // `add to ` + `his biography` — the trailing space belongs to the payload,
+    // and trimming it would silently join two words.
+    expect(text()).toContain('Can you add to his biography');
+  });
+
+  it('lets a CONC continue the empty line a CONT opened', () => {
+    // `3 CONT ` then `3 CONC ''No more…` is a blank line that is then filled,
+    // not a blank line followed by another.
+    const lines = text()?.split('\n') ?? [];
+    expect(lines[3]?.startsWith("''No more")).toBe(true);
+  });
+});

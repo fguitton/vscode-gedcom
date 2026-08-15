@@ -27,6 +27,12 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 - `fixtures/exporter/wikitree.ged`, which splits a multibyte character across a
   `CONC` boundary as WikiTree does.
 
+### Testing
+
+- `CONT` and `CONC` interleaved within one payload, which nothing covered: a
+  `CONC` continuing the empty line a `CONT` opened, and the trailing space that
+  joins two words when kept and merges them when trimmed.
+
 ### Fixed
 
 - 5.5.1 structures are named in English. The registry snapshot carries labels for
