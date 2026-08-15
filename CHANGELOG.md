@@ -27,6 +27,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 - `fixtures/exporter/wikitree.ged`, which splits a multibyte character across a
   `CONC` boundary as WikiTree does.
 
+- Continuations an exporter wrote without a level number are indented with the
+  payload they continue, and coloured as payload rather than as an illegal line.
+  The grammar can do neither: it sees one line at a time.
+
 ### Testing
 
 - `CONT` and `CONC` interleaved within one payload, which nothing covered: a

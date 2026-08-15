@@ -693,6 +693,24 @@ export function semanticTokens(analysis: Analysis): number[] {
         inRecord,
     });
 
+    // A continuation the exporter wrote without a level number. The grammar
+    // cannot colour it: a TextMate rule sees one line and has no way to know the
+    // line above was a payload, so it can only call this illegal and paint it
+    // red. The parse tree does know, and a semantic token overrides the colour —
+    // which is precisely the division of labour the grammar was designed around.
+    for (const line of structure.continuationLines) {
+      const text = analysis.text.split(/\r\n|\r|\n/)[line];
+      if (text === undefined || /^\d+[ \t]/.test(text)) continue;
+
+      raw.push({
+        line,
+        start: 0,
+        length: text.length,
+        type: TYPE['string']!,
+        modifiers: inRecord,
+      });
+    }
+
     const pointer = asPointer(structure);
     if (pointer !== null && structure.payloadSpan) {
       const resolved = analysis.xrefs.definitions.has(pointer);

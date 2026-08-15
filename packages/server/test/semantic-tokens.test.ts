@@ -225,3 +225,44 @@ describe('the legend stays consistent with what is emitted', () => {
     }
   });
 });
+
+describe('continuations the exporter wrote without a level number', () => {
+  // The grammar paints these red and cannot do otherwise: a TextMate rule sees
+  // one line at a time and has no way to know the line above was a payload. The
+  // parse tree does know, and a semantic token wins over the grammar — which is
+  // the whole reason the two exist side by side.
+  const source = [
+    '0 HEAD',
+    '1 SOUR MYHERITAGE',
+    '1 GEDC',
+    '2 VERS 5.5.1',
+    '0 @I1@ INDI',
+    '1 NOTE The register records, over several lines:',
+    '\tDistrict East Ham',
+    '\tCounty Essex',
+    '0 TRLR',
+    '',
+  ].join('\n');
+
+  it('colours them as payload rather than leaving them illegal', () => {
+    const analysis = analyzeDocument(source);
+    const data = semanticTokens(analysis);
+
+    // Walk the delta encoding and collect the lines carrying a token.
+    const lines = new Set<number>();
+    let line = 0;
+    for (let i = 0; i < data.length; i += 5) {
+      line += data[i]!;
+      lines.add(line);
+    }
+
+    expect(lines.has(6)).toBe(true);
+    expect(lines.has(7)).toBe(true);
+  });
+
+  it('leaves an ordinary file untouched', () => {
+    // No profile, so no repair, so no continuation lines to colour.
+    const plain = analyzeDocument('0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 SEX M\n0 TRLR\n');
+    expect(semanticTokens(plain).length % 5).toBe(0);
+  });
+});

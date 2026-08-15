@@ -75,8 +75,26 @@ export function registerVirtualIndent(context: ExtensionContext): void {
     const width = Math.max(1, Math.min(8, configuration.get<number>(WIDTH, 2)));
     const byLevel = new Map<number, Range[]>();
 
+    /**
+     * The level of the last line that declared one.
+     *
+     * Some exporters write payloads containing literal line breaks, so the rest
+     * of a value arrives with no level number of its own. Left un-indented those
+     * lines fall back to column zero, and a note in the middle of a record looks
+     * like a new record — the indentation would be actively misleading rather
+     * than merely absent. They belong one level in from the line they continue,
+     * which is where a `CONT` would have put them.
+     */
+    let carried: number | undefined;
+
     for (let line = 0; line < editor.document.lineCount; line += 1) {
-      const level = levelOf(editor.document.lineAt(line).text);
+      const text = editor.document.lineAt(line).text;
+      const declared = levelOf(text);
+      if (declared !== undefined) carried = declared;
+
+      const level =
+        declared ?? (text.trim().length > 0 && carried !== undefined ? carried + 1 : undefined);
+
       // Level zero is already where it belongs, and a line that is not a GEDCOM
       // line at all — a stray blank, a truncated last line — is left alone.
       if (level === undefined || level === 0) continue;
