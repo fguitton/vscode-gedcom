@@ -655,8 +655,6 @@ interface Unit {
   readonly members: GraphNode[];
   /** Birth year, name, identifier — none of which depend on the current view. */
   readonly key: readonly [number, string, string];
-  /** The sibling group this unit belongs to, taken from its anchor. */
-  readonly family?: string;
 }
 
 function keyOf(node: GraphNode): readonly [number, string, string] {
@@ -748,42 +746,11 @@ function orderColumns(columns: [number, GraphNode[]][], edges: GraphEdge[]): voi
   for (const [index, [, column]] of columns.entries()) {
     const units = unitsOf(column, partners);
 
-    /**
-     * Where a *group* sits, which is the only thing allowed to react.
-     *
-     * Siblings are ordered by their birthdays and nothing else; everything else
-     * arranges itself around that. So a whole sibling group is positioned by the
-     * generation below it — the earliest of any of their children — which makes
-     * this column and the next agree by construction rather than disagreeing and
-     * forcing every line between them to cross. A group with no children yet
-     * falls back to when the group itself began.
-     *
-     * Every term is read from the file rather than from what is on screen. Taken
-     * from the visible relatives, a family would shift each time one of them
-     * scrolled out of the neighbourhood.
-     */
-    const reaction = new Map<string, number>();
-    for (const unit of units) {
-      if (unit.family === undefined) continue;
-      for (const year of unit.members.map((member) => member.childrenYear)) {
-        if (year === undefined) continue;
-        const held = reaction.get(unit.family);
-        if (held === undefined || year < held) reaction.set(unit.family, year);
-      }
-    }
-
     const groupKey = (unit: Unit): readonly [number, string, string] => {
       const anchor = unit.members[0]!;
-
-      // Somebody with no recorded parents is a group of one, and reacts alone.
-      if (unit.family === undefined) {
-        return anchor.childrenYear === undefined
-          ? unit.key
-          : [anchor.childrenYear, anchor.label, anchor.xref];
-      }
-
-      const year = reaction.get(unit.family) ?? anchor.familyYear ?? unit.key[0];
-      return [year, unit.family, unit.family];
+      return anchor.childrenYear === undefined
+        ? unit.key
+        : [anchor.childrenYear, anchor.label, anchor.xref];
     };
 
     /**
