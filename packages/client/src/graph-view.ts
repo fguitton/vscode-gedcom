@@ -62,7 +62,8 @@ type PanelMessage =
   | { readonly type: 'reveal'; readonly line: number }
   | { readonly type: 'select'; readonly xref: string }
   | { readonly type: 'direction'; readonly value: Direction }
-  | { readonly type: 'drew'; readonly focus: string | null; readonly nodes: number };
+  | { readonly type: 'drew'; readonly focus: string | null; readonly nodes: number }
+  | { readonly type: 'export'; readonly format: 'svg'; readonly data: string };
 
 export class GedcomGraphViewProvider implements WebviewViewProvider {
   private view: WebviewView | undefined;
@@ -99,21 +100,20 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
    * opaque rectangle, so without this a test cannot tell a panel that follows
    * the cursor from one that is merely open and stuck on the first record.
    */
+  private lastDrawn: { focus: string | null; nodes: number } | undefined;
   get showing(): { focus: string | null; nodes: number } | undefined {
     return this.lastDrawn;
   }
 
-  private lastDrawn: { focus: string | null; nodes: number } | undefined;
-
   /**
-   * What the panel says it put on screen, as against `showing`, which is what it
-   * was sent. Only the panel can answer the first, so it acknowledges each draw.
+   * What the webview acknowledged drawing. Exposed for tests: `showing` is what
+   * was sent, which updates synchronously, while `drawn` is what arrived and
+   * rendered on the far side of the message port.
    */
+  private lastAcked: { focus: string | null; nodes: number } | undefined;
   get drawn(): { focus: string | null; nodes: number } | undefined {
     return this.lastAcked;
   }
-
-  private lastAcked: { focus: string | null; nodes: number } | undefined;
 
   resolveWebviewView(
     view: WebviewView,
@@ -121,7 +121,8 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     _token: CancellationToken,
   ): void {
     this.view = view;
-    this.log.info('Tree view resolved');
+    view.title = 'Tree';
+    view.description = '';
     view.webview.options = { enableScripts: true, localResourceRoots: [] };
     view.webview.html = shell();
 
@@ -135,6 +136,20 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
         this.update(subjectEditor());
       } else if (message.type === 'drew') {
         this.lastAcked = { focus: message.focus, nodes: message.nodes };
+      } else if (message.type === 'export') {
+        void (async () => {
+          const defaultUri = this.documentUri
+            ? Uri.joinPath(this.documentUri, '..', 'family-tree.svg')
+            : undefined;
+          const saveUri = await window.showSaveDialog({
+            defaultUri,
+            filters: { 'SVG Image': ['svg'] },
+          });
+          if (saveUri) {
+            await workspace.fs.writeFile(saveUri, new TextEncoder().encode(message.data));
+            void window.showInformationMessage(`Exported tree to ${saveUri.fsPath}`);
+          }
+        })();
       }
     });
 
@@ -377,10 +392,14 @@ function shell(): string {
 </style>
 </head>
 <body>
-<div id="controls" role="group" aria-label="Direction of travel">
+<div id="controls" role="group" aria-label="Tree controls">
   <button type="button" data-direction="both" aria-pressed="true">Both</button>
   <button type="button" data-direction="ancestors" aria-pressed="false">Ancestors</button>
   <button type="button" data-direction="descendants" aria-pressed="false">Descendants</button>
+  <span style="flex: 1"></span>
+  <button type="button" id="btn-fit" title="Zoom to fit all nodes">Fit</button>
+  <button type="button" id="btn-reset" title="Reset zoom to 100%">100%</button>
+  <button type="button" id="btn-export-svg" title="Export current tree as SVG">Export SVG</button>
 </div>
 <div id="empty">Open a GEDCOM file and place the cursor in a record.</div>
 <div id="scroll"><svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg></div>
@@ -391,6 +410,7 @@ function shell(): string {
   const empty = document.getElementById('empty');
   const scroll = document.getElementById('scroll');
   const NS = 'http://www.w3.org/2000/svg';
+  let currentGraph = null;
 
   // Must match packages/core/src/graph.ts, which does the positioning.
   const NODE_WIDTH = 170;
@@ -437,6 +457,7 @@ function shell(): string {
   }
 
   function render(graph) {
+    currentGraph = graph;
     svg.replaceChildren();
 
     if (!graph.nodes.length) {
@@ -724,23 +745,63 @@ function shell(): string {
     }
   }
 
-  const buttons = Array.from(document.querySelectorAll('#controls button'));
-  for (const button of buttons) {
+  const dirButtons = Array.from(document.querySelectorAll('#controls button[data-direction]'));
+  for (const button of dirButtons) {
     button.addEventListener('click', () => {
       const value = button.dataset.direction;
-      for (const other of buttons) {
+      for (const other of dirButtons) {
         other.setAttribute('aria-pressed', String(other === button));
       }
       vscode.postMessage({ type: 'direction', value: value });
     });
   }
 
+  document.getElementById('btn-fit')?.addEventListener('click', () => {
+    if (!currentGraph || !currentGraph.nodes.length) return;
+    const minX = Math.min(...currentGraph.nodes.map((n) => n.x));
+    const maxX = Math.max(...currentGraph.nodes.map((n) => n.x + NODE_WIDTH));
+    const minY = Math.min(...currentGraph.nodes.map((n) => n.y));
+    const maxY = Math.max(...currentGraph.nodes.map((n) => n.y + NODE_HEIGHT));
+    const pad = 24;
+    const boxW = Math.max(100, maxX - minX + pad * 2);
+    const boxH = Math.max(100, maxY - minY + pad * 2);
+    svg.setAttribute('viewBox', (minX - pad) + ' ' + (minY - pad) + ' ' + boxW + ' ' + boxH);
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+  });
+
+  document.getElementById('btn-reset')?.addEventListener('click', () => {
+    if (!currentGraph) return;
+    svg.style.width = '';
+    svg.style.height = '';
+    svg.setAttribute('width', currentGraph.width);
+    svg.setAttribute('height', currentGraph.height);
+    svg.setAttribute('viewBox', '0 0 ' + currentGraph.width + ' ' + currentGraph.height);
+    centreOnFocus(currentGraph);
+  });
+
+  document.getElementById('btn-export-svg')?.addEventListener('click', () => {
+    if (!currentGraph || !svg) return;
+    const clone = svg.cloneNode(true);
+    const styleEl = document.querySelector('style');
+    if (styleEl) {
+      const defs = document.createElementNS(NS, 'defs');
+      const inlineStyle = document.createElementNS(NS, 'style');
+      inlineStyle.textContent = styleEl.textContent || '';
+      defs.appendChild(inlineStyle);
+      clone.insertBefore(defs, clone.firstChild);
+    }
+    const serializer = new XMLSerializer();
+    const svgString = '<?xml version="1.0" encoding="UTF-8"?>\\n' + serializer.serializeToString(clone);
+    vscode.postMessage({ type: 'export', format: 'svg', data: svgString });
+  });
+
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (message.type === 'graph') {
       // The host is the authority on which direction is active, so the buttons
       // follow it rather than only their own clicks.
-      for (const button of buttons) {
+      for (const button of dirButtons) {
         button.setAttribute('aria-pressed', String(button.dataset.direction === message.direction));
       }
       render(message.graph);
