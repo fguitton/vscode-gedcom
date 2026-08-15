@@ -3,7 +3,10 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.9.1]
+
+Files that are not GEDCOM at all, and panels that stay up while you look at
+something else.
 
 ### Fixed
 
