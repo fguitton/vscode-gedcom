@@ -27,6 +27,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 - `fixtures/exporter/wikitree.ged`, which splits a multibyte character across a
   `CONC` boundary as WikiTree does.
 
+- The Text / HTML switch reaches citation transcriptions as well as notes, and
+  markup that arrived escaped is decoded exactly as many times as it was encoded
+  — MyHeritage escapes its citation text twice — before going through the same
+  allowlist as any other markup.
 - Continuations an exporter wrote without a level number are indented with the
   payload they continue, and coloured as payload rather than as an illegal line.
   The grammar can do neither: it sees one line at a time.

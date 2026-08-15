@@ -12,7 +12,7 @@
  * and even that only relaxes an error into a repair the reader is told about.
  */
 
-import type { Diagnostic, Document, Structure } from './cst.ts';
+import type { Diagnostic, Document } from './cst.ts';
 
 export interface ExporterQuirk {
   /** What the program does, said plainly enough for a diagnostic. */

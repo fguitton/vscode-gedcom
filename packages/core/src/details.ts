@@ -51,6 +51,14 @@ export interface DetailField {
    * formed: plenty of it is not, and neither specification says it must be.
    */
   readonly html?: boolean;
+  /**
+   * How many times the markup was escaped before it reached the file.
+   *
+   * Zero for markup written plainly. A panel rendering this must decode exactly
+   * this many times: fewer shows tag soup, more turns a mention of an entity
+   * into markup nobody wrote.
+   */
+  readonly escapeDepth?: number;
   /** Line to reveal when the field is activated, where one is meaningful. */
   readonly line?: number;
   /**
@@ -321,7 +329,55 @@ function looksLikeMarkup(structure: Structure, text: string): boolean {
   const mime = child(structure, 'MIME')?.payload?.trim().toLowerCase();
   if (mime) return mime === 'text/html';
 
-  return MARKUP.test(text);
+  return MARKUP.test(text) || escapeDepth(text) > 0;
+}
+
+/**
+ * How many times the markup in a payload has been escaped.
+ *
+ * Zero for `<p>`, one for `&lt;p&gt;`, two for `&amp;lt;p&amp;gt;` — and two is
+ * not hypothetical: MyHeritage escapes its citation text once as HTML and then
+ * again as text, so a reader is shown `&amp;lt;br&amp;gt;` where a line break
+ * was meant. Rendering it faithfully means decoding exactly as many times as it
+ * was encoded, no more.
+ *
+ * Counted rather than assumed, because decoding one time too many would turn
+ * text that merely mentions an entity into markup the author never wrote.
+ */
+export function escapeDepth(text: string): number {
+  // Already markup: nothing was escaped, and decoding it would turn an entity
+  // the author wrote deliberately — `&amp;` in a company name — into a bare
+  // ampersand the file never contained.
+  if (MARKUP.test(text)) return 0;
+
+  let depth = 0;
+  let current = text;
+
+  // Four is far past anything seen in the wild and stops a pathological payload
+  // — `&amp;amp;amp;…` — from spinning here.
+  while (depth < 4) {
+    const decoded = decodeEntitiesOnce(current);
+    if (decoded === current) break;
+    if (MARKUP.test(decoded)) return depth + 1;
+    current = decoded;
+    depth += 1;
+  }
+
+  return 0;
+}
+
+const ENTITIES: Record<string, string> = {
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&apos;': "'",
+  '&amp;': '&',
+};
+
+/** One pass of entity decoding. `&amp;` last, so a double escape unwinds evenly. */
+function decodeEntitiesOnce(text: string): string {
+  return text.replace(/&(lt|gt|quot|apos|amp|#39);/g, (match) => ENTITIES[match] ?? match);
 }
 
 /** Note text, whether written inline or pointed at. */
@@ -375,6 +431,7 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
           value: text,
           block: isBlock(text),
           ...(looksLikeMarkup(structure, text) ? { html: true } : {}),
+          ...(escapeDepth(text) > 0 ? { escapeDepth: escapeDepth(text) } : {}),
           line,
         });
       }
@@ -423,7 +480,8 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
           label: `${label} text`,
           value: whole,
           block: isBlock(whole) || whole.length > 200,
-          ...(MARKUP.test(whole) ? { html: true } : {}),
+          ...(MARKUP.test(whole) || escapeDepth(whole) > 0 ? { html: true } : {}),
+          ...(escapeDepth(whole) > 0 ? { escapeDepth: escapeDepth(whole) } : {}),
           line,
         });
       }

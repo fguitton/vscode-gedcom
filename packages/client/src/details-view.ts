@@ -480,9 +480,35 @@ function shell(previews: boolean): string {
     }
   }
 
-  /** The note as markup, or nothing if it will not parse. */
-  function rendered(text) {
-    const parsed = new DOMParser().parseFromString(text, 'text/html');
+  /**
+   * One pass of entity decoding, by table rather than by the DOM.
+   *
+   * Decoding through innerHTML would mean handing the string to the parser
+   * before it has been sanitised, which is the one order this must never happen
+   * in. A fixed table cannot do anything but substitute.
+   */
+  const ENTITIES = {
+    '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&amp;': '&',
+  };
+
+  function decodeOnce(text) {
+    return text.replace(/&(lt|gt|quot|apos|amp|#39);/g, (match) => ENTITIES[match] ?? match);
+  }
+
+  /**
+   * The note as markup.
+   *
+   * The depth is how many times the exporter escaped it — MyHeritage escapes its
+   * citation text twice, once as HTML and again as text, so a reader is shown
+   * an escaped break where a line break was meant. Decoded exactly that many
+   * times and no more, then through the same allowlist as any other markup: the
+   * sanitiser is still the only gate, so decoding first adds no new surface.
+   */
+  function rendered(text, depth) {
+    let source = text;
+    for (let i = 0; i < (depth ?? 0); i += 1) source = decodeOnce(source);
+
+    const parsed = new DOMParser().parseFromString(source, 'text/html');
     const holder = document.createElement('div');
     holder.className = 'rendered';
     sanitize(parsed.body, holder);
@@ -591,7 +617,7 @@ function shell(previews: boolean): string {
             const previous = wrapper.querySelector('pre, .rendered');
             const body =
               field.html && format === 'html'
-                ? rendered(field.value)
+                ? rendered(field.value, field.escapeDepth)
                 : (() => {
                     const pre = document.createElement('pre');
                     pre.replaceChildren(linkified(field.value));

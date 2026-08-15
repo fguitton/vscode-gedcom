@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { documentDetails, recordDetails, type Details } from '../src/details.ts';
+import { documentDetails, escapeDepth, recordDetails, type Details } from '../src/details.ts';
 import { analyze } from '../src/index.ts';
 import { bytes, fixture } from './corpus.ts';
 
@@ -394,5 +394,53 @@ describe('a source citation', () => {
   it('shows the transcription the exporter attached', () => {
     const fields = cited('1 SOUR @S1@', '2 DATA', '3 TEXT Added by confirming a Smart Match');
     expect(fields.some((f) => f.value.includes('Smart Match'))).toBe(true);
+  });
+});
+
+describe('markup that reached the file escaped', () => {
+  it('counts how many times, so a panel can decode exactly that far', () => {
+    expect(escapeDepth('<p>Plain markup</p>')).toBe(0);
+    expect(escapeDepth('&lt;p&gt;Escaped once&lt;/p&gt;')).toBe(1);
+    // MyHeritage escapes citation text as HTML and then again as text.
+    expect(escapeDepth('&amp;lt;br&amp;gt;Escaped twice')).toBe(2);
+  });
+
+  it('says nothing was escaped when nothing was markup', () => {
+    expect(escapeDepth('Marks &amp; Spencer, a shop')).toBe(0);
+    expect(escapeDepth('5 < 7 and 7 > 5')).toBe(0);
+    expect(escapeDepth('')).toBe(0);
+  });
+
+  it('leaves markup written plainly alone', () => {
+    // Decoding this would turn an ampersand the author wrote deliberately into
+    // one the file never held.
+    expect(escapeDepth('<p>Marks &amp; Spencer</p>')).toBe(0);
+  });
+
+  it('offers the switch on a citation transcription, not only on a note', () => {
+    const details = recordDetails(
+      analyze(
+        bytes(
+          [
+            '0 HEAD',
+            '1 GEDC',
+            '2 VERS 5.5.1',
+            '0 @I1@ INDI',
+            '1 SOUR @S1@',
+            '2 DATA',
+            '3 TEXT Harold L Vass&amp;lt;br&amp;gt;Gender: Male',
+            '0 @S1@ SOUR',
+            '0 TRLR',
+            '',
+          ].join('\n'),
+        ),
+      ),
+      'I1',
+    )!;
+
+    const text = details.sections.flatMap((s) => s.fields).find((f) => f.label.endsWith('text'));
+
+    expect(text?.html).toBe(true);
+    expect(text?.escapeDepth).toBe(2);
   });
 });
