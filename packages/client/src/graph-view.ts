@@ -63,7 +63,12 @@ type PanelMessage =
   | { readonly type: 'select'; readonly xref: string }
   | { readonly type: 'direction'; readonly value: Direction }
   | { readonly type: 'drew'; readonly focus: string | null; readonly nodes: number }
-  | { readonly type: 'export'; readonly format: 'svg'; readonly data: string };
+  | {
+      readonly type: 'export';
+      readonly format: 'svg';
+      readonly data: string;
+      readonly filename?: string;
+    };
 
 export class GedcomGraphViewProvider implements WebviewViewProvider {
   private view: WebviewView | undefined;
@@ -138,8 +143,9 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
         this.lastAcked = { focus: message.focus, nodes: message.nodes };
       } else if (message.type === 'export') {
         void (async () => {
+          const filename = message.filename || 'family-tree.svg';
           const defaultUri = this.documentUri
-            ? Uri.joinPath(this.documentUri, '..', 'family-tree.svg')
+            ? Uri.joinPath(this.documentUri, '..', filename)
             : undefined;
           const saveUri = await window.showSaveDialog({
             defaultUri,
@@ -863,7 +869,19 @@ function shell(): string {
 
     const serializer = new XMLSerializer();
     const svgString = '<?xml version="1.0" encoding="UTF-8"?>\\n' + serializer.serializeToString(clone);
-    vscode.postMessage({ type: 'export', format: 'svg', data: svgString });
+
+    // Context-aware default filename based on selected person/family
+    const focusNode = currentGraph.nodes.find((n) => n.xref === currentGraph.focus);
+    const label = focusNode ? focusNode.label || focusNode.xref : currentGraph.focus || 'tree';
+    const sanitized = label
+      .replace(/[\\/\\\\:*?"<>|]/g, '')
+      .trim()
+      .replace(/\\s+/g, '-')
+      .toLowerCase();
+    const xrefPrefix = currentGraph.focus ? currentGraph.focus + '-' : '';
+    const filename = 'tree-' + xrefPrefix + (sanitized || 'export') + '.svg';
+
+    vscode.postMessage({ type: 'export', format: 'svg', data: svgString, filename: filename });
   });
 
   const directionSelect = document.getElementById('direction-select');
