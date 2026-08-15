@@ -886,6 +886,19 @@ function headerTitle(analysis: Analysis): string {
   return [...counts, period].filter(Boolean).join(' · ');
 }
 
+function recordAtLine(records: readonly Structure[], line: number): Structure | undefined {
+  let low = 0;
+  let high = records.length - 1;
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const midLine = records[mid]!.tagSpan.line;
+    if (midLine === line) return records[mid];
+    if (midLine < line) low = mid + 1;
+    else high = mid - 1;
+  }
+  return undefined;
+}
+
 /**
  * Works out what one lens says.
  *
@@ -902,9 +915,8 @@ export function resolveCodeLens(analysis: Analysis, lens: CodeLens): CodeLens {
 
   if (data.kind === 'header') return inert(headerTitle(analysis));
 
-  const record = analysis.document.records.find(
-    (candidate) => candidate.tagSpan.line === data.line && candidate.xref !== null,
-  );
+  const candidate = recordAtLine(analysis.document.records, data.line);
+  const record = candidate && candidate.xref !== null ? candidate : undefined;
   if (!record?.xref) return inert('');
 
   if (data.kind === 'summary') {
