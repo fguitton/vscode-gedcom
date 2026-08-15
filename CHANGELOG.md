@@ -5,6 +5,20 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ## [Unreleased]
 
+### Fixed
+
+- **The tree emptied itself when the reader clicked anywhere else.** It follows
+  the GEDCOM file on screen, and clears only when none is in view.
+- Show Tree says so when the panel cannot be shown, and puts a hidden view back
+  where it belongs rather than resolving silently ([#5]).
+- Show Tree leaves the panel alone when it declines to open, and the tree redraws
+  when `gedcom.graph.depth` or `gedcom.graph.includeReferences` changes.
+
+### Testing
+
+- The panel acknowledges each drawing, so a test can tell what it put on screen
+  from what it was sent. Settings are asserted against the running editor.
+
 ### Changed
 
 - The outline and the breadcrumb name a record after who or what it is and a

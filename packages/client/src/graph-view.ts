@@ -35,11 +35,27 @@ import { SelectionStore } from './selection.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
 
+/**
+ * The GEDCOM file the panels are about.
+ *
+ * Not the same question as which editor is active: focus leaves the editor area
+ * whenever a panel is clicked, and the reader may be taking notes in another
+ * file beside the tree. What the panels follow is the GEDCOM file on screen —
+ * the active editor while it is one, otherwise a visible one, and nothing at all
+ * only when none is in view.
+ */
+function subjectEditor(): TextEditor | undefined {
+  const active = window.activeTextEditor;
+  if (active?.document.languageId === 'gedcom') return active;
+  return window.visibleTextEditors.find((editor) => editor.document.languageId === 'gedcom');
+}
+
 /** Messages from the webview: a node was clicked, or a control was used. */
 type PanelMessage =
   | { readonly type: 'reveal'; readonly line: number }
   | { readonly type: 'select'; readonly xref: string }
-  | { readonly type: 'direction'; readonly value: Direction };
+  | { readonly type: 'direction'; readonly value: Direction }
+  | { readonly type: 'drew'; readonly focus: string | null; readonly nodes: number };
 
 export class GedcomGraphViewProvider implements WebviewViewProvider {
   private view: WebviewView | undefined;
@@ -80,6 +96,16 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
 
   private lastDrawn: { focus: string | null; nodes: number } | undefined;
 
+  /**
+   * What the panel says it put on screen, as against `showing`, which is what it
+   * was sent. Only the panel can answer the first, so it acknowledges each draw.
+   */
+  get drawn(): { focus: string | null; nodes: number } | undefined {
+    return this.lastAcked;
+  }
+
+  private lastAcked: { focus: string | null; nodes: number } | undefined;
+
   resolveWebviewView(
     view: WebviewView,
     _context: WebviewViewResolveContext,
@@ -96,15 +122,37 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
         this.selection.set({ uri: this.documentUri, xref: message.xref });
       } else if (message.type === 'direction') {
         this.direction = message.value;
-        this.update(window.activeTextEditor);
+        this.update(subjectEditor());
+      } else if (message.type === 'drew') {
+        this.lastAcked = { focus: message.focus, nodes: message.nodes };
       }
     });
 
     view.onDidChangeVisibility(() => {
-      if (view.visible) this.update(window.activeTextEditor);
+      if (view.visible) this.update(subjectEditor());
     });
 
-    this.update(window.activeTextEditor);
+    // The panel is thrown away whenever it is hidden, and a panel that is not
+    // there is showing nothing.
+    view.onDidDispose(() => {
+      if (this.view !== view) return;
+      this.view = undefined;
+      this.lastDrawn = undefined;
+      this.lastAcked = undefined;
+    });
+
+    this.update(subjectEditor());
+  }
+
+  /**
+   * Says there is nothing to draw, and records it as what the panel holds.
+   *
+   * Recorded as well as sent: `showing` answers what is on screen, and an empty
+   * panel is one of the answers.
+   */
+  private nothing(reason: 'no-document' | 'not-a-person'): void {
+    this.lastDrawn = { focus: null, nodes: 0 };
+    void this.view?.webview.postMessage({ type: 'empty', reason });
   }
 
   /** Recomputes and pushes the graph for whatever is currently selected. */
@@ -113,7 +161,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
 
     if (!editor || editor.document.languageId !== 'gedcom') {
       this.documentUri = undefined;
-      void this.view.webview.postMessage({ type: 'empty', reason: 'no-document' });
+      this.nothing('no-document');
       return;
     }
 
@@ -136,7 +184,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     // is a lone box with no generation and no relationships; the details panel
     // is where that record has something to say.
     if (focus !== null && !isDrawable(focus)) {
-      void this.view.webview.postMessage({ type: 'empty', reason: 'not-a-person' });
+      this.nothing('not-a-person');
       return;
     }
 
@@ -649,6 +697,11 @@ function shell(): string {
         button.setAttribute('aria-pressed', String(button.dataset.direction === message.direction));
       }
       render(message.graph);
+      vscode.postMessage({
+        type: 'drew',
+        focus: message.graph.focus,
+        nodes: message.graph.nodes.length,
+      });
     } else if (message.type === 'empty') {
       empty.textContent =
         message.reason === 'not-a-person'
@@ -656,6 +709,7 @@ function shell(): string {
           : 'Open a GEDCOM file and place the cursor in a record.';
       empty.style.display = 'block';
       scroll.style.display = 'none';
+      vscode.postMessage({ type: 'drew', focus: null, nodes: 0 });
     }
   });
 }());
@@ -665,39 +719,50 @@ function shell(): string {
 }
 
 /**
- * Opens the tree panel, and makes sure it actually opened.
+ * Waits for the panel to come up, which a webview does a tick or two after it is
+ * focused rather than by the time the command resolves.
+ */
+async function appears(provider: GedcomGraphViewProvider): Promise<boolean> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (provider.visible) return true;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return false;
+}
+
+/**
+ * Opens the tree panel, and makes sure it is on screen.
  *
- * `<viewId>.focus` is the documented way and works from a warm editor. It is not
- * enough from a cold one: the view is behind a `when` clause on the language of
- * the active editor, and that context key, the extension's activation and the
- * click all race. Losing the race is silent — `.focus` resolves, nothing appears,
- * and the reader is left clicking a button that does nothing.
- *
- * So the result is checked rather than assumed, and the container is opened
- * directly if the view did not come up. Reported as issue #5.
+ * `<viewId>.focus` is the documented way in and is enough while the view is
+ * where it belongs. It is silent about a view the reader has hidden, or moved to
+ * a container that is itself hidden — both a right-click away in the panel — and
+ * a silent command reads as a broken button. So the view is waited for, and put
+ * back where it belongs if it does not appear.
  */
 async function reveal(
   provider: GedcomGraphViewProvider,
   editor: TextEditor | undefined,
-): Promise<void> {
-  // The view is contributed behind `editorLangId == gedcom`, so with no GEDCOM
-  // file in front of the reader there is no view to focus and nothing at all
-  // happens. Saying so beats a button that appears to be broken.
-  //
-  // Decided *before* focusing anything: focusing a panel view clears
-  // `window.activeTextEditor`, so a check made afterwards sees no editor at all
-  // and reports "open a GEDCOM file" to somebody looking straight at one.
+): Promise<boolean> {
+  // Decided before focusing anything, and from `subjectEditor`: focus moves in
+  // the course of opening the panel, and the active editor moves with it.
   if (editor?.document.languageId !== 'gedcom') {
     void window.showInformationMessage('Open a GEDCOM file to see its tree.');
-    return;
+    return false;
   }
 
-  // `.focus` is the whole of it. An earlier version re-opened the container when
-  // the view did not report itself visible immediately — but a webview resolves
-  // asynchronously, so it often has not, and firing the container command at an
-  // already-open panel *toggles* it: the reader was thrown back to the Terminal
-  // tab, intermittently, by the code meant to make the panel appear.
   await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
+  if (await appears(provider)) return true;
+
+  // Not a toggle, so it cannot shut the panel it was called to open.
+  await commands.executeCommand(`${GRAPH_VIEW_ID}.resetViewLocation`);
+  await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
+  if (await appears(provider)) return true;
+
+  void window.showWarningMessage(
+    'The GEDCOM Tree could not be shown. Enable it from the panel’s context menu, ' +
+      'or run “View: Reset View Locations”.',
+  );
+  return false;
 }
 
 /**
@@ -710,6 +775,7 @@ async function reveal(
 export interface GedcomTestHooks {
   readonly graphVisible: () => boolean;
   readonly graphShowing: () => { focus: string | null; nodes: number } | undefined;
+  readonly graphDrawn: () => { focus: string | null; nodes: number } | undefined;
 }
 
 /** Wires both panels to the editor, in whichever host is running. */
@@ -738,16 +804,24 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
 
   /** The cursor moving is a selection too, and it overrides a panel click. */
   const followCursor = (editor: TextEditor | undefined): void => {
-    if (!editor || editor.document.languageId !== 'gedcom') {
+    // Anything but a GEDCOM file — including no editor at all, which is what
+    // arrives when focus leaves the editor area — leaves the panels on the file
+    // the reader can still see.
+    const subject = editor?.document.languageId === 'gedcom' ? editor : subjectEditor();
+
+    if (!subject) {
       selection.set({ uri: undefined, xref: null });
-    } else {
-      const analysis = analyzeText(editor.document.getText());
+    } else if (subject === editor) {
+      // The cursor moved in the file the panels are about; where it landed is
+      // the new selection. Focus moving elsewhere is not a new selection.
+      const analysis = analyzeText(subject.document.getText());
       selection.set({
-        uri: editor.document.uri,
-        xref: recordAt(analysis, editor.selection.active.line),
+        uri: subject.document.uri,
+        xref: recordAt(analysis, subject.selection.active.line),
       });
     }
-    provider.update(editor);
+
+    provider.update(subject);
     details.refresh();
   };
 
@@ -788,15 +862,12 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
         }
       }
 
-      // Captured before anything below can move focus. Focusing the panel makes
-      // `window.activeTextEditor` undefined, and the update would then draw an
-      // empty panel for a reader who has a file open in front of them.
-      const editor =
-        window.activeTextEditor?.document.languageId === 'gedcom'
-          ? window.activeTextEditor
-          : window.visibleTextEditors.find((e) => e.document.languageId === 'gedcom');
+      // Captured before anything below moves focus.
+      const editor = subjectEditor();
 
-      await reveal(provider, editor);
+      // Nothing to open means nothing to redraw: a command that declines to act
+      // leaves the panel as it found it.
+      if (!(await reveal(provider, editor))) return;
       provider.update(editor);
     }),
     window.registerWebviewViewProvider(GRAPH_VIEW_ID, provider, {
@@ -805,13 +876,25 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
       webviewOptions: { retainContextWhenHidden: false },
     }),
     window.onDidChangeActiveTextEditor(followCursor),
-    window.onDidChangeTextEditorSelection((event) => followCursor(event.textEditor)),
+    // Only a cursor in a GEDCOM file is news. Following every editor's cursor
+    // would re-read and lay out the whole tree on each keystroke in whatever
+    // else is open, to draw what is already on screen.
+    window.onDidChangeTextEditorSelection((event) => {
+      if (event.textEditor.document.languageId !== 'gedcom') return;
+      followCursor(event.textEditor);
+    }),
     workspace.onDidChangeTextDocument((event) => {
-      const editor = window.activeTextEditor;
+      const editor = subjectEditor();
       if (editor && event.document === editor.document) {
         provider.update(editor);
         details.refresh();
       }
+    }),
+    // Depth and whether citations are drawn change the shape of the tree, so
+    // the drawing is redone when either does.
+    workspace.onDidChangeConfiguration((event) => {
+      if (!event.affectsConfiguration('gedcom.graph')) return;
+      provider.update(subjectEditor());
     }),
   );
 
@@ -821,7 +904,11 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
   );
 
   announce();
-  followCursor(window.activeTextEditor);
+  followCursor(subjectEditor());
 
-  return { graphVisible: () => provider.visible, graphShowing: () => provider.showing };
+  return {
+    graphVisible: () => provider.visible,
+    graphShowing: () => provider.showing,
+    graphDrawn: () => provider.drawn,
+  };
 }

@@ -126,6 +126,40 @@ describe('activation', () => {
   });
 });
 
+describe('settings', () => {
+  /**
+   * A setting the editor never registered is invisible: it has no entry in the
+   * Settings UI, `@id:` finds nothing, and reading it returns undefined for
+   * every user. Nothing in the manifest tests can see that, because they read
+   * the manifest rather than asking the editor what it made of it.
+   */
+  it('the editor knows every contributed setting, with its declared default', async () => {
+    const extension = vscode.extensions.getExtension(EXTENSION_ID);
+    const declared = extension.packageJSON.contributes.configuration.properties;
+    const configuration = vscode.workspace.getConfiguration();
+
+    const missing = [];
+    for (const [key, schema] of Object.entries(declared)) {
+      const known = configuration.inspect(key);
+      if (!known || known.defaultValue === undefined) {
+        missing.push(`${key} (unknown to the editor)`);
+        continue;
+      }
+      assert.deepEqual(known.defaultValue, schema.default, `${key} has the wrong default`);
+    }
+
+    assert.deepEqual(missing, []);
+  });
+
+  it('reads back the default through the section the server is given', async () => {
+    // The server is handed the `gedcom` section, so a setting has to answer to
+    // that name and not only to its full key.
+    const section = vscode.workspace.getConfiguration('gedcom');
+    assert.equal(section.get('virtualIndent.enabled'), false);
+    assert.equal(section.get('codeLens.enabled'), true);
+  });
+});
+
 describe('language server', () => {
   it('go to definition resolves a pointer to its record', async () => {
     const document = await openFixture(SAMPLE);
@@ -295,6 +329,61 @@ describe('the graph panel', () => {
     assert.equal((await hooks()).graphShowing()?.focus, 'I1');
   });
 
+  it('draws it on opening, without waiting for the cursor to move', async () => {
+    // What a reader does: put the cursor in a record, then press the button.
+    await openFixture(SAMPLE);
+    await putCursorOn(5); // 0 @I1@ INDI
+    await closePanel();
+
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+
+    // `graphDrawn` is the panel's own acknowledgement rather than what was sent
+    // to it, which is the only way from out here to tell a drawing from a
+    // message that never arrived.
+    assert.equal((await hooks()).graphDrawn()?.focus, 'I1');
+  });
+
+  it('keeps the tree up while the reader works beside it', async () => {
+    await openFixture(SAMPLE);
+    await putCursorOn(5); // 0 @I1@ INDI
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+
+    // Split, so the GEDCOM file is still on screen while another is worked in —
+    // taking notes beside the tree is the whole reason to have both open.
+    const other = await vscode.workspace.openTextDocument({
+      language: 'markdown',
+      content: '# notes taken while reading the tree\n',
+    });
+    await vscode.window.showTextDocument(other, vscode.ViewColumn.Beside);
+    await settle();
+
+    // The tree follows the GEDCOM file on screen, not the active editor.
+    assert.equal(
+      (await hooks()).graphDrawn()?.focus,
+      'I1',
+      'the tree should still hold the family the reader was looking at',
+    );
+
+    await vscode.commands.executeCommand('workbench.action.closeEditorsInGroup');
+    await settle();
+  });
+
+  it('says it is showing nothing when it is showing nothing', async () => {
+    // `graphShowing` answers what the panel holds, and holding nothing is one of
+    // the answers — every other assertion here rests on that.
+    await openFixture(SAMPLE);
+    await putCursorOn(5);
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+    assert.equal((await hooks()).graphShowing()?.focus, 'I1');
+
+    await putCursorOn(0); // 0 HEAD — a record, but not one with a family
+    assert.equal((await hooks()).graphShowing()?.focus, null);
+    assert.equal((await hooks()).graphDrawn()?.focus, null);
+  });
+
   it('recentres when the cursor moves to another record', async () => {
     // Being open is not the same as being right. The panel is a webview and its
     // contents are opaque from out here, so what it was last asked to draw is
@@ -313,6 +402,35 @@ describe('the graph panel', () => {
     assert.equal((await hooks()).graphShowing()?.focus, 'I4');
   });
 
+  it('brings back a panel whose views the reader has all hidden', async () => {
+    // Hiding every view in a container takes the container off the panel's tab
+    // bar with it, which is the state the button has to recover from.
+    await openFixture(SAMPLE);
+    await putCursorOn(5); // 0 @I1@ INDI
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+    assert.equal((await hooks()).graphVisible(), true, 'expected the panel to start open');
+
+    await vscode.commands.executeCommand('gedcom.graph.toggleVisibility');
+    await vscode.commands.executeCommand('gedcom.details.toggleVisibility');
+    await settle();
+    assert.equal((await hooks()).graphVisible(), false, 'expected both views to be hidden');
+
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle(2_000);
+
+    assert.equal(
+      (await hooks()).graphVisible(),
+      true,
+      'Show Tree must bring the panel back from a container with nothing left in it',
+    );
+    // The webview is rebuilt from nothing, so this cannot be a stale reading.
+    assert.equal((await hooks()).graphDrawn()?.focus, 'I1');
+
+    await vscode.commands.executeCommand('gedcom.details.resetViewLocation');
+    await settle();
+  });
+
   it('keeps drawing after the panel is closed and reopened', async () => {
     await openFixture(SAMPLE);
     await closePanel();
@@ -321,6 +439,7 @@ describe('the graph panel', () => {
 
     await putCursorOn(15); // 0 @I2@ INDI
     assert.equal((await hooks()).graphShowing()?.focus, 'I2');
+    assert.equal((await hooks()).graphDrawn()?.focus, 'I2');
   });
 });
 
