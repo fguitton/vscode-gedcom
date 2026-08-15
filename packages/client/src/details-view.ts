@@ -105,6 +105,10 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     );
 
     view.onDidDispose(() => {
+      if (this.view === view) {
+        this.view = undefined;
+        this.lastShown = undefined;
+      }
       for (const subscription of this.subscriptions) subscription.dispose();
       this.subscriptions.length = 0;
     });
