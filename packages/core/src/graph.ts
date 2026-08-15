@@ -668,8 +668,8 @@ const compareKeys = (
   b: readonly [number, string, string],
 ): number => a[0] - b[0] || a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]);
 
-/** Couples merged, everybody else alone, in a stable order. */
-function unitsOf(column: GraphNode[], partners: ReadonlyMap<string, string>): Unit[] {
+/** Spouses merged into units, everybody else alone, in a stable order. */
+function unitsOf(column: GraphNode[], partners: ReadonlyMap<string, readonly string[]>): Unit[] {
   const present = new Map(column.map((node) => [node.xref, node]));
   const taken = new Set<string>();
   const units: Unit[] = [];
@@ -679,16 +679,19 @@ function unitsOf(column: GraphNode[], partners: ReadonlyMap<string, string>): Un
     if (taken.has(node.xref)) continue;
     taken.add(node.xref);
 
-    const partner = partners.get(node.xref);
-    const beside = partner === undefined ? undefined : present.get(partner);
+    const spouseList = partners.get(node.xref) ?? [];
+    const members: GraphNode[] = [node];
 
-    if (beside && !taken.has(beside.xref)) {
-      taken.add(beside.xref);
-      const members = [node, beside].sort((a, b) => compareKeys(keyOf(a), keyOf(b)));
-      units.push({ members, key: keyOf(members[0]!) });
-    } else {
-      units.push({ members: [node], key: keyOf(node) });
+    for (const spouseXref of spouseList) {
+      const spouseNode = present.get(spouseXref);
+      if (spouseNode && !taken.has(spouseNode.xref)) {
+        taken.add(spouseNode.xref);
+        members.push(spouseNode);
+      }
     }
+
+    members.sort((a, b) => compareKeys(keyOf(a), keyOf(b)));
+    units.push({ members, key: keyOf(members[0]!) });
   }
 
   return units;
@@ -716,17 +719,19 @@ function unitsOf(column: GraphNode[], partners: ReadonlyMap<string, string>): Un
  * have to be adjacent for the drawing to read at all.
  */
 function orderColumns(columns: [number, GraphNode[]][], edges: GraphEdge[]): void {
-  const partners = new Map<string, string>();
+  const partners = new Map<string, string[]>();
   for (const edge of edges) {
     if (edge.kind !== 'spouse') continue;
-    // Someone married twice cannot sit beside both. Decided by the partner's own
-    // identifier so the choice does not depend on the order edges arrived in.
     for (const [a, b] of [
       [edge.from, edge.to],
       [edge.to, edge.from],
     ] as const) {
-      const held = partners.get(a);
-      if (held === undefined || held.localeCompare(b) > 0) partners.set(a, b);
+      const list = partners.get(a) ?? [];
+      if (!list.includes(b)) {
+        list.push(b);
+        list.sort();
+        partners.set(a, list);
+      }
     }
   }
 

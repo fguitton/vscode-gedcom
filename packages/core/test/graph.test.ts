@@ -320,3 +320,42 @@ describe('direction of travel', () => {
     expect(reached('descendants')).toContain('SP');
   });
 });
+
+describe('multiple spouses', () => {
+  const MULTI_SPOUSE = [
+    '0 HEAD',
+    '1 GEDC',
+    '2 VERS 7.0',
+    '0 @H@ INDI',
+    '1 NAME Henry /Tudor/',
+    '1 FAMS @F1@',
+    '1 FAMS @F2@',
+    '0 @W1@ INDI',
+    '1 NAME Catherine /Aragon/',
+    '1 FAMS @F1@',
+    '0 @W2@ INDI',
+    '1 NAME Anne /Boleyn/',
+    '1 FAMS @F2@',
+    '0 @F1@ FAM',
+    '1 HUSB @H@',
+    '1 WIFE @W1@',
+    '0 @F2@ FAM',
+    '1 HUSB @H@',
+    '1 WIFE @W2@',
+    '0 TRLR',
+    '',
+  ].join('\n');
+
+  it('groups multiple spouses into the same unit with the partner', () => {
+    const graph = neighbourhood(analyze(bytes(MULTI_SPOUSE)), 'H', { depth: 1 });
+    const nodes = graph.nodes.filter((n) => ['H', 'W1', 'W2'].includes(n.xref));
+    expect(nodes.length).toBe(3);
+
+    // In a column, y positions must be strictly consecutive for all three partners
+    const sorted = [...nodes].sort((a, b) => a.y - b.y);
+    const ys = sorted.map((n) => n.y);
+    const diff1 = ys[1]! - ys[0]!;
+    const diff2 = ys[2]! - ys[1]!;
+    expect(diff1).toBe(diff2);
+  });
+});
