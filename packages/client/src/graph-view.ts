@@ -782,15 +782,61 @@ function shell(): string {
 
   document.getElementById('btn-export-svg')?.addEventListener('click', () => {
     if (!currentGraph || !svg) return;
+
+    // Resolve computed colors from active VS Code theme
+    const style = window.getComputedStyle(document.body);
+    const bgColor = style.getPropertyValue('--vscode-editor-background').trim() || '#1e1e1e';
+    const fgColor = style.getPropertyValue('--vscode-foreground').trim() || '#cccccc';
+    const descColor = style.getPropertyValue('--vscode-descriptionForeground').trim() || '#888888';
+    const widgetBg = style.getPropertyValue('--vscode-editorWidget-background').trim() || '#252526';
+    const widgetBorder =
+      style.getPropertyValue('--vscode-editorWidget-border').trim() ||
+      style.getPropertyValue('--vscode-focusBorder').trim() ||
+      '#454545';
+    const focusBorder = style.getPropertyValue('--vscode-focusBorder').trim() || '#007acc';
+    const focusBg = style.getPropertyValue('--vscode-list-activeSelectionBackground').trim() || '#094771';
+    const focusFg = style.getPropertyValue('--vscode-list-activeSelectionForeground').trim() || '#ffffff';
+    const edgeColor = style.getPropertyValue('--vscode-editorIndentGuide-activeBackground').trim() || '#555555';
+    const font = style.getPropertyValue('--vscode-font-family').trim() || 'system-ui, -apple-system, sans-serif';
+
     const clone = svg.cloneNode(true);
-    const styleEl = document.querySelector('style');
-    if (styleEl) {
-      const defs = document.createElementNS(NS, 'defs');
-      const inlineStyle = document.createElementNS(NS, 'style');
-      inlineStyle.textContent = styleEl.textContent || '';
-      defs.appendChild(inlineStyle);
-      clone.insertBefore(defs, clone.firstChild);
+    clone.setAttribute('xmlns', NS);
+    clone.setAttribute('width', String(currentGraph.width));
+    clone.setAttribute('height', String(currentGraph.height));
+    clone.setAttribute('viewBox', '0 0 ' + currentGraph.width + ' ' + currentGraph.height);
+
+    // Remove interactive elements
+    for (const goto of Array.from(clone.querySelectorAll('.goto'))) {
+      goto.remove();
     }
+
+    const defs = document.createElementNS(NS, 'defs');
+    const css = [
+      'svg { background-color: ' + bgColor + '; font-family: ' + font + '; }',
+      '.edge { stroke: ' + edgeColor + '; stroke-width: 1px; fill: none; opacity: 0.7; }',
+      '.edge-label text { fill: ' + descColor + '; font-size: 9px; font-family: ' + font + '; }',
+      '.edge-label-plate { fill: ' + bgColor + '; opacity: 0.9; }',
+      '.node rect { fill: ' + widgetBg + '; stroke: ' + widgetBorder + '; stroke-width: 1px; rx: 3px; }',
+      '.node.focus rect { stroke: ' + focusBorder + '; stroke-width: 2px; fill: ' + focusBg + '; }',
+      '.node text.label { fill: ' + fgColor + '; font-size: 11px; font-family: ' + font + '; font-weight: 500; }',
+      '.node.focus text.label { fill: ' + focusFg + '; font-weight: bold; }',
+      '.node text.tag { fill: ' + descColor + '; font-size: 9px; font-family: monospace; }',
+      '.node.focus text.tag { fill: ' + focusFg + '; opacity: 0.9; }',
+      '.elided { fill: ' + descColor + '; font-size: 9px; font-family: ' + font + '; }',
+    ].join('\\n');
+
+    const styleEl = document.createElementNS(NS, 'style');
+    styleEl.textContent = css;
+    defs.appendChild(styleEl);
+    clone.insertBefore(defs, clone.firstChild);
+
+    // Explicit solid background
+    const bgRect = document.createElementNS(NS, 'rect');
+    bgRect.setAttribute('width', '100%');
+    bgRect.setAttribute('height', '100%');
+    bgRect.setAttribute('fill', bgColor);
+    defs.after(bgRect);
+
     const serializer = new XMLSerializer();
     const svgString = '<?xml version="1.0" encoding="UTF-8"?>\\n' + serializer.serializeToString(clone);
     vscode.postMessage({ type: 'export', format: 'svg', data: svgString });
