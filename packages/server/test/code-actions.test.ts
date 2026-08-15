@@ -85,4 +85,29 @@ describe('codeActions', () => {
     expect(actions.length).toBe(1);
     expect(actions[0]!.title).toBe('Convert RELA to ROLE (GEDCOM 7)');
   });
+
+  it('offers quick fixes for exporter-repair orphan lines', () => {
+    const source = [
+      '0 HEAD',
+      '1 SOUR MYHERITAGE',
+      '2 VERS 1.0',
+      '0 @I1@ INDI',
+      '1 NOTE First line of note',
+      'second line without level',
+      '0 TRLR',
+    ].join('\n');
+
+    const analysis = analyzeDocument(source);
+    const diags = diagnostics(analysis);
+    const repairDiag = diags.find((d) => d.code === 'exporter-repair');
+    expect(repairDiag).toBeDefined();
+
+    const actions = codeActions(analysis, URI, repairDiag!.range, {
+      diagnostics: [repairDiag!],
+    });
+
+    expect(actions.length).toBe(1);
+    expect(actions[0]!.title).toBe('Prefix line with 2 CONT');
+    expect(actions[0]!.edit?.changes?.[URI]?.[0]?.newText).toBe('2 CONT ');
+  });
 });

@@ -225,7 +225,7 @@ describe('against Royal92', () => {
     });
 
     expect(compared).toBeGreaterThan(100);
-    expect(ratio).toBeGreaterThan(0.7);
+    expect(ratio).toBeGreaterThan(0.73);
   });
 
   it('keeps a whole column in the same order as the selection moves', () => {
@@ -238,6 +238,6 @@ describe('against Royal92', () => {
     });
 
     expect(compared).toBeGreaterThan(500);
-    expect(ratio).toBeGreaterThan(0.85);
+    expect(ratio).toBeGreaterThan(0.87);
   });
 });

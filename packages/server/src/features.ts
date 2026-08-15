@@ -1193,6 +1193,31 @@ export function codeActions(
       }
     }
 
+    if (code === 'exporter-repair') {
+      const lineIndex = diagRange.start.line;
+      const structure = structureAt(analysis.document, lineIndex, 0);
+      const targetLevel = structure ? structure.level + 1 : 2;
+      actions.push({
+        title: `Prefix line with ${targetLevel} CONT`,
+        kind: CodeActionKind.QuickFix,
+        diagnostics: [diagnostic],
+        isPreferred: true,
+        edit: {
+          changes: {
+            [uri]: [
+              {
+                range: {
+                  start: { line: lineIndex, character: 0 },
+                  end: { line: lineIndex, character: 0 },
+                },
+                newText: `${targetLevel} CONT `,
+              },
+            ],
+          },
+        },
+      });
+    }
+
     if (code === 'removed-in-version' || code === 'tag-not-allowed-here') {
       const structure = structureAt(
         analysis.document,

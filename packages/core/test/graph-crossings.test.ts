@@ -133,12 +133,12 @@ describe('against Royal92', () => {
    */
   it('draws most neighbourhoods with no crossings at all', () => {
     const clean = measured.filter((count) => count === 0).length;
-    expect(clean / measured.length).toBeGreaterThan(0.62);
+    expect(clean / measured.length).toBeGreaterThan(0.64);
   });
 
   it('keeps most of the rest to a couple of crossings', () => {
     const nearly = measured.filter((count) => count <= 2).length;
-    expect(nearly / measured.length).toBeGreaterThan(0.8);
+    expect(nearly / measured.length).toBeGreaterThan(0.83);
   });
 
   /**
@@ -157,7 +157,7 @@ describe('against Royal92', () => {
 
   it('keeps even the crowded end of the range in hand', () => {
     const sorted = [...measured].sort((a, b) => a - b);
-    expect(sorted[Math.floor(sorted.length * 0.9)]).toBeLessThan(6);
+    expect(sorted[Math.floor(sorted.length * 0.9)]).toBeLessThan(5);
   });
 
   it('runs a generation parallel to the one below it', () => {
