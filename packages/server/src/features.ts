@@ -28,6 +28,7 @@ import {
   removalNote,
   resolveSubstructure,
   scanDate,
+  splitLines,
   statistics,
   walk,
   lifespan,
@@ -655,6 +656,7 @@ function recordModifiers(analysis: Analysis): Map<Structure, number> {
 export function semanticTokens(analysis: Analysis): number[] {
   const raw: RawToken[] = [];
   const tint = recordModifiers(analysis);
+  const lines = splitLines(analysis.text);
 
   for (const structure of analysis.document.structures) {
     const resolution = analysis.validation.resolutions.get(structure);
@@ -699,7 +701,7 @@ export function semanticTokens(analysis: Analysis): number[] {
     // red. The parse tree does know, and a semantic token overrides the colour —
     // which is precisely the division of labour the grammar was designed around.
     for (const line of structure.continuationLines) {
-      const text = analysis.text.split(/\r\n|\r|\n/)[line];
+      const text = lines[line];
       if (text === undefined || /^\d+[ \t]/.test(text)) continue;
 
       raw.push({
