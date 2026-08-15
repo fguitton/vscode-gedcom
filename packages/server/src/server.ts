@@ -29,6 +29,7 @@ import {
   documentLinks,
   documentSymbols,
   foldingRanges,
+  formatDocument,
   hover,
   inlayHints,
   references,
@@ -136,6 +137,7 @@ export function startServer(connection: Connection): void {
           full: true,
         },
         inlayHintProvider: true,
+        documentFormattingProvider: true,
         documentLinkProvider: { resolveProvider: false },
         codeLensProvider: { resolveProvider: true },
         codeActionProvider: {
@@ -295,6 +297,13 @@ export function startServer(connection: Connection): void {
     guard('Code actions', [], () => {
       const document = documentFor(textDocument.uri);
       return document ? codeActions(analysisOf(document), textDocument.uri, range, context) : [];
+    }),
+  );
+
+  connection.onDocumentFormatting(({ textDocument }) =>
+    guard('Formatting', [], () => {
+      const document = documentFor(textDocument.uri);
+      return document ? formatDocument(analysisOf(document)) : [];
     }),
   );
 

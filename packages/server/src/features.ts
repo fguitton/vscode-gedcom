@@ -1302,6 +1302,56 @@ export function codeActions(
   return actions;
 }
 
+// --- formatting -------------------------------------------------------------
+
+/**
+ * Formats a GEDCOM document by normalizing delimiters, standardizing tag casing,
+ * removing blank lines and trailing whitespace, and ensuring a trailing newline.
+ */
+export function formatDocument(analysis: Analysis): TextEdit[] {
+  const lines = splitLines(analysis.text);
+  const formattedLines: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i]!;
+    const trimmed = rawLine.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+
+    const match = /^\s*(\d{1,3})\s+(?:(@[^@\s]+@)\s+)?([A-Za-z0-9_]+)(?:\s+(.*))?$/.exec(rawLine);
+    if (!match) {
+      formattedLines.push(rawLine.trimEnd());
+      continue;
+    }
+
+    const [, level, xref, tag, payload] = match;
+    const upperTag = tag!.toUpperCase();
+
+    let line = level!;
+    if (xref) line += ` ${xref}`;
+    line += ` ${upperTag}`;
+    if (payload !== undefined && payload.length > 0) {
+      line += ` ${payload.trimEnd()}`;
+    }
+
+    formattedLines.push(line);
+  }
+
+  const newText = formattedLines.length > 0 ? formattedLines.join('\n') + '\n' : '';
+  if (newText === analysis.text) return [];
+
+  return [
+    {
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: lines.length, character: 0 },
+      },
+      newText,
+    },
+  ];
+}
+
 // --- entry point ------------------------------------------------------------
 
 export interface Settings {
