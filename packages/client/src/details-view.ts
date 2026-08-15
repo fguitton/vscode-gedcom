@@ -679,8 +679,7 @@ function shell(previews: boolean): string {
       // rather than starting again from the setting.
       format = message.format === 'html' ? 'html' : 'text';
       render(message.details);
-    }
-    else {
+    } else if (message.type === 'empty') {
       content.hidden = true;
       empty.hidden = false;
     }
