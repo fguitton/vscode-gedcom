@@ -24,6 +24,7 @@ import {
   describeMediaType,
   describePlace,
   enumValuesOf,
+  exporterProfile,
   formatCoordinate,
   labelOf,
   meaningOf,
@@ -278,6 +279,27 @@ function describeHeader(analysis: Analysis): string[] {
   if (stats.unreferenced)
     problems.push(`${plural(stats.unreferenced, 'record')} nothing points at`);
   if (problems.length) lines.push(`_${problems.join(', ')}._`);
+
+  // Who wrote the file, and what that program is known to get wrong. A reader
+  // facing a screen of diagnostics deserves to learn in one place that they are
+  // the exporter's doing rather than their own.
+  const profile = exporterProfile(analysis.document);
+  if (profile) {
+    lines.push('', `Written by **${profile.name}**, which is known to:`);
+    for (const quirk of profile.quirks) {
+      lines.push(
+        quirk.source ? `- ${quirk.summary} ([reported](${quirk.source}))` : `- ${quirk.summary}`,
+      );
+    }
+
+    // The header itself may be wrong, which is worse than an ordinary quirk:
+    // every line in the file is read through it. Said, never acted on — the file
+    // does not record which release wrote it, so overriding the header would
+    // swap one wrong answer for another.
+    if (profile.headerMayLie) {
+      lines.push('', `⚠️ **This header may be wrong.** ${profile.headerMayLie.detail}`);
+    }
+  }
 
   return lines;
 }

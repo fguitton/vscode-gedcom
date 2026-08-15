@@ -15,7 +15,12 @@ export type { Detection, Encoding, GedcomVersion, ByteOrder } from './detect.ts'
 
 export { inferVersion } from './infer.ts';
 
-export { exporterName, exporterProfile, exporterProfiles } from './exporter.ts';
+export {
+  attributeToExporter,
+  exporterName,
+  exporterProfile,
+  exporterProfiles,
+} from './exporter.ts';
 export type { ExporterProfile, ExporterQuirk } from './exporter.ts';
 
 export {
@@ -128,7 +133,7 @@ export type {
 
 import { decode, detect, type GedcomVersion } from './detect.ts';
 import type { Diagnostic, Document } from './cst.ts';
-import { exporterProfile } from './exporter.ts';
+import { attributeToExporter, exporterProfile } from './exporter.ts';
 import { inferVersion } from './infer.ts';
 import { parse } from './parser.ts';
 import { indexXrefs, type XrefIndex } from './xref.ts';
@@ -199,13 +204,16 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
     xrefs,
   });
 
-  return {
-    version,
-    versionSource,
-    text,
-    document,
-    xrefs,
-    validation,
-    diagnostics: [...document.diagnostics, ...xrefs.diagnostics, ...validation.diagnostics],
-  };
+  // A deviation the exporter is known for is re-rated as its doing rather than
+  // the reader's. Still reported — nothing is hidden — but as a warning naming
+  // the program, so a screen of red over somebody else's bug becomes a screen of
+  // amber with an explanation.
+  const byLine = new Map(document.structures.map((s) => [s.span.line, s.tag]));
+  const diagnostics = attributeToExporter(
+    [...document.diagnostics, ...xrefs.diagnostics, ...validation.diagnostics],
+    profile,
+    (diagnostic) => byLine.get(diagnostic.span.line),
+  );
+
+  return { version, versionSource, text, document, xrefs, validation, diagnostics };
 }

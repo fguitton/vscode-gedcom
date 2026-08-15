@@ -16,6 +16,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Added
 
+- The hover names the program that wrote the file and lists what it is
+  known to get wrong, with a link to where each was reported.
+- A deviation a known exporter is responsible for is downgraded from error and
+  says whose doing it is. Nothing is suppressed.
 - Exporter profiles. The program named in `HEAD.SOUR` selects a table of known
   quirks; MyHeritage's literal line breaks inside payloads are read as the
   continuations it meant, each reported as an information diagnostic. Never

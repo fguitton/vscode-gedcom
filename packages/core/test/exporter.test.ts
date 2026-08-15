@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { analyze, exporterName, exporterProfile } from '../src/index.ts';
+import { analyze, exporterName, exporterProfile, exporterProfiles } from '../src/index.ts';
 import { fixture } from './corpus.ts';
 
 const of = (name: string) => analyze(fixture(name).bytes);
@@ -97,5 +97,33 @@ describe('WikiTree', () => {
 
   it('lexes every line, the split character notwithstanding', () => {
     expect(counts(NAME)['malformed-line']).toBeUndefined();
+  });
+});
+
+describe('attributing a deviation to the exporter', () => {
+  it('names the program in the message rather than blaming the reader', () => {
+    const quay = of('exporter/my-heritage.ged').diagnostics.find(
+      (d) => d.code === 'enum-value-unknown',
+    );
+    expect(quay?.message).toContain('MyHeritage Family Tree Builder writes this');
+  });
+
+  it(`still reports it, since a reputation is not a reason to hide a fault`, () => {
+    expect(counts('exporter/my-heritage.ged')['enum-value-unknown']).toBe(7);
+  });
+
+  it('leaves a file from an unknown program exactly as it was', () => {
+    const royal = of('v5/Royal92.ged').diagnostics;
+    expect(royal.every((d) => !d.message.includes('writes this'))).toBe(true);
+  });
+});
+
+describe('a header that may be lying', () => {
+  it('is recorded for the programs known to do it, and acted on for none', () => {
+    const ftm = exporterProfiles().find((p) => p.id === 'ftm');
+    expect(ftm?.headerMayLie?.about).toBe('both');
+    // Nothing in the pipeline consults it: the file does not say which release
+    // wrote it, so a silent override would swap one wrong answer for another.
+    expect(ftm?.repairsContinuations).toBe(false);
   });
 });

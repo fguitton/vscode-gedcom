@@ -12,7 +12,7 @@
  * and even that only relaxes an error into a repair the reader is told about.
  */
 
-import type { Document } from './cst.ts';
+import type { Diagnostic, Document, Structure } from './cst.ts';
 
 export interface ExporterQuirk {
   /** What the program does, said plainly enough for a diagnostic. */
@@ -36,6 +36,30 @@ export interface ExporterProfile {
    * and never `CONT`, so its multi-line values arrive as bare text.
    */
   readonly repairsContinuations: boolean;
+  /**
+   * Deviations this program is known to write, which are its fault rather than
+   * the reader's.
+   *
+   * Matched on the diagnostic's code and, where it matters, the tag it was
+   * raised on. A match is downgraded to a warning and gains a sentence naming
+   * the program — the file is still wrong, and still says so, but the reader is
+   * told who to blame and spared deciding whether to fix it themselves.
+   */
+  readonly tolerates?: readonly { readonly code: string; readonly tag?: string }[];
+  /**
+   * A header this program is known to write incorrectly.
+   *
+   * Reported, never acted on. Family Tree Maker has declared 5.5 while writing
+   * 5.5.1, and has written Windows-1252 whatever `HEAD.CHAR` says — but which
+   * release did that is not something the file records, so silently overriding
+   * the header would swap one wrong answer for another. The reader is told what
+   * to check, and `gedcom.validation` already lets them override the version by
+   * hand if they agree.
+   */
+  readonly headerMayLie?: {
+    readonly about: 'version' | 'encoding' | 'both';
+    readonly detail: string;
+  };
 }
 
 const PROFILES: readonly ExporterProfile[] = [
@@ -63,6 +87,11 @@ const PROFILES: readonly ExporterProfile[] = [
           'and renders as visible tag soup.',
       },
       { summary: 'Writes `QUAY 4`, which is outside the four values the specification defines.' },
+    ],
+    tolerates: [
+      { code: 'enum-value-unknown', tag: 'QUAY' },
+      // Every export carries them, and the header never declares any of them.
+      { code: 'undocumented-extension' },
     ],
   },
   {
@@ -96,6 +125,14 @@ const PROFILES: readonly ExporterProfile[] = [
           'https://www.tamurajones.net/Ancestry.comAndSoftwareMacKievFamilyTreeMakerGEDCOMHeader.xhtml',
       },
     ],
+    headerMayLie: {
+      about: 'both',
+      detail:
+        'Some releases declare GEDCOM 5.5 while writing 5.5.1, and write ' +
+        'Windows-1252 whatever `HEAD.CHAR` claims. If a character looks wrong, or a ' +
+        'tag is reported as unknown that 5.5.1 defines, the header is the thing to ' +
+        'doubt first.',
+    },
   },
 ];
 
@@ -122,4 +159,37 @@ export function exporterProfile(document: Document): ExporterProfile | undefined
 /** Every profile, for tests and for documentation that cannot drift. */
 export function exporterProfiles(): readonly ExporterProfile[] {
   return PROFILES;
+}
+
+/**
+ * Re-rates the diagnostics a known exporter is responsible for.
+ *
+ * The deviation is still reported — a file that says `QUAY 4` still says
+ * something no reader can act on — but as a warning naming the program rather
+ * than an error implying the reader typed it. Nothing is suppressed: an
+ * exporter's reputation is not a reason to hide what a file contains.
+ */
+export function attributeToExporter(
+  diagnostics: readonly Diagnostic[],
+  profile: ExporterProfile | undefined,
+  tagOf: (diagnostic: Diagnostic) => string | undefined,
+): Diagnostic[] {
+  if (!profile?.tolerates?.length) return [...diagnostics];
+
+  return diagnostics.map((diagnostic) => {
+    const tag = tagOf(diagnostic);
+    const known = profile.tolerates!.some(
+      (entry) => entry.code === diagnostic.code && (entry.tag === undefined || entry.tag === tag),
+    );
+    if (!known) return diagnostic;
+
+    return {
+      ...diagnostic,
+      // Downgraded only from error. A deviation already rated a warning or a
+      // hint keeps that rating — the point is to stop blaming the reader, not to
+      // quieten the file further.
+      severity: diagnostic.severity === 'error' ? ('warning' as const) : diagnostic.severity,
+      message: `${diagnostic.message} ${profile.name} writes this; it is the exporter's doing rather than yours.`,
+    };
+  });
 }
