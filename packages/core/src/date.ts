@@ -11,6 +11,8 @@
  * validating the calendar and the numbers is a separate concern.
  */
 
+import { fromFrenchRepublican, fromHebrew, fromJulian, fromThai } from './calendar.ts';
+
 export type DateQualifier =
   /** ABT, EST, CAL, INT — the value is not asserted as exact. */
   | 'uncertain'
@@ -146,6 +148,7 @@ const HEBREW_MONTHS: Record<string, string> = {
 };
 
 const CALENDAR_NAMES: Record<string, string> = {
+  THAI: 'Thai',
   FRENCH_R: 'French Republican',
   HEBREW: 'Hebrew',
   JULIAN: 'Julian',
@@ -162,7 +165,8 @@ function calendarOf(payload: string): string {
   const escaped = /@#D([A-Z_ ]+)@/.exec(payload)?.[1];
   if (escaped) return escaped.trim().replace(/\s+/g, '_');
 
-  return /^(FRENCH_R|HEBREW|JULIAN|GREGORIAN)\b/.exec(payload.trim())?.[1] ?? 'GREGORIAN';
+  // `THAI` is nobody's standard; Thai exporters write it and files carry it.
+  return /^(FRENCH_R|HEBREW|JULIAN|GREGORIAN|THAI)\b/.exec(payload.trim())?.[1] ?? 'GREGORIAN';
 }
 
 /** Days in each month, for the day check. Leap February is allowed at 29. */
@@ -252,7 +256,7 @@ export function readableDate(payload: string): string {
     // way it has been read by now, and the reader is told which calendar it is
     // in words at the end rather than in the middle of the date.
     .replace(/@#D[A-Z_ ]+@\s*/g, '')
-    .replace(/^(FRENCH_R|HEBREW|JULIAN|GREGORIAN)\s+/, '')
+    .replace(/^(FRENCH_R|HEBREW|JULIAN|GREGORIAN|THAI)\s+/, '')
     .replace(/\b([A-Z][A-Z_]{1,4})\b/g, (token) => {
       const month = months[token];
       if (month) return month;
@@ -266,8 +270,54 @@ export function readableDate(payload: string): string {
     });
 
   const calendar = calendarOf(payload);
-  return calendar === 'GREGORIAN' ? said : `${said} (${CALENDAR_NAMES[calendar] ?? calendar})`;
+  if (calendar === 'GREGORIAN') return said;
+
+  const name = CALENDAR_NAMES[calendar] ?? calendar;
+  const converted = toGregorian(payload, calendar);
+
+  // The conversion is the point of the parenthetical: `15 Tishrei 5760` tells a
+  // reader nothing they can place, and `25 September 1999` does. Where the date
+  // is partial, or bounded, or otherwise not one day, the calendar is still
+  // named — that much is always true.
+  return converted ? `${said} (${name} · ${converted})` : `${said} (${name})`;
 }
+
+/**
+ * The Gregorian equivalent of a payload naming one whole day.
+ *
+ * Only that case: a range, a period or a year on its own converts to a span
+ * rather than a date, and printing one end of it would be a lie of omission.
+ */
+function toGregorian(payload: string, calendar: string): string | undefined {
+  if (scanDate(payload).length > 0) return undefined;
+
+  const months = monthsOf(payload);
+  const order = Object.keys(months);
+
+  const match = /\b(\d{1,2})\s+([A-Z][A-Z_]{1,4})\s+(\d{1,5})\b/.exec(payload);
+  if (!match) return undefined;
+
+  const [, day, token, year] = match;
+  const month = order.indexOf(token!) + 1;
+  if (month === 0) return undefined;
+
+  const converted =
+    calendar === 'HEBREW'
+      ? fromHebrew(Number(year), month, Number(day))
+      : calendar === 'FRENCH_R'
+        ? fromFrenchRepublican(Number(year), month, Number(day))
+        : calendar === 'JULIAN'
+          ? fromJulian(Number(year), month, Number(day))
+          : calendar === 'THAI'
+            ? fromThai(Number(year), month, Number(day))
+            : undefined;
+
+  return converted
+    ? `${converted.day} ${MONTH_ORDER[converted.month - 1]} ${converted.year}`
+    : undefined;
+}
+
+const MONTH_ORDER = Object.values(MONTH_NAMES);
 
 /**
  * A date payload with its month written out.

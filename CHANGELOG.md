@@ -11,6 +11,15 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   substructure in English — `Denis R. Reid › Phone`, not `SUBM @S1@ › PHON`. The
   tag and the identifier move to the detail.
 
+### Added
+
+- Dates in the Hebrew, Julian, French Republican and Thai calendars are converted
+  to Gregorian beside the original: `15 Tishrei 5760 (Hebrew · 25 September 1999)`.
+- French Republican years come from a vendored table of observed equinoxes at
+  Paris rather than an arithmetic rule, which disagrees with it during the
+  calendar's own lifetime — An XII began on 24 September 1803, not the 23rd.
+- Thai Buddhist Era dates, written `@#DTHAI@`, which no GEDCOM version defines.
+
 ## [0.8.1]
 
 ### Changed

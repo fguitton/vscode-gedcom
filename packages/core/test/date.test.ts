@@ -142,18 +142,53 @@ describe('readableDate', () => {
   it('names the months of the other calendars too', () => {
     // The French Republican months keep their French names; there are no English
     // ones in use, and it is what a reader will find if they look one up.
-    expect(readableDate('@#DFRENCH R@ 2 VEND 1795')).toBe('2 Vendémiaire 1795 (French Republican)');
-    expect(readableDate('@#DHEBREW@ 15 TSH 5760')).toBe('15 Tishrei 5760 (Hebrew)');
+    // An IV, a year the calendar actually ran — 1795 as a *Republican* year is
+    // eight centuries past its abolition, which the conversion says plainly.
+    expect(readableDate('@#DFRENCH R@ 2 VEND 4')).toBe(
+      '2 Vendémiaire 4 (French Republican · 24 September 1795)',
+    );
+    expect(readableDate('@#DHEBREW@ 15 TSH 5760')).toBe(
+      '15 Tishrei 5760 (Hebrew · 25 September 1999)',
+    );
   });
 
   it('reads the calendar in either spelling', () => {
     // 5.5.1 writes an escape, 7.0 a bare keyword before the date.
-    expect(readableDate('HEBREW 15 TSH 5760')).toBe('15 Tishrei 5760 (Hebrew)');
-    expect(readableDate('@#DJULIAN@ 14 SEP 1752')).toBe('14 September 1752 (Julian)');
+    expect(readableDate('HEBREW 15 TSH 5760')).toBe('15 Tishrei 5760 (Hebrew · 25 September 1999)');
+    expect(readableDate('@#DJULIAN@ 14 SEP 1752')).toBe(
+      '14 September 1752 (Julian · 25 September 1752)',
+    );
   });
 
   it('leaves a Gregorian date unlabelled, since that is the default', () => {
     expect(readableDate('14 FEB 1998')).toBe('14 February 1998');
     expect(readableDate('1901')).toBe('1901');
+  });
+});
+
+describe('readableDate converts the calendar it names', () => {
+  it('gives the Gregorian equivalent beside the original', () => {
+    expect(readableDate('@#DHEBREW@ 15 TSH 5760')).toBe(
+      '15 Tishrei 5760 (Hebrew · 25 September 1999)',
+    );
+    expect(readableDate('@#DJULIAN@ 14 SEP 1752')).toBe(
+      '14 September 1752 (Julian · 25 September 1752)',
+    );
+    // An VIII, 18 Brumaire — Napoleon's coup.
+    expect(readableDate('@#DFRENCH R@ 18 BRUM 8')).toBe(
+      '18 Brumaire 8 (French Republican · 9 November 1799)',
+    );
+  });
+
+  it('reads Thai, which no version defines', () => {
+    expect(readableDate('@#DTHAI@ 24 JUN 2475')).toBe('24 June 2475 (Thai · 24 June 1932)');
+    expect(readableDate('THAI 14 AUG 2568')).toBe('14 August 2568 (Thai · 14 August 2025)');
+  });
+
+  it('names the calendar but converts nothing when the date is not one day', () => {
+    // A partial date is a month, and a qualified one is a claim about a range;
+    // printing one day for either would be a lie of omission.
+    expect(readableDate('@#DHEBREW@ TSH 5760')).toBe('Tishrei 5760 (Hebrew)');
+    expect(readableDate('ABT @#DJULIAN@ 14 SEP 1752')).toBe('About 14 September 1752 (Julian)');
   });
 });

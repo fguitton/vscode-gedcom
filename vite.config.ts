@@ -69,6 +69,12 @@ export default defineConfig({
         input: ['vendor/registries/**', 'packages/grammar/src/**'],
         output: ['syntaxes/gedcom.tmLanguage.json'],
       },
+      // Regenerate the equinox table from the vendored snapshot.
+      equinoxes: {
+        command: 'node --experimental-strip-types packages/core/scripts/build-equinoxes.ts',
+        input: ['vendor/calendrier/**', 'packages/core/scripts/build-equinoxes.ts'],
+        output: ['packages/core/src/equinoxes.generated.ts'],
+      },
       // Regenerate the parser's embedded specification model. Embedded rather
       // than read from disk because packages/core must run in a browser worker.
       spec: {
@@ -141,6 +147,7 @@ export default defineConfig({
         command: [
           'vp run grammar',
           'vp run spec',
+          'vp run equinoxes',
           'vp test',
           'vp check',
           'vp run build',

@@ -33,19 +33,44 @@ const files = sources(sourceRoot).map((path) => ({
 /** Matches every import and re-export specifier. */
 const SPECIFIERS = /(?:^|\n)\s*(?:import|export)[\s\S]*?from\s+'([^']+)'/g;
 
+/**
+ * The one package `packages/core` is allowed to import.
+ *
+ * The rule this test enforces is portability, not purity: whatever is imported
+ * has to survive being bundled into a browser worker, which a Node builtin does
+ * not. `@internationalized/date` is pure JavaScript with no builtins of its own,
+ * and it carries the Hebrew calendar — arithmetic fiddly enough that borrowing an
+ * implementation the whole industry uses beats writing a fifth one here.
+ *
+ * Anything else added to this list needs the same argument made for it.
+ */
+const PERMITTED = new Set(['@internationalized/date']);
+
 describe('no dependencies', () => {
   it.each(files.map((f) => f.name))('%s imports only relative paths', (name) => {
     const file = files.find((f) => f.name === name)!;
 
     const external: string[] = [];
     for (const [, specifier] of file.text.matchAll(SPECIFIERS)) {
-      if (specifier!.startsWith('.')) continue;
+      if (specifier!.startsWith('.') || PERMITTED.has(specifier!)) continue;
       external.push(specifier!);
     }
 
-    // A bare specifier is either a Node builtin or a package. Both break the
-    // browser build, and neither is needed: the parser is self-contained.
+    // A bare specifier is either a Node builtin or a package. A builtin breaks
+    // the browser build outright; a package has to earn its place above.
     expect(external).toEqual([]);
+  });
+
+  it('imports no Node builtin anywhere, which is the rule that matters', () => {
+    const offenders: string[] = [];
+    for (const file of files) {
+      for (const [, specifier] of file.text.matchAll(SPECIFIERS)) {
+        if (/^node:/.test(specifier!) || /^(fs|path|os|crypto|url|util)$/.test(specifier!)) {
+          offenders.push(`${file.name}: ${specifier}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
 

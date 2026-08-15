@@ -41,6 +41,7 @@
     "check": "vp check"
   },
   "devDependencies": {
+    "@internationalized/date": "^3.12.3",
     "@primer/primitives": "^11.10.0",
     "@types/node": "^26.2.0",
     "@types/vscode": "~1.91.0",
