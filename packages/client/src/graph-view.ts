@@ -27,7 +27,7 @@ import {
   type WebviewViewProvider,
   type WebviewViewResolveContext,
 } from 'vscode';
-import { analyzeText } from '@vscode-gedcom/core';
+import { analysisOf, forget } from './analysis.ts';
 import { revealLine } from './commands.ts';
 import { DETAILS_VIEW_ID, GedcomDetailsViewProvider } from './details-view.ts';
 import type { Log } from './log.ts';
@@ -162,36 +162,66 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
    * Recorded as well as sent: `showing` answers what is on screen, and an empty
    * panel is one of the answers.
    */
-  private nothing(reason: 'no-document' | 'not-a-person'): void {
+  private nothing(reason: 'no-document' | 'not-a-person' | 'failed'): void {
     this.lastDrawn = { focus: null, nodes: 0 };
     this.log.debug(`Tree drew nothing (${reason})`);
     void this.view?.webview.postMessage({ type: 'empty', reason });
   }
 
-  /** Recomputes and pushes the graph for whatever is currently selected. */
+  /**
+   * Recomputes and pushes the graph for whatever is currently selected.
+   *
+   * Reading a file cannot be allowed to take the panel down with it. This runs
+   * from event handlers, where a throw is swallowed by the editor: the panel
+   * keeps whatever it last drew, says nothing, and there is nothing in the log
+   * to say why. Every failure is caught, named and shown in the panel itself.
+   */
   update(editor: TextEditor | undefined): void {
+    try {
+      this.draw(editor);
+    } catch (failure) {
+      this.log.error(`Could not draw the tree: ${String(failure)}`);
+      this.nothing('failed');
+    }
+  }
+
+  private draw(editor: TextEditor | undefined): void {
     if (!this.view?.visible) return;
 
-    if (!editor || editor.document.languageId !== 'gedcom') {
+    // The document rather than the editor wherever possible: reading text needs
+    // no editor, and maximising the panel takes the editor area off screen.
+    const chosen = this.selection.current;
+    const document =
+      editor?.document ??
+      (chosen.uri
+        ? workspace.textDocuments.find(
+            (candidate) => candidate.uri.toString() === chosen.uri?.toString(),
+          )
+        : undefined);
+
+    if (!document || document.languageId !== 'gedcom') {
       this.documentUri = undefined;
       this.nothing('no-document');
       return;
     }
 
-    this.documentUri = editor.document.uri;
+    this.documentUri = document.uri;
 
-    const analysis = analyzeText(editor.document.getText());
-    const chosen = this.selection.current;
+    const analysis = analysisOf(document);
     const isDrawable = (xref: string | null): boolean => {
       const tag = xref === null ? undefined : analysis.xrefs.definitions.get(xref)?.tag;
       return tag === 'INDI' || tag === 'FAM';
     };
     // A selection made in the panel wins over the cursor until the cursor moves,
-    // which is what lets a reader walk the tree without losing their place.
+    // which is what lets a reader walk the tree without losing their place. With
+    // no editor on screen there is no cursor either, and the selection is all
+    // there is to go on.
     const focus =
-      chosen.uri?.toString() === editor.document.uri.toString() && chosen.xref !== null
+      chosen.uri?.toString() === document.uri.toString() && chosen.xref !== null
         ? chosen.xref
-        : recordAt(analysis, editor.selection.active.line);
+        : editor
+          ? recordAt(analysis, editor.selection.active.line)
+          : null;
 
     // A submitter, a source or a note has no place in a family tree. Drawn, it
     // is a lone box with no generation and no relationships; the details panel
@@ -723,7 +753,9 @@ function shell(): string {
       empty.textContent =
         message.reason === 'not-a-person'
           ? 'This record is not a person or a family. Its contents are in the Details panel below.'
-          : 'Open a GEDCOM file and place the cursor in a record.';
+          : message.reason === 'failed'
+            ? 'This file could not be read as a family tree. Run “GEDCOM: Show Log” for what went wrong.'
+            : 'Open a GEDCOM file and place the cursor in a record.';
       empty.style.display = 'block';
       scroll.style.display = 'none';
       vscode.postMessage({ type: 'drew', focus: null, nodes: 0 });
@@ -815,6 +847,7 @@ export interface GedcomTestHooks {
   readonly graphVisible: () => boolean;
   readonly graphShowing: () => { focus: string | null; nodes: number } | undefined;
   readonly graphDrawn: () => { focus: string | null; nodes: number } | undefined;
+  readonly detailsShowing: () => string | undefined;
 }
 
 /** Wires both panels to the editor, in whichever host is running. */
@@ -861,11 +894,18 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
     const subject = editor?.document.languageId === 'gedcom' ? editor : subjectEditor();
 
     if (!subject) {
-      selection.set({ uri: undefined, xref: null });
+      // Nothing on screen is not the same as nothing open: maximising a panel
+      // takes the whole editor area away, and the reader is looking at the very
+      // record the panels would be clearing. They hold it until its file closes.
+      const held = selection.current.uri;
+      const open =
+        held !== undefined &&
+        workspace.textDocuments.some((document) => document.uri.toString() === held.toString());
+      if (!open) selection.set({ uri: undefined, xref: null });
     } else if (subject === editor) {
       // The cursor moved in the file the panels are about; where it landed is
       // the new selection. Focus moving elsewhere is not a new selection.
-      const analysis = analyzeText(subject.document.getText());
+      const analysis = analysisOf(subject.document);
       selection.set({
         uri: subject.document.uri,
         xref: recordAt(analysis, subject.selection.active.line),
@@ -954,7 +994,17 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
 
   context.subscriptions.push(
     workspace.onDidOpenTextDocument(announce),
-    workspace.onDidCloseTextDocument(announce),
+    workspace.onDidCloseTextDocument((document) => {
+      announce();
+      forget(document.uri);
+      // The panels hold a record while its file is open; this is where that
+      // ends. Told which document closed rather than asking which are left,
+      // because a document is on its way out while this fires.
+      if (selection.current.uri?.toString() === document.uri.toString()) {
+        selection.set({ uri: undefined, xref: null });
+      }
+      followCursor(subjectEditor());
+    }),
   );
 
   announce();
@@ -964,5 +1014,6 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
     graphVisible: () => provider.visible,
     graphShowing: () => provider.showing,
     graphDrawn: () => provider.drawn,
+    detailsShowing: () => details.showing,
   };
 }

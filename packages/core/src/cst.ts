@@ -81,6 +81,7 @@ export type DiagnosticCode =
   | 'cardinality-violation'
   | 'enum-value-unknown'
   | 'malformed-pointer'
+  | 'nesting-too-deep'
   | 'date-invalid'
   | 'exporter-repair'
   | 'pointer-target-mismatch';

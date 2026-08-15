@@ -11,13 +11,7 @@
  * that has no place in a family tree: a submitter is not somebody's relative.
  */
 
-import {
-  analyzeText,
-  documentDetails,
-  recordDetails,
-  webUrl,
-  type Details,
-} from '@vscode-gedcom/core';
+import { documentDetails, recordDetails, webUrl, type Details } from '@vscode-gedcom/core';
 import {
   env,
   Range,
@@ -32,6 +26,7 @@ import {
   type WebviewViewProvider,
 } from 'vscode';
 
+import { analysisOf } from './analysis.ts';
 import { contentSecurityPolicy } from './policy.ts';
 import type { SelectionStore } from './selection.ts';
 
@@ -117,28 +112,46 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     this.refresh();
   }
 
+  /**
+   * The title the panel last put on screen, or nothing when it is empty.
+   *
+   * Exposed for the same reason the tree exposes what it drew: a webview is an
+   * opaque rectangle from outside, and a panel that has quietly emptied itself
+   * looks exactly like one that never filled.
+   */
+  get showing(): string | undefined {
+    return this.lastShown;
+  }
+
+  private lastShown: string | undefined;
+
   refresh(): void {
     if (!this.view?.visible) return;
 
     const { uri, xref } = this.selection.current;
-    const editor = window.visibleTextEditors.find(
-      (candidate) => candidate.document.uri.toString() === uri?.toString(),
-    );
+    // The document, not an editor showing it. Reading text needs no editor, and
+    // requiring a visible one empties the panel whenever the editor area is not
+    // on screen — which is exactly what maximising this panel does.
+    const document = uri
+      ? workspace.textDocuments.find((candidate) => candidate.uri.toString() === uri.toString())
+      : undefined;
 
-    if (!editor || editor.document.languageId !== 'gedcom') {
+    if (!document || document.languageId !== 'gedcom') {
       this.uri = undefined;
+      this.lastShown = undefined;
       void this.view.webview.postMessage({ type: 'empty' });
       return;
     }
 
-    this.uri = editor.document.uri;
+    this.uri = document.uri;
 
-    const analysis = analyzeText(editor.document.getText());
+    const analysis = analysisOf(document);
     // Nothing selected describes the file, which is a question worth answering
     // and the only place the header's own content belongs.
     const details: Details =
       (xref === null ? undefined : recordDetails(analysis, xref)) ?? documentDetails(analysis);
 
+    this.lastShown = details.title;
     void this.view.webview.postMessage({ type: 'details', details, format: this.format });
   }
 

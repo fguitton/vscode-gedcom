@@ -82,6 +82,40 @@ describe('tree building', () => {
     expect(document.diagnostics.map((d) => d.code)).toContain('level-skipped');
   });
 
+  it('attaches a recovered line where it actually sits', () => {
+    // The number in the text is what the file says; `level` is where the
+    // structure ended up, and a reader of the tree needs the latter.
+    const document = parse('0 @I1@ INDI\n3 DATE 1900\n0 TRLR');
+    expect(document.records[0]!.children[0]!.level).toBe(1);
+  });
+
+  it('caps how deep a tree may nest, and says so once', () => {
+    // Leading numbers that climb without end: a numbered list, or any text file
+    // opened as GEDCOM. Every walker over the tree recurses, so the depth of the
+    // tree is a bound on the call stack.
+    let text = '';
+    for (let line = 1; line <= 12_000; line += 1) text += `${line} LINE ${line}\n`;
+
+    const document = parse(text);
+    const tooDeep = document.diagnostics.filter((d) => d.code === 'nesting-too-deep');
+    expect(tooDeep).toHaveLength(1);
+
+    let deepest = 0;
+    for (const record of document.records) {
+      for (const structure of walk(record)) deepest = Math.max(deepest, structure.level);
+    }
+    expect(deepest).toBeLessThanOrEqual(64);
+  });
+
+  it('reads a file that nests deeper than the stack can recurse', () => {
+    // 100,000 levels overflowed the stack in the validator, which took the whole
+    // analysis with it: no diagnostics, no outline, and an empty tree panel.
+    let text = '0 HEAD\n';
+    for (let level = 1; level < 100_000; level += 1) text += `${level} TAG\n`;
+
+    expect(() => analyze(new TextEncoder().encode(text))).not.toThrow();
+  });
+
   it('reports a cross-reference on a substructure', () => {
     const document = parse('0 @I1@ INDI\n1 @X@ BIRT\n0 TRLR');
     expect(document.diagnostics.map((d) => d.code)).toContain('xref-on-substructure');

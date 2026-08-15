@@ -3,6 +3,30 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **A file whose leading numbers are not levels took the whole analysis down.**
+  Nesting is capped at 64 deep, past which the file is read at that depth and
+  told so once: the tree is walked recursively everywhere, and 6,000 levels
+  overflowed the stack — no diagnostics, no outline, and an empty panel.
+- **The panels emptied themselves whenever the editor area went off screen**,
+  which is what maximising them does. They hold the record until its file closes.
+- A failure while drawing the tree is caught, logged and shown in the panel
+  instead of leaving whatever was there and saying nothing.
+- One request cannot take the server down with it, or take a feature down for
+  every other file: each is answered or reported, and every document read is
+  logged.
+- The document is analysed once per version rather than once per panel — four
+  passes over the file on every cursor move, a quarter of a second each on
+  `Royal92.ged`.
+
+### Changed
+
+- `level` on a structure is where it sits in the tree rather than the number the
+  line declared, which differ when a line is recovered or capped.
+
 ## [0.9.0]
 
 Files as real programs write them: what the exporter got wrong, said in the

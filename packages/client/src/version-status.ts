@@ -12,7 +12,8 @@
  * who missed the tooltip.
  */
 
-import { analyzeText, type Analysis } from '@vscode-gedcom/core';
+import { type Analysis } from '@vscode-gedcom/core';
+import { analysisOf } from './analysis.ts';
 import {
   commands,
   MarkdownString,
@@ -87,7 +88,7 @@ export function registerVersionStatus(context: ExtensionContext): void {
       return;
     }
 
-    const analysis = analyzeText(editor.document.getText());
+    const analysis = analysisOf(editor.document);
     const { text, detail, uncertain } = describe(analysis);
 
     item.text = `$(versions) ${text}`;

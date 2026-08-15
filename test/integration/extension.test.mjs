@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 
 const EXTENSION_ID = 'florianguitton.vscode-gedcom';
 const SAMPLE = 'unicode/names-multiscript.ged';
+/** Leading numbers that are not levels — a file the parser has to survive. */
+const MALFORMED = 'malformed/numbered-list.ged';
 
 /**
  * Anything that blew up without being awaited.
@@ -470,6 +472,44 @@ describe('the graph panel', () => {
 
     await vscode.commands.executeCommand('gedcom.details.resetViewLocation');
     await settle();
+  });
+
+  it('populates for a file that does not validate', async () => {
+    // Leading numbers that climb without end: the tree is capped at a depth the
+    // walkers can recurse, and the panel draws what records the file does hold.
+    const document = await openFixture(MALFORMED);
+    await closePanel();
+    await putCursorOn(3); // 0 @I1@ INDI
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle(2_000);
+
+    assert.ok(
+      vscode.languages.getDiagnostics(document.uri).length > 0,
+      'the fixture should not validate, or it is testing nothing',
+    );
+    assert.equal((await hooks()).graphVisible(), true, 'the panel should open');
+    assert.equal((await hooks()).graphDrawn()?.focus, 'I1');
+  });
+
+  it('holds the record while the editor area is out of the way', async () => {
+    // What maximising the panel does: the file stays open, every editor goes off
+    // screen. The panels hold what they were showing until the file closes.
+    await openFixture(SAMPLE);
+    await putCursorOn(5); // 0 @I1@ INDI
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+    assert.equal((await hooks()).graphDrawn()?.focus, 'I1');
+    assert.ok((await hooks()).detailsShowing(), 'the details panel should have filled');
+
+    const elsewhere = await vscode.workspace.openTextDocument({
+      language: 'markdown',
+      content: '# no editor showing the tree now\n',
+    });
+    await vscode.window.showTextDocument(elsewhere);
+    await settle();
+
+    assert.equal((await hooks()).graphDrawn()?.focus, 'I1', 'the tree emptied itself');
+    assert.ok((await hooks()).detailsShowing(), 'the details panel emptied itself');
   });
 
   it('keeps drawing after the panel is closed and reopened', async () => {

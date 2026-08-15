@@ -13,18 +13,41 @@ import { lex, type LexOptions, type LexedLine } from './lexer.ts';
 /** Continuation pseudo-structures. Not structures — they extend a payload. */
 const CONTINUATIONS = new Set(['CONT', 'CONC']);
 
+/**
+ * How deep a structure may nest.
+ *
+ * The deepest structure either version of the specification defines sits at
+ * level 4, and an extension a few below that; 64 is past anything a genealogy
+ * program writes. What lies beyond is a file whose leading numbers are not
+ * levels at all — a numbered list, or a text file opened as GEDCOM — where each
+ * line nests one deeper than the last for as long as the file lasts.
+ *
+ * The tree is walked recursively in a dozen places, here and in every feature
+ * built on it, so its depth is a bound on the call stack. Capping it at parse
+ * time is what keeps that bound off every walker written since and every one
+ * written later.
+ */
+const DEEPEST = 64;
+
 interface MutableStructure extends Omit<Structure, 'payload' | 'children' | 'continuationLines'> {
   payload: string | null;
   children: MutableStructure[];
   continuationLines: number[];
 }
 
-function create(line: LexedLine): MutableStructure {
+/**
+ * `level` is where the structure sits in the tree, which is not always the
+ * number the line declared: a line too deep for the structures above it, or
+ * past the depth any tree may reach, is attached where it can be. The declared
+ * number is in the text, and the diagnostic that reports the difference names
+ * both.
+ */
+function create(line: LexedLine, level: number): MutableStructure {
   return {
     tag: line.tag,
     xref: line.xref,
     payload: line.payload,
-    level: line.level,
+    level,
     children: [],
     parent: null,
     span: line.span,
@@ -44,6 +67,8 @@ export function parse(text: string, options: LexOptions = {}): Document {
   const stack: MutableStructure[] = [];
   /** The structure a CONT/CONC would extend. */
   let lastStructure: MutableStructure | null = null;
+  /** Said once: it is a fact about the file, not about each line in it. */
+  let saidTooDeep = false;
 
   for (const line of lines) {
     if (CONTINUATIONS.has(line.tag)) {
@@ -51,8 +76,21 @@ export function parse(text: string, options: LexOptions = {}): Document {
       continue;
     }
 
+    if (line.level > DEEPEST && !saidTooDeep) {
+      saidTooDeep = true;
+      diagnostics.push({
+        code: 'nesting-too-deep',
+        message:
+          `Level ${line.level} nests deeper than ${DEEPEST}, which no GEDCOM structure does. ` +
+          'Everything below is read at that depth. Leading numbers that climb without ' +
+          'end are usually a file that is not GEDCOM at all.',
+        severity: 'error',
+        span: span(line.index, 0, String(line.level).length),
+      });
+    }
+
     const level = resolveLevel(line, stack, diagnostics);
-    const structure = create(line);
+    const structure = create(line, level);
 
     if (level === 0) {
       records.push(structure);
@@ -98,8 +136,14 @@ function resolveLevel(
   stack: readonly MutableStructure[],
   diagnostics: Diagnostic[],
 ): number {
-  const maximum = stack.length;
+  // Whichever runs out first: the structures open above this line, or the depth
+  // any GEDCOM tree is allowed to reach.
+  const maximum = Math.min(stack.length, DEEPEST);
   if (line.level <= maximum) return line.level;
+
+  // Past the cap the depth itself has already been reported, and reporting each
+  // line again would bury the file in one diagnostic per line.
+  if (line.level > DEEPEST) return maximum;
 
   diagnostics.push({
     code: 'level-skipped',
