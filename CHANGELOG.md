@@ -3,59 +3,66 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.9.0]
+
+Files as real programs write them: what the exporter got wrong, said in the
+exporter's name, and what a reader can no longer see through it.
 
 ### Added
 
+- Exporter profiles. The program named in `HEAD.SOUR` selects a table of known
+  quirks; MyHeritage's literal line breaks inside payloads are read as the
+  continuations it meant, each reported as an information diagnostic. Never
+  silent, and never applied to a line that could itself be a GEDCOM line.
+- The `HEAD` hover names the program that wrote the file and lists what it is
+  known to get wrong, with a link to where each was reported.
+- Continuations an exporter wrote without a level number are indented with the
+  payload they continue, and coloured as payload rather than as an illegal line.
+  The grammar can do neither: it sees one line at a time.
+- The Text / HTML switch reaches citation transcriptions as well as notes, and
+  markup that arrived escaped is decoded exactly as many times as it was encoded
+  — MyHeritage escapes its citation text twice — before going through the same
+  allowlist as any other markup.
+- Dates in the Hebrew, Julian, French Republican and Thai calendars are converted
+  to Gregorian beside the original: `15 Tishrei 5760 (Hebrew · 25 September 1999)`.
+- French Republican years come from a vendored table of observed equinoxes at
+  Paris rather than an arithmetic rule, which disagrees with it during the
+  calendar's own lifetime — An XII began on 24 September 1803, not the 23rd.
+- Thai Buddhist Era dates, written `@#DTHAI@`, which no GEDCOM version defines.
 - **GEDCOM: Copy Diagnostics** puts the version, host, settings and recent
   activity on the clipboard, ready to paste into an issue. It carries nothing
   from the file — no names, no dates, not even the folder it sits in.
 - **GEDCOM: Show Log** opens the extension's own commentary: activation, the
   context key, every Show Tree and what came of it. The language server writes to
   the same channel, so one place holds both sides.
-
-### Added
-
-- The hover names the program that wrote the file and lists what it is
-  known to get wrong, with a link to where each was reported.
-- A deviation a known exporter is responsible for is downgraded from error and
-  says whose doing it is. Nothing is suppressed.
-- Exporter profiles. The program named in `HEAD.SOUR` selects a table of known
-  quirks; MyHeritage's literal line breaks inside payloads are read as the
-  continuations it meant, each reported as an information diagnostic. Never
-  silent, and never applied to a line that could itself be a GEDCOM line.
 - `fixtures/exporter/wikitree.ged`, which splits a multibyte character across a
   `CONC` boundary as WikiTree does.
 
-- The Text / HTML switch reaches citation transcriptions as well as notes, and
-  markup that arrived escaped is decoded exactly as many times as it was encoded
-  — MyHeritage escapes its citation text twice — before going through the same
-  allowlist as any other markup.
-- Escaped markup is read by whichever depth yields the most markup, so a payload
-  carrying both plain and doubly-escaped tags renders both.
+### Changed
+
+- A deviation a known exporter is responsible for is downgraded from error and
+  says whose doing it is. Nothing is suppressed.
+- Both exporter messages name the program they are about.
+- The outline and the breadcrumb name a record after who or what it is and a
+  substructure in English — `Denis R. Reid › Phone`, not `SUBM @S1@ › PHON`. The
+  tag and the identifier move to the detail.
 - An event asserted with a bare Y and nothing else reads "recorded, without a
   date" rather than showing the letter.
-- Both exporter messages name the program they are about.
-- Continuations an exporter wrote without a level number are indented with the
-  payload they continue, and coloured as payload rather than as an illegal line.
-  The grammar can do neither: it sees one line at a time.
-
-### Testing
-
-- `CONT` and `CONC` interleaved within one payload, which nothing covered: a
-  `CONC` continuing the empty line a `CONT` opened, and the trailing space that
-  joins two words when kept and merges them when trimmed.
 
 ### Fixed
 
 - 5.5.1 structures are named in English. The registry snapshot carries labels for
   GEDCOM 7 only, so every 5.5.1 tag was shown as a tag; 179 names are now borrowed
   from 7.0 where both versions agree, and the rest come from the table here.
-
 - Coded values are checked in 5.5.1 files, which they never were: the registry
   snapshot carries enumerations for GEDCOM 7 only, so `2 QUAY 4` passed silently
   in most files in the wild.
-
+- A citation URL is no longer truncated, which turned it into a link that went
+  nowhere. Long media and page URLs are kept whole.
+- Source citations show their confidence, the event they cite, and the
+  transcription under `DATA.TEXT` — all of which were dropped.
+- Escaped markup is read by whichever depth yields the most markup, so a payload
+  carrying both plain and doubly-escaped tags renders both.
 - **The tree emptied itself when the reader clicked anywhere else.** It follows
   the GEDCOM file on screen, and clears only when none is in view.
 - Show Tree says so when the panel cannot be shown, and puts a hidden view back
@@ -67,30 +74,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Testing
 
+- `CONT` and `CONC` interleaved within one payload, which nothing covered: a
+  `CONC` continuing the empty line a `CONT` opened, and the trailing space that
+  joins two words when kept and merges them when trimmed.
 - The panel acknowledges each drawing, so a test can tell what it put on screen
   from what it was sent. Settings are asserted against the running editor.
-
-### Changed
-
-- The outline and the breadcrumb name a record after who or what it is and a
-  substructure in English — `Denis R. Reid › Phone`, not `SUBM @S1@ › PHON`. The
-  tag and the identifier move to the detail.
-
-### Fixed
-
-- A citation URL is no longer truncated, which turned it into a link that went
-  nowhere. Long media and page URLs are kept whole.
-- Source citations show their confidence, the event they cite, and the
-  transcription under `DATA.TEXT` — all of which were dropped.
-
-### Added
-
-- Dates in the Hebrew, Julian, French Republican and Thai calendars are converted
-  to Gregorian beside the original: `15 Tishrei 5760 (Hebrew · 25 September 1999)`.
-- French Republican years come from a vendored table of observed equinoxes at
-  Paris rather than an arithmetic rule, which disagrees with it during the
-  calendar's own lifetime — An XII began on 24 September 1803, not the 23rd.
-- Thai Buddhist Era dates, written `@#DTHAI@`, which no GEDCOM version defines.
 
 ## [0.8.1]
 
