@@ -30,6 +30,8 @@ const toPosition = (raw: RawRange['start']): Position => new Position(raw.line, 
 
 const toRange = (raw: RawRange): Range => new Range(toPosition(raw.start), toPosition(raw.end));
 
+import { upgradeToGedcom7 } from '@vscode-gedcom/core';
+
 export function registerCommands(context: ExtensionContext): void {
   context.subscriptions.push(
     commands.registerCommand(
@@ -44,6 +46,34 @@ export function registerCommands(context: ExtensionContext): void {
         );
       },
     ),
+    commands.registerCommand('gedcom.upgradeToGedcom7', async () => {
+      const editor = window.activeTextEditor;
+      if (!editor || editor.document.languageId !== 'gedcom') {
+        void window.showInformationMessage('Open a GEDCOM file to upgrade it to GEDCOM 7.0.');
+        return;
+      }
+
+      const text = editor.document.getText();
+      const result = upgradeToGedcom7(text);
+      if (result.modifications === 0) {
+        void window.showInformationMessage(
+          'File is already aligned with GEDCOM 7.0 (0 changes needed).',
+        );
+        return;
+      }
+
+      const fullRange = new Range(new Position(0, 0), new Position(editor.document.lineCount, 0));
+
+      const applied = await editor.edit((editBuilder) => {
+        editBuilder.replace(fullRange, result.text);
+      });
+
+      if (applied) {
+        void window.showInformationMessage(
+          `Successfully modernized file to GEDCOM 7.0 (${result.modifications} modifications applied).`,
+        );
+      }
+    }),
   );
 }
 

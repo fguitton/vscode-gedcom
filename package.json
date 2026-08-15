@@ -282,6 +282,11 @@
         "command": "gedcom.copyDiagnostics",
         "title": "Copy Diagnostics",
         "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.upgradeToGedcom7",
+        "title": "Upgrade File to GEDCOM 7.0",
+        "category": "GEDCOM"
       }
     ],
     "menus": {
@@ -299,6 +304,10 @@
         },
         {
           "command": "gedcom.showVersion",
+          "when": "editorLangId == gedcom"
+        },
+        {
+          "command": "gedcom.upgradeToGedcom7",
           "when": "editorLangId == gedcom"
         },
         {

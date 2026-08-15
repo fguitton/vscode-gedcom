@@ -139,6 +139,8 @@ import { parse } from './parser.ts';
 import { indexXrefs, type XrefIndex } from './xref.ts';
 import { checkPlausibility } from './plausibility.ts';
 export { checkPlausibility } from './plausibility.ts';
+export { upgradeToGedcom7 } from './modernize.ts';
+export type { ModernizeResult } from './modernize.ts';
 
 import {
   validate,
