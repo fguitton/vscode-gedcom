@@ -355,3 +355,44 @@ describe('media the file points at', () => {
     }
   });
 });
+
+describe('a source citation', () => {
+  const cited = (...lines: string[]) => {
+    const details = recordDetails(
+      analyze(
+        bytes(
+          ['0 HEAD', '1 GEDC', '2 VERS 5.5.1', '0 @I1@ INDI', ...lines, '0 TRLR', ''].join('\n'),
+        ),
+      ),
+      'I1',
+    )!;
+    return details.sections.find((s) => s.title === 'Sources')?.fields ?? [];
+  };
+
+  const LONG =
+    'https://www.myheritage.com/research/record-10678-3369500/harold-l-vass-in-1939-register-of-england-wales?s=781598791';
+
+  it('keeps a long URL whole, so the link still resolves', () => {
+    // Truncated to eighty characters and then linkified, a citation URL became a
+    // link with an ellipsis in the middle of it, going nowhere.
+    const [field] = cited('1 SOUR @S1@', `2 PAGE ${LONG}`);
+    expect(field?.url).toBe(LONG);
+    expect(field?.value).toContain(LONG);
+    expect(field?.value).not.toContain('…');
+  });
+
+  it('says how much the citation is worth', () => {
+    expect(cited('1 SOUR @S1@', '2 QUAY 3')[0]?.value).toContain('quality: primary');
+  });
+
+  it('shows a confidence code even when it is not one of the four', () => {
+    // MyHeritage writes `QUAY 4`, which the specification does not define.
+    // Hiding it would hide that the file claims something unreadable.
+    expect(cited('1 SOUR @S1@', '2 QUAY 4')[0]?.value).toContain('quality: 4');
+  });
+
+  it('shows the transcription the exporter attached', () => {
+    const fields = cited('1 SOUR @S1@', '2 DATA', '3 TEXT Added by confirming a Smart Match');
+    expect(fields.some((f) => f.value.includes('Smart Match'))).toBe(true);
+  });
+});

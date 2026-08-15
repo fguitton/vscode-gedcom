@@ -137,6 +137,11 @@ describe('the corpus stays quiet', () => {
     'v7/date-dual-invalid.ged',
     'v5/obsolete-1.ged',
     'v7/obsolete-1.ged',
+    // A real MyHeritage export, kept exactly as exported. It carries literal
+    // newlines inside CONC payloads, references records it does not define, and
+    // ends without a TRLR. Its whole value is being wrong in the ways real files
+    // are wrong; see the exporter notes in fixtures/README.md.
+    'exporter/my-heritage.ged',
   ]);
 
   const subjects = fixtures().filter((f) => !deliberatelyInvalid.has(f.name));

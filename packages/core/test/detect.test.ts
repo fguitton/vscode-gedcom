@@ -144,7 +144,8 @@ describe('version detection', () => {
   });
 
   it('identifies a version for every fixture that carries one', () => {
-    const undetectable = new Set(['v5/tiny-1.ged', 'v5/Royal92.ged']);
+    // my-heritage.ged declares no GEDC.VERS at all, like the PAF-era files.
+    const undetectable = new Set(['v5/tiny-1.ged', 'v5/Royal92.ged', 'exporter/my-heritage.ged']);
     const unidentified = fixtures()
       .filter((f) => !undetectable.has(f.name) && detect(f.bytes).version === null)
       .map((f) => f.name);
@@ -152,7 +153,8 @@ describe('version detection', () => {
   });
 
   it('agrees with the directory each version-specific fixture lives in', () => {
-    const undetectable = new Set(['v5/tiny-1.ged', 'v5/Royal92.ged']);
+    // my-heritage.ged declares no GEDC.VERS at all, like the PAF-era files.
+    const undetectable = new Set(['v5/tiny-1.ged', 'v5/Royal92.ged', 'exporter/my-heritage.ged']);
     const wrong = fixtures()
       // fixtures/unicode/ holds both generations; it is organised by script.
       .filter((f) => f.name.startsWith('v5/') || f.name.startsWith('v7/'))

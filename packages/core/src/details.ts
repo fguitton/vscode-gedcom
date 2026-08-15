@@ -382,15 +382,51 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
     }
 
     if (tag === 'SOUR') {
-      const page = child(structure, 'PAGE')?.payload;
+      const page = child(structure, 'PAGE')?.payload?.trim();
       const cited = resolve(analysis, structure) ?? structure.payload ?? '';
+
+      // How much the citation is worth, which is the whole point of citing it.
+      // `2 QUAY 3` is a number nobody remembers the meaning of.
+      const quay = child(structure, 'QUAY')?.payload?.trim();
+      const quality = quay ? meaningOf(null, 'QUAY', quay) : undefined;
+
+      // What the event was, where the exporter says. MyHeritage writes
+      // `2 EVEN Smart Matching` with a `ROLE` beneath it.
+      const even = child(structure, 'EVEN')?.payload?.trim();
+
       sources.push({
         label,
-        value: [firstLine(cited, 80), page ? firstLine(page, 80) : undefined]
+        value: [
+          firstLine(cited, 80),
+          // A URL is never shortened: the panel turns it into a link, and a link
+          // with an ellipsis in the middle of it goes nowhere.
+          page === undefined ? undefined : webUrl(page) ? page : firstLine(page, 80),
+          even,
+          // Shown even when the code is not one the specification defines:
+          // MyHeritage writes `QUAY 4`, which means nothing, and hiding it would
+          // hide the fact that the file claims a confidence nobody can read.
+          quay === undefined ? undefined : `quality: ${quality?.label ?? quay}`,
+        ]
           .filter(Boolean)
           .join(' · '),
+        ...(page !== undefined && webUrl(page) ? { url: page } : {}),
         line,
       });
+
+      // The transcription the exporter attached, which is often the only part of
+      // a citation with anything in it — MyHeritage puts a whole record summary
+      // here, in HTML, escaped twice over.
+      const text = child(child(structure, 'DATA') ?? structure, 'TEXT')?.payload;
+      if (text) {
+        const whole = wholeText(text);
+        sources.push({
+          label: `${label} text`,
+          value: whole,
+          block: isBlock(whole) || whole.length > 200,
+          ...(MARKUP.test(whole) ? { html: true } : {}),
+          line,
+        });
+      }
       continue;
     }
 
@@ -404,7 +440,16 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
       const form = child(structure, 'FORM')?.payload;
       const titl = child(structure, 'TITL')?.payload;
       const kind = form ? describeMediaType(form) : undefined;
-      const path = file ? firstLine(file) : (resolve(analysis, structure) ?? '');
+      // Never shortened when it is a URL. MyHeritage's media links run to 200
+      // characters of base64, and an ellipsis in the middle of one produces a
+      // link that looks right and resolves nowhere.
+      const raw = file?.trim();
+      const path =
+        raw === undefined
+          ? (resolve(analysis, structure) ?? '')
+          : webUrl(raw)
+            ? raw
+            : firstLine(raw);
       // The FORM is the authority where the file writes one; where it does not,
       // the extension is the only evidence of what the thing is.
       const type = (form ? resolveMediaType(form) : undefined) ?? mediaTypeOfPath(path);

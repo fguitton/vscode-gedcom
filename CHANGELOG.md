@@ -25,6 +25,13 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   substructure in English — `Denis R. Reid › Phone`, not `SUBM @S1@ › PHON`. The
   tag and the identifier move to the detail.
 
+### Fixed
+
+- A citation URL is no longer truncated, which turned it into a link that went
+  nowhere. Long media and page URLs are kept whole.
+- Source citations show their confidence, the event they cite, and the
+  transcription under `DATA.TEXT` — all of which were dropped.
+
 ### Added
 
 - Dates in the Hebrew, Julian, French Republican and Thai calendars are converted
