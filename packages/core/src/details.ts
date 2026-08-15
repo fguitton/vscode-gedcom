@@ -352,26 +352,40 @@ function looksLikeMarkup(structure: Structure, text: string): boolean {
  * text that merely mentions an entity into markup the author never wrote.
  */
 export function escapeDepth(text: string): number {
-  // Already markup: nothing was escaped, and decoding it would turn an entity
-  // the author wrote deliberately — `&amp;` in a company name — into a bare
-  // ampersand the file never contained.
-  if (MARKUP.test(text)) return 0;
+  /** How many recognisable tags a string holds. */
+  const tags = (value: string): number => (value.match(MARKUP_ALL) ?? []).length;
 
-  let depth = 0;
+  // Decided by which reading yields the most markup, rather than by whether any
+  // markup is present. One MyHeritage citation carries `<a href=…>` written
+  // plainly while another is escaped twice over, and a payload could carry both:
+  // stopping at the first sign of literal markup would leave the escaped half
+  // showing as tag soup, and decoding regardless would mangle the plain half.
+  //
+  // Ties go to the shallower reading, so text that is already markup is left
+  // exactly as the author wrote it.
+  let best = 0;
+  let found = tags(text);
   let current = text;
 
-  // Four is far past anything seen in the wild and stops a pathological payload
+  // Four is far past anything seen in the wild, and stops a pathological payload
   // — `&amp;amp;amp;…` — from spinning here.
-  while (depth < 4) {
+  for (let depth = 1; depth <= 4; depth += 1) {
     const decoded = decodeEntitiesOnce(current);
     if (decoded === current) break;
-    if (MARKUP.test(decoded)) return depth + 1;
+
+    const count = tags(decoded);
+    if (count > found) {
+      found = count;
+      best = depth;
+    }
     current = decoded;
-    depth += 1;
   }
 
-  return 0;
+  return best;
 }
+
+/** The same shapes as `MARKUP`, counted rather than merely detected. */
+const MARKUP_ALL = new RegExp(MARKUP.source, 'gi');
 
 const ENTITIES: Record<string, string> = {
   '&lt;': '<',

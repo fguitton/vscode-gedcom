@@ -31,6 +31,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   markup that arrived escaped is decoded exactly as many times as it was encoded
   — MyHeritage escapes its citation text twice — before going through the same
   allowlist as any other markup.
+- Escaped markup is read by whichever depth yields the most markup, so a payload
+  carrying both plain and doubly-escaped tags renders both.
 - An event asserted with a bare Y and nothing else reads "recorded, without a
   date" rather than showing the letter.
 - Both exporter messages name the program they are about.

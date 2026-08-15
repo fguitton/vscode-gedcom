@@ -411,6 +411,24 @@ describe('markup that reached the file escaped', () => {
     expect(escapeDepth('')).toBe(0);
   });
 
+  it('reads a payload carrying both forms by whichever yields more markup', () => {
+    // One MyHeritage citation writes its links plainly and another escapes
+    // everything twice; a payload could carry both. Stopping at the first sign
+    // of literal markup would leave the escaped half as tag soup.
+    expect(
+      escapeDepth(
+        '<a href="x">link</a> and &amp;lt;br&amp;gt;&amp;lt;br&amp;gt;&amp;lt;br&amp;gt;',
+      ),
+    ).toBe(2);
+  });
+
+  it('cannot damage prose, because prose yields no markup at any depth', () => {
+    // Decoding leaves a literal tag untouched, so the only thing it could spoil
+    // is an ampersand in running text — and that never produces a tag, so the
+    // shallower reading always wins.
+    expect(escapeDepth('Marks &amp; Spencer &amp; Sons')).toBe(0);
+  });
+
   it('leaves markup written plainly alone', () => {
     // Decoding this would turn an ampersand the author wrote deliberately into
     // one the file never held.
