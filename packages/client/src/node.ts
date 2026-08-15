@@ -8,14 +8,25 @@ import { LanguageClient, TransportKind, type ServerOptions } from 'vscode-langua
 import { registerCommands } from './commands.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
+import { createLog, logActivation, registerDiagnostics } from './log.ts';
+import { describePanel } from './report.ts';
 import { registerVersionStatus } from './version-status.ts';
-import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
+import { clientOptions, SERVER_ID, SERVER_NAME } from './shared.ts';
 
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): GedcomTestHooks {
+  const log = createLog();
+  context.subscriptions.push(log);
+
+  const facts = { host: 'node', platform: process.platform } as const;
+  logActivation(context, log, facts);
+
   registerCommands(context);
-  const hooks = registerGraphView(context);
+  const hooks = registerGraphView(context, log);
+  registerDiagnostics(context, log, facts, () =>
+    describePanel(hooks.graphVisible(), hooks.graphDrawn()),
+  );
   registerVersionStatus(context);
   registerVirtualIndent(context);
 
@@ -32,10 +43,21 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
 
   client = new LanguageClient(SERVER_ID, SERVER_NAME, serverOptions, {
     ...clientOptions,
-    outputChannelName: OUTPUT_CHANNEL_NAME,
+    // Ours rather than one of its own, so the server's lines land in the same
+    // channel as everything else and in a report alongside them.
+    outputChannel: log.channel,
   });
 
-  void client.start();
+  log.info('Language server starting (node, ipc)');
+  const started = Date.now();
+  void client.start().then(
+    () => {
+      log.info(`Language server ready in ${Date.now() - started} ms`);
+    },
+    (failure: unknown) => {
+      log.error(`Language server failed to start: ${String(failure)}`);
+    },
+  );
 
   return hooks;
 }

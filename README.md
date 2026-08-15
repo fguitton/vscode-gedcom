@@ -94,6 +94,19 @@ This extension runs in the desktop editor and unchanged on `vscode.dev` and
 | `gedcom.virtualIndent.enabled`   | `false` | Indent each line by its level. Drawn by the editor, so the file is untouched — nothing is inserted, nothing is saved, and copying a line copies what the file holds. Lines that already indent themselves are left alone.  |
 | `gedcom.virtualIndent.width`     | `2`     | Columns of drawn indentation per level.                                                                                                                                                                                    |
 
+## Reporting a problem
+
+Run **GEDCOM: Copy Diagnostics** from the command palette and paste the result
+into your report. It names the version, the editor and host it is running in, any
+setting away from its default, and what the extension last did — which is usually
+the whole of the answer. It carries nothing from the file itself: no names, no
+dates, not even the folder a file sits in.
+
+**GEDCOM: Show Log** opens the same running commentary in the Output panel. For
+the protocol traffic as well, set `gedcom.trace.server` and then raise the
+channel's level with **Developer: Set Log Level…** → GEDCOM → Trace; the setting
+alone is not enough, since the channel drops trace below that level.
+
 ## Installation
 
 Search for **GEDCOM Language** in the Extensions view, or run:

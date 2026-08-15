@@ -160,6 +160,47 @@ describe('settings', () => {
   });
 });
 
+describe('diagnostics a reader can send back', () => {
+  it('copies a block naming the build, the host and the panel', async () => {
+    await openFixture(SAMPLE);
+    await vscode.commands.executeCommand('gedcom.copyDiagnostics');
+    const copied = await vscode.env.clipboard.readText();
+
+    const extension = vscode.extensions.getExtension(EXTENSION_ID);
+    assert.match(copied, /^GEDCOM diagnostics/, `unexpected block:\n${copied}`);
+    assert.ok(
+      copied.includes(`GEDCOM ${extension.packageJSON.version}`),
+      `expected the extension version in:\n${copied}`,
+    );
+    assert.ok(copied.includes(vscode.version), 'expected the editor version');
+    assert.match(copied, /Log level: /);
+    assert.match(copied, /Panels: Tree/);
+  });
+
+  it('carries what the extension did, not what the file contains', async () => {
+    await openFixture(SAMPLE);
+    await closePanel();
+    await vscode.commands.executeCommand('gedcom.showGraph');
+    await settle();
+
+    await vscode.commands.executeCommand('gedcom.copyDiagnostics');
+    const copied = await vscode.env.clipboard.readText();
+
+    assert.ok(copied.includes('Show Tree invoked'), `expected the invocation in:\n${copied}`);
+    assert.ok(copied.includes('Tree panel on screen'), 'expected the outcome of opening it');
+
+    // The fixture's own names, which a public issue must never carry.
+    assert.ok(!copied.includes('山田'), 'a personal name reached the diagnostics');
+    assert.ok(!copied.includes('الخوارزمي'), 'a personal name reached the diagnostics');
+  });
+
+  it('contributes a command that shows the log', async () => {
+    const all = await vscode.commands.getCommands(true);
+    assert.ok(all.includes('gedcom.showLog'), 'expected gedcom.showLog');
+    await vscode.commands.executeCommand('gedcom.showLog');
+  });
+});
+
 describe('language server', () => {
   it('go to definition resolves a pointer to its record', async () => {
     const document = await openFixture(SAMPLE);

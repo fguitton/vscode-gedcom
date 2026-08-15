@@ -7,21 +7,33 @@
  * imports are not supported there.
  */
 
-import { Uri, type ExtensionContext } from 'vscode';
+import { env, Uri, type ExtensionContext } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/browser';
 
 import { registerCommands } from './commands.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
+import { createLog, logActivation, registerDiagnostics } from './log.ts';
+import { describePanel } from './report.ts';
 import { registerVersionStatus } from './version-status.ts';
-import { clientOptions, OUTPUT_CHANNEL_NAME, SERVER_ID, SERVER_NAME } from './shared.ts';
+import { clientOptions, SERVER_ID, SERVER_NAME } from './shared.ts';
 
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): GedcomTestHooks {
+  const log = createLog();
+  context.subscriptions.push(log);
+
+  // No `process` in a worker; the host itself is the platform worth naming.
+  const facts = { host: 'browser', platform: env.appHost } as const;
+  logActivation(context, log, facts);
+
   registerCommands(context);
   // Both read the document directly, so they work identically in either host.
-  const hooks = registerGraphView(context);
+  const hooks = registerGraphView(context, log);
+  registerDiagnostics(context, log, facts, () =>
+    describePanel(hooks.graphVisible(), hooks.graphDrawn()),
+  );
   registerVersionStatus(context);
   registerVirtualIndent(context);
 
@@ -32,10 +44,19 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
   // matches the Node client, unlike the shape of the third argument.
   client = new LanguageClient(SERVER_ID, SERVER_NAME, worker, {
     ...clientOptions,
-    outputChannelName: OUTPUT_CHANNEL_NAME,
+    outputChannel: log.channel,
   });
 
-  void client.start();
+  log.info('Language server starting (browser, worker)');
+  const started = Date.now();
+  void client.start().then(
+    () => {
+      log.info(`Language server ready in ${Date.now() - started} ms`);
+    },
+    (failure: unknown) => {
+      log.error(`Language server failed to start: ${String(failure)}`);
+    },
+  );
 
   return hooks;
 }

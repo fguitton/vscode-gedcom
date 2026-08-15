@@ -30,7 +30,14 @@ import {
 import { analyzeText } from '@vscode-gedcom/core';
 import { revealLine } from './commands.ts';
 import { DETAILS_VIEW_ID, GedcomDetailsViewProvider } from './details-view.ts';
+import type { Log } from './log.ts';
 import { contentSecurityPolicy } from './policy.ts';
+import {
+  describeFile,
+  describeInvocation,
+  describeNothingOnScreen,
+  describeSubject,
+} from './report.ts';
 import { SelectionStore } from './selection.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
@@ -68,9 +75,11 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
    */
   private direction: Direction = 'both';
   private readonly selection: SelectionStore;
+  private readonly log: Log;
 
-  constructor(selection: SelectionStore) {
+  constructor(selection: SelectionStore, log: Log) {
     this.selection = selection;
+    this.log = log;
   }
 
   /**
@@ -112,6 +121,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     _token: CancellationToken,
   ): void {
     this.view = view;
+    this.log.info('Tree view resolved');
     view.webview.options = { enableScripts: true, localResourceRoots: [] };
     view.webview.html = shell();
 
@@ -129,6 +139,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     });
 
     view.onDidChangeVisibility(() => {
+      this.log.debug(`Tree view ${view.visible ? 'shown' : 'hidden'}`);
       if (view.visible) this.update(subjectEditor());
     });
 
@@ -136,6 +147,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     // there is showing nothing.
     view.onDidDispose(() => {
       if (this.view !== view) return;
+      this.log.debug('Tree view disposed');
       this.view = undefined;
       this.lastDrawn = undefined;
       this.lastAcked = undefined;
@@ -152,6 +164,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
    */
   private nothing(reason: 'no-document' | 'not-a-person'): void {
     this.lastDrawn = { focus: null, nodes: 0 };
+    this.log.debug(`Tree drew nothing (${reason})`);
     void this.view?.webview.postMessage({ type: 'empty', reason });
   }
 
@@ -196,6 +209,10 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     });
 
     this.lastDrawn = { focus: graph.focus, nodes: graph.nodes.length };
+    this.log.debug(
+      `Tree drew @${graph.focus ?? 'nobody'}@ with ${graph.nodes.length} nodes ` +
+        `(depth ${configuration.get<number>('graph.depth', 2)}, ${this.direction})`,
+    );
 
     void this.view.webview.postMessage({
       type: 'graph',
@@ -742,22 +759,44 @@ async function appears(provider: GedcomGraphViewProvider): Promise<boolean> {
 async function reveal(
   provider: GedcomGraphViewProvider,
   editor: TextEditor | undefined,
+  log: Log,
 ): Promise<boolean> {
   // Decided before focusing anything, and from `subjectEditor`: focus moves in
   // the course of opening the panel, and the active editor moves with it.
   if (editor?.document.languageId !== 'gedcom') {
+    log.warn(
+      describeNothingOnScreen({
+        visible: window.visibleTextEditors.length,
+        documents: workspace.textDocuments.filter((d) => d.languageId === 'gedcom').length,
+      }),
+    );
     void window.showInformationMessage('Open a GEDCOM file to see its tree.');
     return false;
   }
 
+  log.info(
+    describeSubject({
+      file: describeFile(editor.document.uri.path, editor.document.uri.scheme),
+      active: editor === window.activeTextEditor,
+    }),
+  );
+
   await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
-  if (await appears(provider)) return true;
+  if (await appears(provider)) {
+    log.info('Tree panel on screen');
+    return true;
+  }
 
   // Not a toggle, so it cannot shut the panel it was called to open.
+  log.warn(`${GRAPH_VIEW_ID}.focus left nothing on screen; resetting the view location`);
   await commands.executeCommand(`${GRAPH_VIEW_ID}.resetViewLocation`);
   await commands.executeCommand(`${GRAPH_VIEW_ID}.focus`);
-  if (await appears(provider)) return true;
+  if (await appears(provider)) {
+    log.info('Tree panel on screen after resetting its location');
+    return true;
+  }
 
+  log.error('Tree panel could not be shown: the view is hidden, or its container is not shown');
   void window.showWarningMessage(
     'The GEDCOM Tree could not be shown. Enable it from the panel’s context menu, ' +
       'or run “View: Reset View Locations”.',
@@ -779,9 +818,9 @@ export interface GedcomTestHooks {
 }
 
 /** Wires both panels to the editor, in whichever host is running. */
-export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
+export function registerGraphView(context: ExtensionContext, log: Log): GedcomTestHooks {
   const selection = new SelectionStore();
-  const provider = new GedcomGraphViewProvider(selection);
+  const provider = new GedcomGraphViewProvider(selection, log);
   const details = new GedcomDetailsViewProvider(selection);
 
   /**
@@ -797,8 +836,20 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
    * A key of our own answers the question actually being asked — is there a
    * GEDCOM file open — and does not depend on where focus happens to be.
    */
+  let announced: boolean | undefined;
   const announce = (): void => {
-    const open = workspace.textDocuments.some((document) => document.languageId === 'gedcom');
+    const documents = workspace.textDocuments.filter(
+      (document) => document.languageId === 'gedcom',
+    ).length;
+    const open = documents > 0;
+
+    if (open !== announced) {
+      announced = open;
+      log.info(
+        `gedcom.open=${open} (${documents} GEDCOM ${documents === 1 ? 'document' : 'documents'} open)`,
+      );
+    }
+
     void commands.executeCommand('setContext', 'gedcom.open', open);
   };
 
@@ -851,14 +902,17 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
       // Read as the latter, the menu's context was passed where a line number
       // belonged: the editor got revealed at a nonsense position and the panel
       // never opened. Only the lens's own shape counts as a request to reveal.
+      log.info(`Show Tree invoked from ${describeInvocation(target, at)}`);
+
       if (typeof target === 'string' && typeof at === 'number') {
         // Never at the cost of the panel: revealing is what the lens asks for on
         // top of opening the graph, and a failure there must not swallow the
         // thing the command is named after.
         try {
           await revealLine(target, at);
-        } catch {
+        } catch (failure) {
           // The record stays where it is; the graph still opens below.
+          log.error(`Could not reveal line ${at}: ${String(failure)}`);
         }
       }
 
@@ -867,7 +921,7 @@ export function registerGraphView(context: ExtensionContext): GedcomTestHooks {
 
       // Nothing to open means nothing to redraw: a command that declines to act
       // leaves the panel as it found it.
-      if (!(await reveal(provider, editor))) return;
+      if (!(await reveal(provider, editor, log))) return;
       provider.update(editor);
     }),
     window.registerWebviewViewProvider(GRAPH_VIEW_ID, provider, {

@@ -266,6 +266,16 @@
         "command": "gedcom.showVersion",
         "title": "Explain Detected Version",
         "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.showLog",
+        "title": "Show Log",
+        "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.copyDiagnostics",
+        "title": "Copy Diagnostics",
+        "category": "GEDCOM"
       }
     ],
     "menus": {
@@ -284,6 +294,12 @@
         {
           "command": "gedcom.showVersion",
           "when": "editorLangId == gedcom"
+        },
+        {
+          "command": "gedcom.showLog"
+        },
+        {
+          "command": "gedcom.copyDiagnostics"
         }
       ]
     }

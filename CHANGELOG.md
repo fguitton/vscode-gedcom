@@ -5,6 +5,15 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ## [Unreleased]
 
+### Added
+
+- **GEDCOM: Copy Diagnostics** puts the version, host, settings and recent
+  activity on the clipboard, ready to paste into an issue. It carries nothing
+  from the file — no names, no dates, not even the folder it sits in.
+- **GEDCOM: Show Log** opens the extension's own commentary: activation, the
+  context key, every Show Tree and what came of it. The language server writes to
+  the same channel, so one place holds both sides.
+
 ### Fixed
 
 - **The tree emptied itself when the reader clicked anywhere else.** It follows
@@ -13,6 +22,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   where it belongs rather than resolving silently ([#5]).
 - Show Tree leaves the panel alone when it declines to open, and the tree redraws
   when `gedcom.graph.depth` or `gedcom.graph.includeReferences` changes.
+- `gedcom.trace.server` produced nothing to look at on its own: the channel drops
+  trace unless its log level is raised too. It now says so, once, in the log.
 
 ### Testing
 
