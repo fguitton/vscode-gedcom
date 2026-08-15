@@ -15,6 +15,9 @@ export type { Detection, Encoding, GedcomVersion, ByteOrder } from './detect.ts'
 
 export { inferVersion } from './infer.ts';
 
+export { exporterName, exporterProfile, exporterProfiles } from './exporter.ts';
+export type { ExporterProfile, ExporterQuirk } from './exporter.ts';
+
 export {
   scanDate,
   isUncertain,
@@ -125,6 +128,7 @@ export type {
 
 import { decode, detect, type GedcomVersion } from './detect.ts';
 import type { Diagnostic, Document } from './cst.ts';
+import { exporterProfile } from './exporter.ts';
 import { inferVersion } from './infer.ts';
 import { parse } from './parser.ts';
 import { indexXrefs, type XrefIndex } from './xref.ts';
@@ -171,7 +175,14 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
       ? options.version
       : detect(new TextEncoder().encode(text)).version;
 
-  const document = parse(text);
+  // Parsed twice where the exporter is one that writes broken continuations:
+  // the first pass is only to read `HEAD.SOUR`, which is what says who wrote the
+  // file. Cheap — the header is the first few lines — and it keeps the repair
+  // policy a property of the document rather than a setting the caller must know
+  // to pass.
+  const first = parse(text);
+  const profile = exporterProfile(first);
+  const document = profile?.repairsContinuations ? parse(text, { joinOrphanLines: true }) : first;
 
   // Files without a GEDC structure cannot be detected but are common enough to
   // matter; fall back to inferring a generation from the vocabulary in use.

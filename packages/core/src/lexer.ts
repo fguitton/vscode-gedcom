@@ -49,7 +49,24 @@ export function splitLines(text: string): string[] {
   return text.split(/\r\n|\r|\n/);
 }
 
-export function lex(text: string): LexResult {
+export interface LexOptions {
+  /**
+   * Read a line that cannot be a GEDCOM line as more of the payload above it.
+   *
+   * Some exporters — MyHeritage most of all — write literal line breaks inside a
+   * payload, which the format has no way to carry: they emit `CONC` and never
+   * `CONT`, so the rest of the value arrives as bare text.
+   *
+   * Deliberately limited to lines that could not be structure. A continuation
+   * whose text happens to *look* like a GEDCOM line is ambiguous — `1 NAME This
+   * is not a NAME line` is a perfectly good line and perfectly good prose — and
+   * nothing in the file can settle which was meant. Those are left as lines,
+   * because inventing a reading of somebody's data is worse than declining to.
+   */
+  readonly joinOrphanLines?: boolean;
+}
+
+export function lex(text: string, options: LexOptions = {}): LexResult {
   const lines: LexedLine[] = [];
   const diagnostics: Diagnostic[] = [];
 
@@ -68,6 +85,39 @@ export function lex(text: string): LexResult {
 
     const match = LINE.exec(raw);
     if (!match?.groups) {
+      // Not structure. Where the exporter is known to write payloads containing
+      // line breaks, and there is a line above to attach this to, it is the rest
+      // of that payload — said out loud rather than done quietly.
+      const previous = lines.at(-1);
+      if (options.joinOrphanLines && previous) {
+        // Emitted as the `CONT` the exporter should have written, so the parser
+        // folds it into the payload by the path every other continuation takes.
+        // Nothing downstream learns that this file was repaired.
+        lines.push({
+          index,
+          text: raw,
+          level: previous.level + 1,
+          tag: 'CONT',
+          xref: null,
+          payload: raw,
+          span: span(index, 0, raw.length),
+          tagSpan: span(index, 0, 0),
+          xrefSpan: null,
+          payloadSpan: span(index, 0, raw.length),
+        });
+
+        diagnostics.push({
+          code: 'exporter-repair',
+          message:
+            'Read as more of the payload above, which is where the exporter meant it ' +
+            'to go. It writes line breaks inside a payload, which GEDCOM carries with ' +
+            '`CONT`; this line has no level number of its own.',
+          severity: 'information',
+          span: span(index, 0, raw.length),
+        });
+        return;
+      }
+
       diagnostics.push({
         code: 'malformed-line',
         message:

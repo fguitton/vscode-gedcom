@@ -8,7 +8,7 @@
  */
 
 import { type Diagnostic, type Document, type Structure, type Span, span } from './cst.ts';
-import { lex, type LexedLine } from './lexer.ts';
+import { lex, type LexOptions, type LexedLine } from './lexer.ts';
 
 /** Continuation pseudo-structures. Not structures — they extend a payload. */
 const CONTINUATIONS = new Set(['CONT', 'CONC']);
@@ -35,8 +35,8 @@ function create(line: LexedLine): MutableStructure {
   };
 }
 
-export function parse(text: string): Document {
-  const { lines, diagnostics } = lex(text);
+export function parse(text: string, options: LexOptions = {}): Document {
+  const { lines, diagnostics } = lex(text, options);
   const records: MutableStructure[] = [];
   const structures: MutableStructure[] = [];
 

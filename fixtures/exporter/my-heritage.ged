@@ -164,6 +164,16 @@ See household members&amp;lt;br&amp;gt;&amp;lt;a id='household'&amp;gt;&amp;lt;/
 1 FAMC @F500022@
 1 RIN MH:I500036
 1 _UID 5F348DFA96832C30E24EFEF406018DD4
+0 @I500099@ INDI
+1 NAME Adversarial /Case/
+1 NOTE The clerk copied the register verbatim, including the line
+2 CONC  below, which reads as though it were structure:
+1 SOUR @S500009@
+2 PAGE p. 14
+2 DATA
+3 TEXT Transcribed as written:
+2 CONC  and the next physical line is bare text that looks like a line —
+1 NAME This is not a NAME line, it is the text of the note above.
 0 @I500037@ INDI
 1 _UPD 24 FEB 2024 08:24:36 GMT -0500 
 1 NAME Horace /Vass/

@@ -1,0 +1,22 @@
+0 HEAD
+1 SOUR WikiTree
+2 NAME WikiTree.com
+2 CORP Interesting.com, Inc.
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE A WikiTree export. Its CONC boundaries fall at byte offsets, so a
+2 CONT multibyte character can be cut in half across two lines.
+0 @I1@ INDI
+1 NAME Björn /Sköldung/
+1 SEX M
+1 NOTE Born in Kristians�
+1 CONC �nd, then moved north.
+1 NOTE A second note whose continuation looks exactly like a GEDCOM line:
+2 CONT The registrar wrote, and I quote,
+1 CONC  "2 SOUR the parish book" — which is text, not a line.
+0 @I2@ INDI
+1 NAME Astrid /Sköldung/
+1 SEX F
+0 TRLR

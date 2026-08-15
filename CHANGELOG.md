@@ -14,6 +14,15 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   context key, every Show Tree and what came of it. The language server writes to
   the same channel, so one place holds both sides.
 
+### Added
+
+- Exporter profiles. The program named in `HEAD.SOUR` selects a table of known
+  quirks; MyHeritage's literal line breaks inside payloads are read as the
+  continuations it meant, each reported as an information diagnostic. Never
+  silent, and never applied to a line that could itself be a GEDCOM line.
+- `fixtures/exporter/wikitree.ged`, which splits a multibyte character across a
+  `CONC` boundary as WikiTree does.
+
 ### Fixed
 
 - 5.5.1 structures are named in English. The registry snapshot carries labels for
