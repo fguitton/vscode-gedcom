@@ -3,6 +3,31 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.0]
+
+Workspace symbol search, snippets, automated quick fixes (Code Actions), document formatting, and multi-spouse layout optimization.
+
+### Added
+
+- **Workspace symbol search (`Ctrl+T` / `Cmd+T`).** Search across individuals by
+  name and identifier, couples by partner names, sources by title, and custom
+  `@XREF@` entities.
+- **Snippets and record skeletons.** Contributed templates for `indi`, `fam`,
+  `sour`, `repo`, `birt`, `marr`, `deat`, `buri`, `cens`, `occu`, `resi`, and `note`.
+- **Code actions & Quick Fixes (`Ctrl+.` / 💡).** One-click repairs for missing
+  headers/trailers, dangling pointers (`@VOID@` / skeleton creation), deprecated
+  5.5.1 tags in GEDCOM 7 (`RELA` $\rightarrow$ `ROLE`, `CONC` $\rightarrow$ `CONT`),
+  exporter quirks (`exporter-repair` continuation prefixing), leading whitespace,
+  and blank lines.
+- **Document formatting provider (`Shift+Alt+F`).** Normalizes level spacing,
+  standardizes tag casing, removes illegal blank lines, and strips trailing whitespace.
+
+### Changed
+
+- **Multi-spouse compound units in graph layout.** Spouses across multiple marriages
+  are kept contiguous in their generation column, reducing line crossings and
+  improving visual flow without sacrificing stability.
+
 ## [0.9.2]
 
 Details panel webview event isolation, disposal lifecycle fixes, and language server performance optimizations.
