@@ -30,6 +30,7 @@ import {
   scanDate,
   splitLines,
   statistics,
+  structureAt,
   walk,
   lifespan,
   type Analysis,
@@ -41,11 +42,14 @@ import {
 import { annotate, describeStructure, type AnnotationKinds } from './describe.ts';
 
 import {
+  CodeActionKind,
   CompletionItemKind,
   DiagnosticSeverity,
   FoldingRangeKind,
   InlayHintKind,
   SymbolKind,
+  type CodeAction,
+  type CodeActionContext,
   type CodeLens,
   type CompletionItem,
   type Diagnostic,
@@ -1033,6 +1037,269 @@ export function documentLinks(analysis: Analysis): DocumentLink[] {
   }
 
   return links;
+}
+
+// --- code actions -----------------------------------------------------------
+
+/**
+ * Quick fixes for diagnostics reported on the document.
+ */
+export function codeActions(
+  analysis: Analysis,
+  uri: string,
+  _range: Range,
+  context: CodeActionContext,
+): CodeAction[] {
+  const actions: CodeAction[] = [];
+  const lines = splitLines(analysis.text);
+
+  for (const diagnostic of context.diagnostics) {
+    const code = String(diagnostic.code);
+    const diagRange = diagnostic.range;
+
+    if (code === 'missing-trailer') {
+      const lastLine = lines.length;
+      actions.push({
+        title: 'Insert 0 TRLR at end of file',
+        kind: CodeActionKind.QuickFix,
+        diagnostics: [diagnostic],
+        isPreferred: true,
+        edit: {
+          changes: {
+            [uri]: [
+              {
+                range: {
+                  start: { line: lastLine, character: 0 },
+                  end: { line: lastLine, character: 0 },
+                },
+                newText: '\n0 TRLR\n',
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    if (code === 'missing-header') {
+      actions.push(
+        {
+          title: 'Insert GEDCOM 7.0 header',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          isPreferred: true,
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: {
+                    start: { line: 0, character: 0 },
+                    end: { line: 0, character: 0 },
+                  },
+                  newText: '0 HEAD\n1 GEDC\n2 VERS 7.0\n',
+                },
+              ],
+            },
+          },
+        },
+        {
+          title: 'Insert GEDCOM 5.5.1 header',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: {
+                    start: { line: 0, character: 0 },
+                    end: { line: 0, character: 0 },
+                  },
+                  newText: '0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n',
+                },
+              ],
+            },
+          },
+        },
+      );
+    }
+
+    if (code === 'leading-whitespace') {
+      const lineText = lines[diagRange.start.line] ?? '';
+      const match = /^([ \t]+)/.exec(lineText);
+      if (match) {
+        actions.push({
+          title: 'Remove leading whitespace',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          isPreferred: true,
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: {
+                    start: { line: diagRange.start.line, character: 0 },
+                    end: { line: diagRange.start.line, character: match[1]!.length },
+                  },
+                  newText: '',
+                },
+              ],
+            },
+          },
+        });
+      }
+    }
+
+    if (code === 'blank-line') {
+      actions.push({
+        title: 'Remove blank line',
+        kind: CodeActionKind.QuickFix,
+        diagnostics: [diagnostic],
+        isPreferred: true,
+        edit: {
+          changes: {
+            [uri]: [
+              {
+                range: {
+                  start: { line: diagRange.start.line, character: 0 },
+                  end: { line: diagRange.start.line + 1, character: 0 },
+                },
+                newText: '',
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    if (code === 'multiple-delimiters') {
+      const lineText = lines[diagRange.start.line] ?? '';
+      const textInRange = lineText.slice(diagRange.start.character, diagRange.end.character);
+      if (/^[ \t]+$/.test(textInRange)) {
+        actions.push({
+          title: 'Collapse spaces to single space',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          isPreferred: true,
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: diagRange,
+                  newText: ' ',
+                },
+              ],
+            },
+          },
+        });
+      }
+    }
+
+    if (code === 'removed-in-version' || code === 'tag-not-allowed-here') {
+      const structure = structureAt(
+        analysis.document,
+        diagRange.start.line,
+        diagRange.start.character,
+      );
+      if (structure?.tag === 'RELA') {
+        actions.push({
+          title: 'Convert RELA to ROLE (GEDCOM 7)',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          isPreferred: true,
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: toRange(structure.tagSpan),
+                  newText: 'ROLE',
+                },
+              ],
+            },
+          },
+        });
+      } else if (structure?.tag === 'CONC') {
+        actions.push({
+          title: 'Convert CONC to CONT (GEDCOM 7)',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          isPreferred: true,
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: toRange(structure.tagSpan),
+                  newText: 'CONT',
+                },
+              ],
+            },
+          },
+        });
+      }
+    }
+
+    if (code === 'dangling-pointer') {
+      const structure = structureAt(
+        analysis.document,
+        diagRange.start.line,
+        diagRange.start.character,
+      );
+      const pointer = structure ? asPointer(structure) : null;
+      if (pointer && structure?.payloadSpan) {
+        actions.push({
+          title: 'Replace with @VOID@',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: toRange(structure.payloadSpan),
+                  newText: '@VOID@',
+                },
+              ],
+            },
+          },
+        });
+
+        const recordTag =
+          structure.tag === 'FAMS' || structure.tag === 'FAMC'
+            ? 'FAM'
+            : structure.tag === 'SOUR'
+              ? 'SOUR'
+              : structure.tag === 'REPO'
+                ? 'REPO'
+                : 'INDI';
+
+        const lastLine = lines.length;
+        const newRecordText =
+          recordTag === 'SOUR'
+            ? `\n0 @${pointer}@ SOUR\n1 TITL \n`
+            : recordTag === 'FAM'
+              ? `\n0 @${pointer}@ FAM\n`
+              : `\n0 @${pointer}@ INDI\n1 NAME \n1 SEX U\n`;
+
+        actions.push({
+          title: `Create new ${recordTag} record for @${pointer}@`,
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: {
+                    start: { line: lastLine, character: 0 },
+                    end: { line: lastLine, character: 0 },
+                  },
+                  newText: newRecordText,
+                },
+              ],
+            },
+          },
+        });
+      }
+    }
+  }
+
+  return actions;
 }
 
 // --- entry point ------------------------------------------------------------

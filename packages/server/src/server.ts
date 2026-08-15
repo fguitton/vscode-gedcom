@@ -8,6 +8,7 @@
 
 import type { Analysis } from '@vscode-gedcom/core';
 import {
+  CodeActionKind,
   TextDocuments,
   TextDocumentSyncKind,
   type Connection,
@@ -17,6 +18,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import {
   analyzeDocument,
+  codeActions,
   codeLenses,
   resolveCodeLens,
   completion,
@@ -136,6 +138,9 @@ export function startServer(connection: Connection): void {
         inlayHintProvider: true,
         documentLinkProvider: { resolveProvider: false },
         codeLensProvider: { resolveProvider: true },
+        codeActionProvider: {
+          codeActionKinds: [CodeActionKind.QuickFix],
+        },
       },
     };
   });
@@ -283,6 +288,13 @@ export function startServer(connection: Connection): void {
       const uri = (lens.data as { uri?: string } | undefined)?.uri;
       const document = uri ? documentFor(uri) : undefined;
       return document ? resolveCodeLens(analysisOf(document), lens) : lens;
+    }),
+  );
+
+  connection.onCodeAction(({ textDocument, range, context }) =>
+    guard('Code actions', [], () => {
+      const document = documentFor(textDocument.uri);
+      return document ? codeActions(analysisOf(document), textDocument.uri, range, context) : [];
     }),
   );
 
