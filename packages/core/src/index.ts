@@ -137,6 +137,9 @@ import { attributeToExporter, exporterProfile } from './exporter.ts';
 import { inferVersion } from './infer.ts';
 import { parse } from './parser.ts';
 import { indexXrefs, type XrefIndex } from './xref.ts';
+import { checkPlausibility } from './plausibility.ts';
+export { checkPlausibility } from './plausibility.ts';
+
 import {
   validate,
   type Strictness,
@@ -210,9 +213,15 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
   // the reader's. Still reported — nothing is hidden — but as a warning naming
   // the program, so a screen of red over somebody else's bug becomes a screen of
   // amber with an explanation.
+  const plausibilityDiags = checkPlausibility(document, xrefs);
   const byLine = new Map(document.structures.map((s) => [s.span.line, s.tag]));
   const diagnostics = attributeToExporter(
-    [...document.diagnostics, ...xrefs.diagnostics, ...validation.diagnostics],
+    [
+      ...document.diagnostics,
+      ...xrefs.diagnostics,
+      ...validation.diagnostics,
+      ...plausibilityDiags,
+    ],
     profile,
     (diagnostic) => byLine.get(diagnostic.span.line),
   );

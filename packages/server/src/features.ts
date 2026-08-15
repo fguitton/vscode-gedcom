@@ -1261,6 +1261,72 @@ export function codeActions(
       }
     }
 
+    if (code === 'death-before-birth') {
+      const lineIndex = diagRange.start.line;
+      const deathStruct = structureAt(analysis.document, lineIndex, diagRange.start.character);
+      const record = deathStruct?.parent ?? deathStruct;
+      if (record) {
+        const birtStruct = record.children.find((c) => c.tag === 'BIRT');
+        const birtDate = birtStruct?.children.find((c) => c.tag === 'DATE');
+        const deatDate = deathStruct?.children.find((c) => c.tag === 'DATE');
+
+        if (
+          birtDate?.payloadSpan &&
+          deatDate?.payloadSpan &&
+          birtDate.payload &&
+          deatDate.payload
+        ) {
+          actions.push({
+            title: 'Swap birth and death dates',
+            kind: CodeActionKind.QuickFix,
+            diagnostics: [diagnostic],
+            isPreferred: true,
+            edit: {
+              changes: {
+                [uri]: [
+                  {
+                    range: toRange(birtDate.payloadSpan),
+                    newText: deatDate.payload,
+                  },
+                  {
+                    range: toRange(deatDate.payloadSpan),
+                    newText: birtDate.payload,
+                  },
+                ],
+              },
+            },
+          });
+        }
+      }
+    }
+
+    if (code === 'implausible-lifespan') {
+      const lineIndex = diagRange.start.line;
+      const birtStruct = structureAt(analysis.document, lineIndex, diagRange.start.character);
+      const record = birtStruct?.parent ?? birtStruct;
+      if (record) {
+        const insertLine = birtStruct ? birtStruct.span.line + 1 : record.span.line + 1;
+        actions.push({
+          title: 'Add 1 DEAT record',
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [diagnostic],
+          edit: {
+            changes: {
+              [uri]: [
+                {
+                  range: {
+                    start: { line: insertLine, character: 0 },
+                    end: { line: insertLine, character: 0 },
+                  },
+                  newText: '1 DEAT\n',
+                },
+              ],
+            },
+          },
+        });
+      }
+    }
+
     if (code === 'dangling-pointer') {
       const structure = structureAt(
         analysis.document,

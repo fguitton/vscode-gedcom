@@ -84,7 +84,14 @@ export type DiagnosticCode =
   | 'nesting-too-deep'
   | 'date-invalid'
   | 'exporter-repair'
-  | 'pointer-target-mismatch';
+  | 'pointer-target-mismatch'
+  // Plausibility
+  | 'death-before-birth'
+  | 'implausible-parent-age'
+  | 'child-born-after-parent-death'
+  | 'marriage-before-birth'
+  | 'marriage-after-death'
+  | 'implausible-lifespan';
 
 export function span(line: number, start: number, end: number): Span {
   return { line, start, end };

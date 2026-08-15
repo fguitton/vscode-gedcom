@@ -110,4 +110,57 @@ describe('codeActions', () => {
     expect(actions[0]!.title).toBe('Prefix line with 2 CONT');
     expect(actions[0]!.edit?.changes?.[URI]?.[0]?.newText).toBe('2 CONT ');
   });
+
+  it('offers quick fix to swap birth and death dates on death-before-birth', () => {
+    const source = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 NAME John /Smith/',
+      '1 BIRT',
+      '2 DATE 1950',
+      '1 DEAT',
+      '2 DATE 1920',
+      '0 TRLR',
+    ].join('\n');
+
+    const analysis = analyzeDocument(source);
+    const diags = diagnostics(analysis);
+    const deathDiag = diags.find((d) => d.code === 'death-before-birth');
+    expect(deathDiag).toBeDefined();
+
+    const actions = codeActions(analysis, URI, deathDiag!.range, {
+      diagnostics: [deathDiag!],
+    });
+
+    expect(actions.length).toBe(1);
+    expect(actions[0]!.title).toBe('Swap birth and death dates');
+    expect(actions[0]!.edit?.changes?.[URI]).toHaveLength(2);
+  });
+
+  it('offers quick fix to add DEAT record on implausible-lifespan', () => {
+    const source = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 NAME Ancient /Person/',
+      '1 BIRT',
+      '2 DATE 1850',
+      '0 TRLR',
+    ].join('\n');
+
+    const analysis = analyzeDocument(source);
+    const diags = diagnostics(analysis);
+    const spanDiag = diags.find((d) => d.code === 'implausible-lifespan');
+    expect(spanDiag).toBeDefined();
+
+    const actions = codeActions(analysis, URI, spanDiag!.range, {
+      diagnostics: [spanDiag!],
+    });
+
+    expect(actions.length).toBe(1);
+    expect(actions[0]!.title).toBe('Add 1 DEAT record');
+  });
 });
