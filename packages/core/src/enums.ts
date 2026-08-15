@@ -258,6 +258,20 @@ export function enumSetFor(
   }
 }
 
+/**
+ * Every value a set admits.
+ *
+ * The registry snapshot carries enumerations for GEDCOM 7 and none at all for
+ * 5.5.1 — `g7validation.json` is a 7.0 artefact, and its URIs do not resolve
+ * against the older vocabulary. So for a 5.5.1 file the sets written out here are
+ * the only ones there are, and a validator with no list to check against reports
+ * nothing: `2 QUAY 4` passed silently in every 5.5.1 file, which is most files.
+ */
+export function valuesOfSet(set: string): readonly string[] | undefined {
+  const meanings = SETS[set];
+  return meanings ? Object.keys(meanings) : undefined;
+}
+
 /** The meaning of one value within a set, or nothing when the value is not one of them. */
 export function describeEnumValue(set: string, value: string): EnumMeaning | undefined {
   return SETS[set]?.[value.trim().toUpperCase()];

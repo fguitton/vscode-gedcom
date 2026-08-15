@@ -35,7 +35,7 @@ export type { Relations } from './relations.ts';
 export { parseAge, describeAge, ageInDays } from './age.ts';
 export type { Age } from './age.ts';
 
-export { enumSetFor, describeEnumValue, meaningOf, standalone } from './enums.ts';
+export { enumSetFor, describeEnumValue, meaningOf, standalone, valuesOfSet } from './enums.ts';
 export type { EnumMeaning } from './enums.ts';
 
 export {

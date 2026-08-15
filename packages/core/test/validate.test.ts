@@ -296,3 +296,31 @@ describe('diagnostics say what they judged against', () => {
     expect(text).toContain('Individual');
   });
 });
+
+describe('enumerated values in 5.5.1', () => {
+  // The registry snapshot carries enumerations for GEDCOM 7 only, so until the
+  // hand-written sets were used as a fallback a 5.5.1 file — which is most files
+  // — had nothing to check coded values against. MyHeritage writes `QUAY 4`.
+  const v551 = (body: string) =>
+    analyze(bytes(`0 HEAD\n1 GEDC\n2 VERS 5.5.1\n${body}0 TRLR\n`)).diagnostics;
+
+  it('reports a confidence outside the four the specification defines', () => {
+    const found = v551('0 @I1@ INDI\n1 SOUR @S1@\n2 QUAY 4\n0 @S1@ SOUR\n');
+    const enums = found.filter((d) => d.code === 'enum-value-unknown');
+    expect(enums.map((d) => d.message)).toEqual([
+      '`4` is not a valid value for `QUAY`. Expected one of: 0, 1, 2, 3.',
+    ]);
+  });
+
+  it('accepts the values that are defined', () => {
+    for (const value of ['0', '1', '2', '3']) {
+      const found = v551(`0 @I1@ INDI\n1 SOUR @S1@\n2 QUAY ${value}\n0 @S1@ SOUR\n`);
+      expect(found.filter((d) => d.code === 'enum-value-unknown')).toEqual([]);
+    }
+  });
+
+  it('reports a sex outside its set, in the older vocabulary too', () => {
+    const found = v551('0 @I1@ INDI\n1 SEX Q\n');
+    expect(found.some((d) => d.code === 'enum-value-unknown')).toBe(true);
+  });
+});

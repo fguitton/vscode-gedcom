@@ -16,6 +16,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Fixed
 
+- Coded values are checked in 5.5.1 files, which they never were: the registry
+  snapshot carries enumerations for GEDCOM 7 only, so `2 QUAY 4` passed silently
+  in most files in the wild.
+
 - **The tree emptied itself when the reader clicked anywhere else.** It follows
   the GEDCOM file on screen, and clears only when none is in view.
 - Show Tree says so when the panel cannot be shown, and puts a hidden view back

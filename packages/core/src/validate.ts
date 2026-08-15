@@ -31,6 +31,7 @@ import {
   type SpecModel,
 } from './spec/index.ts';
 import { dateProblems } from './date.ts';
+import { enumSetFor, valuesOfSet } from './enums.ts';
 import { asPointer, VOID_POINTER, type XrefIndex } from './xref.ts';
 
 export type Strictness = 'strict' | 'lenient';
@@ -331,7 +332,14 @@ function checkPayload(
   const spec = payloadOf(model, slug);
   if (!spec) return;
 
-  const values = enumValuesOf(model, slug);
+  // The registry gives enumerations for GEDCOM 7 only, so a 5.5.1 file — which
+  // is most files — had nothing to check its coded values against and `2 QUAY 4`
+  // went unreported. The sets written out in `enums.ts` cover both generations,
+  // and are the fallback where the registry is silent.
+  const values =
+    enumValuesOf(model, slug) ??
+    valuesOfSet(enumSetFor(slug, structure.tag, structure.parent?.tag) ?? '');
+
   if (values && structure.payload !== null) {
     // Some payloads are a comma-separated list of enumerated values rather than
     // a single one — `SOUR.DATA.EVEN` is typed `List#Enum` and legitimately
