@@ -34,6 +34,7 @@ import {
   resolveSettings,
   semanticTokens,
   semanticTokensLegend,
+  workspaceSymbols,
   type Settings,
 } from './features.ts';
 
@@ -120,6 +121,7 @@ export function startServer(connection: Connection): void {
         referencesProvider: true,
         hoverProvider: true,
         documentSymbolProvider: true,
+        workspaceSymbolProvider: true,
         foldingRangeProvider: true,
         documentHighlightProvider: true,
         renameProvider: true,
@@ -207,6 +209,16 @@ export function startServer(connection: Connection): void {
     guard('Outline', [], () => {
       const document = documentFor(textDocument.uri);
       return document ? documentSymbols(analysisOf(document)) : [];
+    }),
+  );
+
+  connection.onWorkspaceSymbol(({ query }) =>
+    guard('Workspace symbols', [], () => {
+      const results = [];
+      for (const document of documents.all()) {
+        results.push(...workspaceSymbols(analysisOf(document), document.uri, query));
+      }
+      return results;
     }),
   );
 

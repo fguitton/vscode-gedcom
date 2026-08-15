@@ -58,6 +58,7 @@ import {
   type Position,
   type Range,
   type DocumentSymbol,
+  type SymbolInformation,
   type SemanticTokensLegend,
   type TextEdit,
   type WorkspaceEdit,
@@ -502,6 +503,49 @@ export function documentSymbols(analysis: Analysis): DocumentSymbol[] {
   };
 
   return analysis.document.records.map(build);
+}
+
+/**
+ * Searches top-level records across a document by name, identifier or tag.
+ */
+export function workspaceSymbols(
+  analysis: Analysis,
+  uri: string,
+  query: string,
+): SymbolInformation[] {
+  const model = modelFor(analysis.version);
+  const normalized = query.trim().toLowerCase();
+  const symbols: SymbolInformation[] = [];
+
+  for (const record of analysis.document.records) {
+    if (record.tag === 'HEAD' || record.tag === 'TRLR') continue;
+
+    const summary = summarize(record, analysis).trim();
+    const label = tagLabel(model, record.tag);
+    const name = summary !== '' && summary !== record.tag ? summary : label;
+    const xref = record.xref !== null ? `@${record.xref}@` : '';
+
+    if (
+      normalized.length > 0 &&
+      !name.toLowerCase().includes(normalized) &&
+      !xref.toLowerCase().includes(normalized) &&
+      !record.tag.toLowerCase().includes(normalized)
+    ) {
+      continue;
+    }
+
+    symbols.push({
+      name: xref ? `${name} (${xref})` : name,
+      kind: SYMBOL_KIND[record.tag] ?? SymbolKind.Field,
+      location: {
+        uri,
+        range: toRange(record.span),
+      },
+      containerName: label,
+    });
+  }
+
+  return symbols;
 }
 
 // --- folding ----------------------------------------------------------------
