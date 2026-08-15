@@ -16,6 +16,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 
 ### Fixed
 
+- 5.5.1 structures are named in English. The registry snapshot carries labels for
+  GEDCOM 7 only, so every 5.5.1 tag was shown as a tag; 179 names are now borrowed
+  from 7.0 where both versions agree, and the rest come from the table here.
+
 - Coded values are checked in 5.5.1 files, which they never were: the registry
   snapshot carries enumerations for GEDCOM 7 only, so `2 QUAY 4` passed silently
   in most files in the wild.

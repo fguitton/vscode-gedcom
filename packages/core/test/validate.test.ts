@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { analyze } from '../src/index.ts';
-import { labelOf, modelFor, resolveSubstructure } from '../src/spec/index.ts';
+import { labelOf, modelFor, resolveSubstructure, tagLabel } from '../src/spec/index.ts';
 import { bytes, fixture, fixtures } from './corpus.ts';
 
 const v7 = (body: string) => bytes(`0 HEAD\n1 GEDC\n2 VERS 7.0\n${body}0 TRLR\n`);
@@ -322,5 +322,32 @@ describe('enumerated values in 5.5.1', () => {
   it('reports a sex outside its set, in the older vocabulary too', () => {
     const found = v551('0 @I1@ INDI\n1 SEX Q\n');
     expect(found.some((d) => d.code === 'enum-value-unknown')).toBe(true);
+  });
+});
+
+describe('English names in 5.5.1', () => {
+  // `g7validation.json` is a GEDCOM 7 artefact, so the 5.5.1 model was generated
+  // with no labels at all and every tag was shown to readers as a tag. Where a
+  // tag means the same thing in both vocabularies, 7.0's name is borrowed.
+  const model = modelFor('5.5.1');
+
+  it('names the structures 7.0 agrees about', () => {
+    expect(tagLabel(model, 'OCCU', 'OCCU')).toBe('Occupation');
+    expect(tagLabel(model, 'QUAY', 'QUAY')).toBe('Quality of data');
+    expect(tagLabel(model, 'TITL', 'TITL-DESCRIPTIVE_TITLE')).toBe('Title');
+  });
+
+  it('names the structures 7.0 removed, from the table written here', () => {
+    // These have no 7.0 counterpart to borrow from at all.
+    expect(tagLabel(model, 'AFN', 'AFN')).toBe('Ancestral File Number');
+    expect(tagLabel(model, 'ANCE', 'ANCE')).toBe('Ancestors');
+    expect(tagLabel(model, 'CHAR', 'CHAR')).toBe('Character set');
+  });
+
+  it('leaves no structure reading as its own tag', () => {
+    const bare = Object.entries(model.tags)
+      .filter(([slug, tag]) => tagLabel(model, tag, slug) === tag)
+      .map(([slug]) => slug);
+    expect(bare).toEqual([]);
   });
 });
