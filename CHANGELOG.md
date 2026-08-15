@@ -3,6 +3,14 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The outline and the breadcrumb name a record after who or what it is and a
+  substructure in English — `Denis R. Reid › Phone`, not `SUBM @S1@ › PHON`. The
+  tag and the identifier move to the detail.
+
 ## [0.8.1]
 
 ### Changed

@@ -161,29 +161,30 @@ describe('hover', () => {
 describe('outline', () => {
   const symbols = documentSymbols(analysis);
 
-  it('lists records at the top level', () => {
+  it('names records after who or what they are', () => {
     expect(symbols.map((s) => s.name)).toEqual([
-      'HEAD',
-      'INDI @I1@',
-      'INDI @I2@',
-      'FAM @F1@',
-      'TRLR',
+      'Header',
+      'John Smith',
+      'Jane Doe',
+      // The identifiers are what the reader is trying to look up, not what they
+      // want to be told.
+      'John Smith + Jane Doe',
+      'Trailer',
     ]);
   });
 
-  it('labels a person with their name', () => {
-    expect(symbols[1]!.detail).toBe('John Smith');
+  it('keeps the kind and the identifier in the detail', () => {
+    expect(symbols[1]!.detail).toBe('Individual @I1@');
   });
 
-  it('labels a family with its spouses, resolved to names', () => {
-    // The identifiers are what the reader is trying to look up, not what they
-    // want to be told.
-    expect(symbols[3]!.detail).toBe('John Smith + Jane Doe');
+  it('says nothing twice about a record with no name of its own', () => {
+    expect(symbols[0]!.detail).toBe('');
   });
 
-  it('nests substructures', () => {
-    const birth = symbols[1]!.children!.find((c) => c.name === 'BIRT')!;
-    expect(birth.children!.map((c) => c.name)).toEqual(['DATE']);
+  it('names substructures in English', () => {
+    const birth = symbols[1]!.children!.find((c) => c.name === 'Birth')!;
+    expect(birth.children!.map((c) => c.name)).toEqual(['Date']);
+    expect(birth.children![0]!.detail).toBe('12 AUG 1901');
   });
 
   it('spans a record from its first line to its last', () => {
@@ -320,8 +321,8 @@ describe('against the real corpus', () => {
       readFileSync(join(fixtures, 'unicode', 'names-multiscript.ged'), 'utf8'),
     );
     const symbols = documentSymbols(multiscript);
-    expect(symbols.map((s) => s.detail)).toContain('山田 太郎');
-    expect(symbols.map((s) => s.detail)).toContain('محمد الخوارزمي');
+    expect(symbols.map((s) => s.name)).toContain('山田 太郎');
+    expect(symbols.map((s) => s.name)).toContain('محمد الخوارزمي');
   });
 });
 

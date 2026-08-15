@@ -155,8 +155,8 @@ describe('language server', () => {
 
     assert.ok(symbols?.length, 'expected document symbols');
     assert.ok(
-      symbols.some((symbol) => symbol.name.startsWith('INDI')),
-      'expected at least one INDI record in the outline',
+      symbols.some((symbol) => symbol.detail.startsWith('Individual ')),
+      'expected at least one individual in the outline',
     );
   });
 

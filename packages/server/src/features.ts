@@ -444,7 +444,19 @@ const SYMBOL_KIND: Record<string, SymbolKind> = {
   SUBM: SymbolKind.Constant,
 };
 
+/**
+ * The outline, and with it the breadcrumb above the editor.
+ *
+ * Both are read left to right by someone asking where the cursor is, and
+ * `INDI @I9@ › DEAT › PLAC` answers that only for a reader willing to translate
+ * it first. Records are therefore named by who or what they are, substructures
+ * by the English name of their tag, and the tag and identifier move to the
+ * detail — still shown in the outline, which is where a reader hunting for
+ * `@I9@` is looking.
+ */
 export function documentSymbols(analysis: Analysis): DocumentSymbol[] {
+  const model = modelFor(analysis.version);
+
   const build = (structure: Structure): DocumentSymbol => {
     const extent = fullSpan(structure);
     // LSP's `uinteger` tops out at 2^31 - 1. `Number.MAX_SAFE_INTEGER` exceeds
@@ -459,13 +471,27 @@ export function documentSymbols(analysis: Analysis): DocumentSymbol[] {
       end: { line: extent.end.line, character: END_OF_LINE },
     };
 
+    const label = tagLabel(
+      model,
+      structure.tag,
+      analysis.validation.resolutions.get(structure)?.slug,
+    );
+
+    // `summarize` falls back to the tag for a record that says nothing about
+    // itself — a `FAM` with neither spouse, say — which is exactly where the
+    // English name of the record is wanted in its place.
+    const summary = structure.level === 0 ? summarize(structure, analysis).trim() : '';
+    const named = summary !== '' && summary !== structure.tag;
+
     const detail =
       structure.level === 0
-        ? summarize(structure, analysis)
+        ? [named ? label : undefined, structure.xref !== null ? `@${structure.xref}@` : undefined]
+            .filter(Boolean)
+            .join(' ')
         : (structure.payload?.split('\n')[0]?.slice(0, 60) ?? '');
 
     return {
-      name: structure.xref !== null ? `${structure.tag} @${structure.xref}@` : structure.tag,
+      name: named ? summary : label,
       detail,
       kind: SYMBOL_KIND[structure.tag] ?? SymbolKind.Field,
       range,
