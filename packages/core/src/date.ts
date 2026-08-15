@@ -387,8 +387,8 @@ export function parseExactDate(payload: string): ExactDate | undefined {
  * being true — which is what an age or a lifespan is reckoned from.
  */
 export function yearOf(payload: string): number | undefined {
-  const year = /\b(\d{3,4})\b(?!.*\b\d{3,4}\b)/.exec(payload)?.[1];
-  return year ? Number(year) : undefined;
+  const matches = payload.match(/\b\d{3,4}\b/g);
+  return matches ? Number(matches[matches.length - 1]) : undefined;
 }
 
 /** Days since the Unix epoch, for arithmetic between two exact dates. */
