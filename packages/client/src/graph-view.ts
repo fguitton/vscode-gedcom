@@ -321,33 +321,57 @@ function shell(): string {
     color: var(--vscode-foreground);
     background: var(--vscode-sideBar-background, var(--vscode-editor-background));
   }
-  #empty {
-    padding: 1rem;
-    color: var(--vscode-descriptionForeground);
-  }
   #controls {
     display: flex;
-    gap: .25rem;
-    padding: .35rem .5rem;
+    align-items: center;
+    gap: .35rem;
+    padding: .25rem .5rem;
     border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  }
+  #direction-select {
+    font-family: inherit;
+    font-size: calc(var(--vscode-font-size) * .85);
+    color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+    background: var(--vscode-dropdown-background, var(--vscode-editorWidget-background));
+    border: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border, #454545));
+    border-radius: 3px;
+    padding: .2rem .4rem;
+    cursor: pointer;
+    outline: none;
+  }
+  #direction-select:focus {
+    border-color: var(--vscode-focusBorder);
+  }
+  .btn-group {
+    display: flex;
+    align-items: center;
+    gap: .2rem;
   }
   #controls button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
     font-family: inherit;
-    font-size: calc(var(--vscode-font-size) * .9);
+    font-size: calc(var(--vscode-font-size) * .85);
     color: var(--vscode-foreground);
     background: transparent;
     border: 1px solid transparent;
     border-radius: 3px;
-    padding: .15rem .5rem;
+    padding: .2rem .35rem;
     cursor: pointer;
+    line-height: 1;
+  }
+  #controls button svg {
+    display: block;
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
   }
   #controls button:hover { background: var(--vscode-toolbar-hoverBackground); }
   #controls button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
-  #controls button[aria-pressed="true"] {
-    background: var(--vscode-inputOption-activeBackground);
-    border-color: var(--vscode-inputOption-activeBorder, var(--vscode-focusBorder));
-    color: var(--vscode-inputOption-activeForeground, var(--vscode-foreground));
-  }
+  #controls button:active { background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground)); }
   /* The controls take a fixed strip; the drawing gets the rest. */
   #scroll { overflow: auto; width: 100%; height: calc(100vh - 2rem); }
   .edge { stroke: var(--vscode-editorIndentGuide-activeBackground, currentColor); stroke-width: 1; opacity: .5; }
@@ -392,14 +416,25 @@ function shell(): string {
 </style>
 </head>
 <body>
-<div id="controls" role="group" aria-label="Tree controls">
-  <button type="button" data-direction="both" aria-pressed="true">Both</button>
-  <button type="button" data-direction="ancestors" aria-pressed="false">Ancestors</button>
-  <button type="button" data-direction="descendants" aria-pressed="false">Descendants</button>
+<div id="controls" role="toolbar" aria-label="Tree controls">
+  <select id="direction-select" title="Direction of branch traversal">
+    <option value="both">Both</option>
+    <option value="ancestors">Ancestors</option>
+    <option value="descendants">Descendants</option>
+  </select>
   <span style="flex: 1"></span>
-  <button type="button" id="btn-fit" title="Zoom to fit all nodes">Fit</button>
-  <button type="button" id="btn-reset" title="Reset zoom to 100%">100%</button>
-  <button type="button" id="btn-export-svg" title="Export current tree as SVG">Export SVG</button>
+  <div class="btn-group">
+    <button type="button" id="btn-fit" title="Zoom to Fit (Fit all nodes in view)" aria-label="Zoom to Fit">
+      <svg viewBox="0 0 16 16"><path d="M3 3h3v1.5H4.5V6H3V3zm7 0h3v3h-1.5V4.5H10V3zm3 7v3h-3v-1.5h1.5V10H13zm-7 3H3v-3h1.5v1.5H6V13z"/></svg>
+    </button>
+    <button type="button" id="btn-reset" title="Reset View (100% Zoom & Recenter)" aria-label="Reset View">
+      <svg viewBox="0 0 16 16"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+    </button>
+    <button type="button" id="btn-export-svg" title="Export Tree as SVG" aria-label="Export Tree as SVG">
+      <svg viewBox="0 0 16 16"><path d="M8.5 1.5v7.293l2.146-2.147.708.708L8 10.707 4.646 7.354l.708-.708L7.5 8.793V1.5h1zM2 12.5h12v1.5H2v-1.5z"/></svg>
+      <span>SVG</span>
+    </button>
+  </div>
 </div>
 <div id="empty">Open a GEDCOM file and place the cursor in a record.</div>
 <div id="scroll"><svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg></div>
@@ -745,17 +780,6 @@ function shell(): string {
     }
   }
 
-  const dirButtons = Array.from(document.querySelectorAll('#controls button[data-direction]'));
-  for (const button of dirButtons) {
-    button.addEventListener('click', () => {
-      const value = button.dataset.direction;
-      for (const other of dirButtons) {
-        other.setAttribute('aria-pressed', String(other === button));
-      }
-      vscode.postMessage({ type: 'direction', value: value });
-    });
-  }
-
   document.getElementById('btn-fit')?.addEventListener('click', () => {
     if (!currentGraph || !currentGraph.nodes.length) return;
     const minX = Math.min(...currentGraph.nodes.map((n) => n.x));
@@ -842,13 +866,16 @@ function shell(): string {
     vscode.postMessage({ type: 'export', format: 'svg', data: svgString });
   });
 
+  const directionSelect = document.getElementById('direction-select');
+  directionSelect?.addEventListener('change', () => {
+    vscode.postMessage({ type: 'direction', value: directionSelect.value });
+  });
+
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (message.type === 'graph') {
-      // The host is the authority on which direction is active, so the buttons
-      // follow it rather than only their own clicks.
-      for (const button of dirButtons) {
-        button.setAttribute('aria-pressed', String(button.dataset.direction === message.direction));
+      if (directionSelect && message.direction) {
+        directionSelect.value = message.direction;
       }
       render(message.graph);
       vscode.postMessage({
