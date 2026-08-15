@@ -64,6 +64,15 @@ export interface LexOptions {
    * because inventing a reading of somebody's data is worse than declining to.
    */
   readonly joinOrphanLines?: boolean;
+  /**
+   * The program that wrote the file, for the repair to name.
+   *
+   * Hedged in the message rather than asserted: `HEAD.SOUR` is reliable about
+   * who wrote the file, but that *this line* is that program's known defect
+   * rather than something else is an inference, and the reader should be able to
+   * tell which part is which.
+   */
+  readonly exporter?: string;
 }
 
 export function lex(text: string, options: LexOptions = {}): LexResult {
@@ -109,9 +118,10 @@ export function lex(text: string, options: LexOptions = {}): LexResult {
         diagnostics.push({
           code: 'exporter-repair',
           message:
-            'Read as more of the payload above, which is where the exporter meant it ' +
-            'to go. It writes line breaks inside a payload, which GEDCOM carries with ' +
-            '`CONT`; this line has no level number of its own.',
+            `Read as more of the payload above, which is where the exporter ${
+              options.exporter ? `(likely ${options.exporter}) ` : ''
+            }meant it to go. It writes line breaks inside a payload, which GEDCOM carries ` +
+            'with `CONT`; this line has no level number of its own.',
           severity: 'information',
           span: span(index, 0, raw.length),
         });

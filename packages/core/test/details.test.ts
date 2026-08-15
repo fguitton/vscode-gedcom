@@ -444,3 +444,33 @@ describe('markup that reached the file escaped', () => {
     expect(text?.escapeDepth).toBe(2);
   });
 });
+
+describe('an event asserted with Y and nothing else', () => {
+  const person = (...lines: string[]) =>
+    fields(
+      recordDetails(
+        analyze(
+          bytes(
+            ['0 HEAD', '1 GEDC', '2 VERS 7.0', '0 @I1@ INDI', ...lines, '0 TRLR', ''].join('\n'),
+          ),
+        ),
+        'I1',
+      )!,
+    );
+
+  it('says what the letter means', () => {
+    // `1 DEAT Y` asserts the death happened and gives no detail. Shown as the
+    // bare letter it tells a reader nothing unless they know the format.
+    expect(person('1 DEAT Y')['Facts/Death']).toBe('recorded, without a date');
+  });
+
+  it('drops it once there is a real fact to show instead', () => {
+    expect(person('1 DEAT Y', '2 DATE 3 MAR 1975')['Facts/Death']).toBe('3 March 1975');
+    expect(person('1 DEAT Y', '2 PLAC Chelsea')['Facts/Death']).toBe('Chelsea');
+  });
+
+  it('leaves a payload that is not the assertion alone', () => {
+    // `Y` is only special as the whole payload; a name beginning with it is not.
+    expect(person('1 OCCU Yeoman')['Facts/Occupation']).toBe('Yeoman');
+  });
+});

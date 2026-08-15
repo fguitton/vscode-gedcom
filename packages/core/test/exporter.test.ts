@@ -52,6 +52,13 @@ describe('MyHeritage', () => {
     expect(counts(NAME)['enum-value-unknown']).toBe(7);
   });
 
+  it('names the program in the repair, hedged where the claim is an inference', () => {
+    const repair = of(NAME).diagnostics.find((d) => d.code === 'exporter-repair');
+    // Who wrote the file is read from HEAD.SOUR and is not in doubt; that this
+    // line is that program's known defect is inference, so the hedge sits there.
+    expect(repair?.message).toContain('(likely MyHeritage Family Tree Builder)');
+  });
+
   it('keeps the repair visible rather than silent', () => {
     const repairs = of(NAME).diagnostics.filter((d) => d.code === 'exporter-repair');
     for (const repair of repairs) expect(repair.severity).toBe('information');

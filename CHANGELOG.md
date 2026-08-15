@@ -31,6 +31,9 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
   markup that arrived escaped is decoded exactly as many times as it was encoded
   — MyHeritage escapes its citation text twice — before going through the same
   allowlist as any other markup.
+- An event asserted with a bare Y and nothing else reads "recorded, without a
+  date" rather than showing the letter.
+- Both exporter messages name the program they are about.
 - Continuations an exporter wrote without a level number are indented with the
   payload they continue, and coloured as payload rather than as an illegal line.
   The grammar can do neither: it sees one line at a time.

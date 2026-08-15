@@ -204,9 +204,16 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   const place = child(structure, 'PLAC')?.payload;
   const age = child(structure, 'AGE')?.payload;
 
-  // `Y` asserts only that the event happened, so it reads as noise beside a date.
+  // `Y` asserts that the event happened and says nothing else. Beside a date it
+  // is noise; alone it is the whole fact, and the panel showed it as the bare
+  // letter — "Death: Y" tells a reader nothing unless they know the format.
   const asserted = parts.length === 1 && parts[0] === 'Y';
-  if (asserted && (date ?? place)) parts.length = 0;
+  if (asserted) {
+    parts.length = 0;
+    if (date === undefined && place === undefined && age === undefined) {
+      parts.push('recorded, without a date');
+    }
+  }
 
   // Written out for reading: the panel is prose, and the editor a click away
   // still shows exactly what the file holds.

@@ -187,7 +187,9 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
   // to pass.
   const first = parse(text);
   const profile = exporterProfile(first);
-  const document = profile?.repairsContinuations ? parse(text, { joinOrphanLines: true }) : first;
+  const document = profile?.repairsContinuations
+    ? parse(text, { joinOrphanLines: true, exporter: profile.name })
+    : first;
 
   // Files without a GEDC structure cannot be detected but are common enough to
   // matter; fall back to inferring a generation from the vocabulary in use.
