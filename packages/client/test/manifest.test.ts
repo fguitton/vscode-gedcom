@@ -183,27 +183,9 @@ describe('the contributions', () => {
     expect(setting?.default).toBe(true);
   });
 
-  it('puts both panels in the GEDCOM container', () => {
+  it('puts both panels in the GEDCOM container unconditionally', () => {
     const views = manifest.contributes.views['gedcom']?.map((view) => view.id) ?? [];
     expect(views).toContain('gedcom.graph');
     expect(views).toContain('gedcom.details');
-  });
-
-  /**
-   * `editorLangId` is bound to the active editor, and a view's `when` is
-   * evaluated in the window's own context, where that key is cleared as soon as
-   * focus goes to a view — while an `editor/title` button keeps its group's
-   * context and stays on screen. Gated on that key alone the container leaves
-   * the tab bar with a GEDCOM file open and a button that points at nothing.
-   *
-   * `gedcom.open` asks the question the answer is wanted for — is a GEDCOM file
-   * open — and does not depend on where focus is.
-   */
-  it('gates the panels on a key of our own rather than on where focus is', () => {
-    const views = manifest.contributes.views['gedcom'] ?? [];
-    expect(views.length).toBeGreaterThan(0);
-    for (const view of views) {
-      expect(view.when, `${view.id} is gated on ${view.when}`).toContain('gedcom.open');
-    }
   });
 });

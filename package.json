@@ -157,15 +157,13 @@
           "type": "webview",
           "id": "gedcom.graph",
           "name": "Tree",
-          "contextualTitle": "GEDCOM Tree",
-          "when": "gedcom.open || editorLangId == gedcom || resourceLangId == gedcom"
+          "contextualTitle": "GEDCOM Tree"
         },
         {
           "type": "webview",
           "id": "gedcom.details",
           "name": "Details",
-          "contextualTitle": "GEDCOM Details",
-          "when": "gedcom.open || editorLangId == gedcom || resourceLangId == gedcom"
+          "contextualTitle": "GEDCOM Details"
         }
       ]
     },

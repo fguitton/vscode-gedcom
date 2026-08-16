@@ -351,7 +351,7 @@ function shell(): string {
     background: var(--vscode-sideBar-background, var(--vscode-editor-background));
   }
   #empty {
-    padding: 1rem;
+    padding: 1rem .75rem;
     color: var(--vscode-descriptionForeground);
     font-size: calc(var(--vscode-font-size) * .95);
     line-height: 1.4;

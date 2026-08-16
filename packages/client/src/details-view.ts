@@ -408,7 +408,12 @@ function shell(previews: boolean): string {
   /* Nothing came back — a dead link, an offline machine, a host that refuses a
      hotlink. The row above still says what the file claims is there. */
   .thumb.broken { display: none; }
-  #empty { padding: 1rem .75rem; color: var(--vscode-descriptionForeground); }
+  #empty {
+    padding: 1rem .75rem;
+    color: var(--vscode-descriptionForeground);
+    font-size: calc(var(--vscode-font-size) * .95);
+    line-height: 1.4;
+  }
 
   /* Life Timeline */
   .timeline {
