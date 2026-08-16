@@ -12,7 +12,26 @@
  * gesture, on its own button.
  */
 
-import { EventEmitter, type Disposable, type Uri } from 'vscode';
+import { EventEmitter, window, type Disposable, type TextEditor, type Uri } from 'vscode';
+
+/**
+ * The editor holding the document the panels should describe.
+ *
+ * `window.activeTextEditor` is `undefined` while focus is in a webview panel —
+ * which is where focus goes the moment a reader clicks something in the tree.
+ * Following only the active editor caused a click to clear the details panel,
+ * redraw the tree empty and throw away what was on screen.
+ *
+ * Nor is the active editor guaranteed to be a GEDCOM file: a reader may have a
+ * file beside the tree. What the panels follow is the GEDCOM file on screen —
+ * the active editor while it is one, otherwise a visible one, and nothing at all
+ * only when none is in view.
+ */
+export function subjectEditor(): TextEditor | undefined {
+  const active = window.activeTextEditor;
+  if (active?.document.languageId === 'gedcom') return active;
+  return window.visibleTextEditors.find((editor) => editor.document.languageId === 'gedcom');
+}
 
 export interface Selection {
   readonly uri: Uri | undefined;

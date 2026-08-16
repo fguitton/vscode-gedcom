@@ -44,33 +44,15 @@ import {
   describeNothingOnScreen,
   describeSubject,
 } from './report.ts';
-import { SelectionStore } from './selection.ts';
+import { SelectionStore, subjectEditor } from './selection.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
 
 export type TreeViewMode = Direction | 'fan';
 
-/**
- * The editor holding the document the panels should describe.
- *
- * `window.activeTextEditor` is `undefined` while focus is in a webview panel —
- * which is where focus goes the moment a reader clicks something in the tree.
- * Following only the active editor caused a click to clear the details panel,
- * redraw the tree empty and throw away what was on screen.
- *
- * Nor is the active editor guaranteed to be a GEDCOM file: a reader may have a
- * file beside the tree. What the panels follow is the GEDCOM file on screen —
- * the active editor while it is one, otherwise a visible one, and nothing at all
- * only when none is in view.
- */
-function subjectEditor(): TextEditor | undefined {
-  const active = window.activeTextEditor;
-  if (active?.document.languageId === 'gedcom') return active;
-  return window.visibleTextEditors.find((editor) => editor.document.languageId === 'gedcom');
-}
-
 /** Messages from the webview: a node was clicked, or a control was used. */
 type PanelMessage =
+  | { readonly type: 'ready' }
   | { readonly type: 'reveal'; readonly line: number }
   | { readonly type: 'select'; readonly xref: string }
   | { readonly type: 'direction'; readonly value: TreeViewMode }
@@ -142,7 +124,9 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     view.webview.html = shell();
 
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
-      if (message.type === 'reveal') void this.reveal(message.line);
+      if (message.type === 'ready') {
+        this.update(subjectEditor());
+      } else if (message.type === 'reveal') void this.reveal(message.line);
       else if (message.type === 'select') {
         // Recentre on whoever was clicked, without touching the editor.
         this.selection.set({ uri: this.documentUri, xref: message.xref });
@@ -228,7 +212,8 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
         ? workspace.textDocuments.find(
             (candidate) => candidate.uri.toString() === chosen.uri?.toString(),
           )
-        : undefined);
+        : undefined) ??
+      subjectEditor()?.document;
 
     if (!document || document.languageId !== 'gedcom') {
       this.documentUri = undefined;
@@ -572,6 +557,9 @@ function shell(): string {
   const NS = 'http://www.w3.org/2000/svg';
   let currentGraph = null;
   let currentFanChart = null;
+
+  // Notify extension host that webview script has loaded and is ready to draw
+  vscode.postMessage({ type: 'ready' });
 
   // Must match packages/core/src/graph.ts, which does the positioning.
   const NODE_WIDTH = 170;
@@ -1533,7 +1521,12 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
   );
 
   context.subscriptions.push(
-    workspace.onDidOpenTextDocument(announce),
+    workspace.onDidOpenTextDocument((document) => {
+      announce();
+      if (document.languageId === 'gedcom') {
+        followCursor(subjectEditor());
+      }
+    }),
     workspace.onDidCloseTextDocument((document) => {
       announce();
       forget(document.uri);

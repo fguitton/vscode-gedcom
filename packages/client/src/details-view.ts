@@ -28,7 +28,7 @@ import {
 
 import { analysisOf } from './analysis.ts';
 import { contentSecurityPolicy } from './policy.ts';
-import type { SelectionStore } from './selection.ts';
+import { SelectionStore, subjectEditor } from './selection.ts';
 
 export const DETAILS_VIEW_ID = 'gedcom.details';
 
@@ -41,6 +41,7 @@ const NOTE_FORMAT = 'gedcom.details.noteFormat';
 type NoteFormat = 'text' | 'html';
 
 type PanelMessage =
+  | { readonly type: 'ready' }
   | { readonly type: 'reveal'; readonly line: number }
   | { readonly type: 'open'; readonly url: string }
   | { readonly type: 'format'; readonly value: NoteFormat };
@@ -80,7 +81,8 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     view.webview.html = shell(previewsEnabled());
 
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
-      if (message.type === 'reveal') void this.reveal(message.line);
+      if (message.type === 'ready') this.refresh();
+      else if (message.type === 'reveal') void this.reveal(message.line);
       else if (message.type === 'open') void this.open(message.url);
       else if (message.type === 'format') {
         this.format = message.value === 'html' ? 'html' : 'text';
@@ -136,9 +138,13 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     // The document, not an editor showing it. Reading text needs no editor, and
     // requiring a visible one empties the panel whenever the editor area is not
     // on screen — which is exactly what maximising this panel does.
-    const document = uri
+    let document = uri
       ? workspace.textDocuments.find((candidate) => candidate.uri.toString() === uri.toString())
       : undefined;
+
+    if (!document) {
+      document = subjectEditor()?.document;
+    }
 
     if (!document || document.languageId !== 'gedcom') {
       this.uri = undefined;
@@ -493,6 +499,9 @@ function shell(previews: boolean): string {
   const content = document.getElementById('content');
   const sections = document.getElementById('sections');
   const previews = ${previews ? 'true' : 'false'};
+
+  // Notify extension host that webview script has loaded and is ready to draw
+  vscode.postMessage({ type: 'ready' });
   /** Text or markup, for the whole panel. Replaced by every details message. */
   let format = 'text';
 
