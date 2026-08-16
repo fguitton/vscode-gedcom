@@ -46,6 +46,9 @@ export type { Kinship } from './kinship.ts';
 export { individualTimeline } from './timeline.ts';
 export type { TimelineEvent } from './timeline.ts';
 
+export { buildFanChart } from './fanchart.ts';
+export type { FanChartData, FanChartNode } from './fanchart.ts';
+
 export { parseAge, describeAge, ageInDays } from './age.ts';
 export type { Age } from './age.ts';
 

@@ -10,7 +10,13 @@
  * the round trip, and it keeps the panel working even while the server restarts.
  */
 
-import { neighbourhood, recordAt, type Direction, type Graph } from '@vscode-gedcom/core';
+import {
+  buildFanChart,
+  neighbourhood,
+  recordAt,
+  type Direction,
+  type Graph,
+} from '@vscode-gedcom/core';
 import {
   commands,
   Range,
@@ -42,11 +48,17 @@ import { SelectionStore } from './selection.ts';
 
 export const GRAPH_VIEW_ID = 'gedcom.graph';
 
+export type TreeViewMode = Direction | 'fan';
+
 /**
- * The GEDCOM file the panels are about.
+ * The editor holding the document the panels should describe.
  *
- * Not the same question as which editor is active: focus leaves the editor area
- * whenever a panel is clicked, and the reader may be taking notes in another
+ * `window.activeTextEditor` is `undefined` while focus is in a webview panel —
+ * which is where focus goes the moment a reader clicks something in the tree.
+ * Following only the active editor caused a click to clear the details panel,
+ * redraw the tree empty and throw away what was on screen.
+ *
+ * Nor is the active editor guaranteed to be a GEDCOM file: a reader may have a
  * file beside the tree. What the panels follow is the GEDCOM file on screen —
  * the active editor while it is one, otherwise a visible one, and nothing at all
  * only when none is in view.
@@ -61,7 +73,7 @@ function subjectEditor(): TextEditor | undefined {
 type PanelMessage =
   | { readonly type: 'reveal'; readonly line: number }
   | { readonly type: 'select'; readonly xref: string }
-  | { readonly type: 'direction'; readonly value: Direction }
+  | { readonly type: 'direction'; readonly value: TreeViewMode }
   | { readonly type: 'drew'; readonly focus: string | null; readonly nodes: number }
   | {
       readonly type: 'export';
@@ -75,11 +87,9 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
   /** The document the panel is currently showing, so clicks reveal in the right one. */
   private documentUri: Uri | undefined;
   /**
-   * Which way through the generations to travel. View state rather than a
-   * setting: it is something a reader flips while looking, not something they
-   * configure once.
+   * Which way through the generations to travel, or circular fan chart mode.
    */
-  private direction: Direction = 'both';
+  private direction: TreeViewMode = 'both';
   private readonly selection: SelectionStore;
   private readonly log: Log;
 
@@ -249,6 +259,20 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     // is where that record has something to say.
     if (focus !== null && !isDrawable(focus)) {
       this.nothing('not-a-person');
+      return;
+    }
+
+    if (this.direction === 'fan') {
+      const fanChart = buildFanChart(analysis, focus ?? '', 5);
+      this.lastDrawn = { focus: fanChart.rootXref, nodes: fanChart.nodes.length };
+      this.log.debug(
+        `Fan chart drew @${fanChart.rootXref || 'nobody'}@ with ${fanChart.nodes.length} ancestors`,
+      );
+      void this.view.webview.postMessage({
+        type: 'fanchart',
+        fanChart,
+        direction: 'fan',
+      });
       return;
     }
 
@@ -442,14 +466,68 @@ function shell(): string {
   }
   .node.dimmed { opacity: 0.25; transition: opacity 0.2s ease; }
   .edge.dimmed { opacity: 0.12; transition: opacity 0.2s ease; }
+
+  /* Fan Chart */
+  .fan-wedge {
+    stroke: var(--vscode-editorWidget-border, var(--vscode-focusBorder));
+    stroke-width: 1;
+    cursor: pointer;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+  }
+  .fan-wedge.root {
+    fill: var(--vscode-list-activeSelectionBackground, #007acc);
+  }
+  .fan-wedge.paternal {
+    fill: var(--vscode-editorWidget-background);
+  }
+  .fan-wedge.maternal {
+    fill: var(--vscode-editorWidget-background);
+  }
+  .fan-wedge.empty {
+    fill: transparent;
+    stroke-dasharray: 2 3;
+    opacity: 0.35;
+    cursor: default;
+  }
+  .fan-wedge:hover:not(.empty) {
+    stroke: var(--vscode-focusBorder);
+    stroke-width: 2;
+    filter: brightness(1.15);
+  }
+  .fan-wedge.path-highlight {
+    stroke: #e5a00d !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(229, 160, 13, 0.45));
+  }
+  .fan-label {
+    fill: var(--vscode-foreground);
+    font-size: 10px;
+    font-weight: 500;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .fan-label.root {
+    fill: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground));
+    font-weight: bold;
+    font-size: 11px;
+  }
+  .fan-detail {
+    fill: var(--vscode-descriptionForeground);
+    font-size: 8px;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
 </style>
 </head>
 <body>
 <div id="controls" role="toolbar" aria-label="Tree controls">
-  <select id="direction-select" title="Direction of branch traversal">
+  <select id="direction-select" title="Direction of branch traversal / View mode">
     <option value="both">Both</option>
     <option value="ancestors">Ancestors</option>
     <option value="descendants">Descendants</option>
+    <option value="fan">Circular Fan</option>
   </select>
   <span style="flex: 1"></span>
   <div class="btn-group">
@@ -475,6 +553,7 @@ function shell(): string {
   const scroll = document.getElementById('scroll');
   const NS = 'http://www.w3.org/2000/svg';
   let currentGraph = null;
+  let currentFanChart = null;
 
   // Must match packages/core/src/graph.ts, which does the positioning.
   const NODE_WIDTH = 170;
@@ -492,6 +571,153 @@ function shell(): string {
 
   function truncate(text, max) {
     return text.length > max ? text.slice(0, max - 1) + '…' : text;
+  }
+
+  function renderFanChart(fanChart) {
+    currentFanChart = fanChart;
+    currentGraph = null;
+    svg.replaceChildren();
+
+    if (!fanChart.nodes.length) {
+      empty.textContent = 'No individual record at the cursor.';
+      empty.style.display = 'block';
+      scroll.style.display = 'none';
+      return;
+    }
+
+    empty.style.display = 'none';
+    scroll.style.display = 'block';
+
+    const width = 800;
+    const height = 540;
+    const cx = 400;
+    const cy = 460;
+
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+    // 240-degree fan: -210 deg to +30 deg (pointing up symmetrically)
+    const startAngle = (-210 * Math.PI) / 180;
+    const endAngle = (30 * Math.PI) / 180;
+    const totalAngle = endAngle - startAngle;
+
+    const maxGen = fanChart.maxGenerations || 5;
+    const rootR = 65;
+    const genR = 60;
+
+    const nodeMap = new Map();
+    for (const node of fanChart.nodes) {
+      nodeMap.set(node.generation + ':' + node.slot, node);
+    }
+
+    function arcPath(rInner, rOuter, a1, a2) {
+      const x1 = cx + rInner * Math.cos(a1);
+      const y1 = cy + rInner * Math.sin(a1);
+      const x2 = cx + rOuter * Math.cos(a1);
+      const y2 = cy + rOuter * Math.sin(a1);
+      const x3 = cx + rOuter * Math.cos(a2);
+      const y3 = cy + rOuter * Math.sin(a2);
+      const x4 = cx + rInner * Math.cos(a2);
+      const y4 = cy + rInner * Math.sin(a2);
+
+      const largeArc = a2 - a1 > Math.PI ? 1 : 0;
+
+      if (rInner <= 0) {
+        return 'M ' + cx + ' ' + cy + ' L ' + x2 + ' ' + y2 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x3 + ' ' + y3 + ' Z';
+      }
+
+      return 'M ' + x1 + ' ' + y1 +
+             ' L ' + x2 + ' ' + y2 +
+             ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x3 + ' ' + y3 +
+             ' L ' + x4 + ' ' + y4 +
+             ' A ' + rInner + ' ' + rInner + ' 0 ' + largeArc + ' 0 ' + x1 + ' ' + y1 + ' Z';
+    }
+
+    // Render Root (Gen 0)
+    const rootNode = nodeMap.get('0:0');
+    if (rootNode) {
+      const rootPath = el('path', {
+        class: 'fan-wedge root',
+        'data-xref': rootNode.xref,
+        d: arcPath(0, rootR, startAngle, endAngle),
+      });
+      const title = el('title', {}, '#' + rootNode.ahnentafel + ' ' + rootNode.label + (rootNode.detail ? ' (' + rootNode.detail + ')' : ''));
+      rootPath.appendChild(title);
+      rootPath.addEventListener('click', () => vscode.postMessage({ type: 'select', xref: rootNode.xref }));
+      svg.appendChild(rootPath);
+
+      const labelEl = el('text', {
+        class: 'fan-label root',
+        x: cx,
+        y: cy - 25,
+      }, truncate(rootNode.label, 18));
+      svg.appendChild(labelEl);
+
+      if (rootNode.detail) {
+        const detailEl = el('text', {
+          class: 'fan-detail',
+          x: cx,
+          y: cy - 10,
+        }, rootNode.detail);
+        svg.appendChild(detailEl);
+      }
+    }
+
+    // Render Generations 1 .. maxGen - 1
+    for (let g = 1; g < maxGen; g++) {
+      const rInner = rootR + (g - 1) * genR;
+      const rOuter = rootR + g * genR;
+      const totalSlots = Math.pow(2, g);
+      const angleStep = totalAngle / totalSlots;
+
+      for (let s = 0; s < totalSlots; s++) {
+        const a1 = startAngle + s * angleStep;
+        const a2 = a1 + angleStep;
+        const aMid = (a1 + a2) / 2;
+        const rMid = (rInner + rOuter) / 2;
+
+        const node = nodeMap.get(g + ':' + s);
+        const isPaternal = s < totalSlots / 2;
+        const branchClass = isPaternal ? 'paternal' : 'maternal';
+
+        if (node) {
+          const wedge = el('path', {
+            class: 'fan-wedge ' + branchClass,
+            'data-xref': node.xref,
+            d: arcPath(rInner, rOuter, a1, a2),
+          });
+          const title = el('title', {}, '#' + node.ahnentafel + ' ' + node.label + (node.detail ? ' (' + node.detail + ')' : ''));
+          wedge.appendChild(title);
+          wedge.addEventListener('click', () => vscode.postMessage({ type: 'select', xref: node.xref }));
+          svg.appendChild(wedge);
+
+          const xMid = cx + rMid * Math.cos(aMid);
+          const yMid = cy + rMid * Math.sin(aMid);
+          let deg = (aMid * 180) / Math.PI + 90;
+          if (deg > 90 && deg < 270) deg += 180;
+
+          const maxLen = g >= 4 ? 12 : g === 3 ? 16 : 22;
+          const textG = el('g', {
+            transform: 'translate(' + xMid + ',' + yMid + ') rotate(' + deg + ')',
+          });
+
+          if (g <= 3 && node.detail) {
+            textG.appendChild(el('text', { class: 'fan-label', y: -4 }, truncate(node.label, maxLen)));
+            textG.appendChild(el('text', { class: 'fan-detail', y: 7 }, truncate(node.detail, maxLen)));
+          } else {
+            textG.appendChild(el('text', { class: 'fan-label', y: 0 }, truncate(node.label, maxLen)));
+          }
+          svg.appendChild(textG);
+        } else {
+          const emptyWedge = el('path', {
+            class: 'fan-wedge empty ' + branchClass,
+            d: arcPath(rInner, rOuter, a1, a2),
+          });
+          svg.appendChild(emptyWedge);
+        }
+      }
+    }
   }
 
   /**
@@ -522,6 +748,7 @@ function shell(): string {
 
   function render(graph) {
     currentGraph = graph;
+    currentFanChart = null;
     svg.replaceChildren();
 
     if (!graph.nodes.length) {
@@ -823,6 +1050,12 @@ function shell(): string {
   }
 
   document.getElementById('btn-fit')?.addEventListener('click', () => {
+    if (currentFanChart) {
+      svg.setAttribute('viewBox', '0 0 800 540');
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+      return;
+    }
     if (!currentGraph || !currentGraph.nodes.length) return;
     const minX = Math.min(...currentGraph.nodes.map((n) => n.x));
     const maxX = Math.max(...currentGraph.nodes.map((n) => n.x + NODE_WIDTH));
@@ -837,6 +1070,14 @@ function shell(): string {
   });
 
   document.getElementById('btn-reset')?.addEventListener('click', () => {
+    if (currentFanChart) {
+      svg.style.width = '';
+      svg.style.height = '';
+      svg.setAttribute('width', '800');
+      svg.setAttribute('height', '540');
+      svg.setAttribute('viewBox', '0 0 800 540');
+      return;
+    }
     if (!currentGraph) return;
     svg.style.width = '';
     svg.style.height = '';
@@ -847,7 +1088,7 @@ function shell(): string {
   });
 
   document.getElementById('btn-export-svg')?.addEventListener('click', () => {
-    if (!currentGraph || !svg) return;
+    if ((!currentGraph && !currentFanChart) || !svg) return;
 
     // Resolve computed colors from active VS Code theme
     const style = window.getComputedStyle(document.body);
@@ -865,11 +1106,15 @@ function shell(): string {
     const edgeColor = style.getPropertyValue('--vscode-editorIndentGuide-activeBackground').trim() || '#555555';
     const font = style.getPropertyValue('--vscode-font-family').trim() || 'system-ui, -apple-system, sans-serif';
 
+    const isFan = !!currentFanChart;
+    const exportWidth = isFan ? 800 : currentGraph.width;
+    const exportHeight = isFan ? 540 : currentGraph.height;
+
     const clone = svg.cloneNode(true);
     clone.setAttribute('xmlns', NS);
-    clone.setAttribute('width', String(currentGraph.width));
-    clone.setAttribute('height', String(currentGraph.height));
-    clone.setAttribute('viewBox', '0 0 ' + currentGraph.width + ' ' + currentGraph.height);
+    clone.setAttribute('width', String(exportWidth));
+    clone.setAttribute('height', String(exportHeight));
+    clone.setAttribute('viewBox', '0 0 ' + exportWidth + ' ' + exportHeight);
 
     // Remove interactive elements
     for (const goto of Array.from(clone.querySelectorAll('.goto'))) {
@@ -889,7 +1134,15 @@ function shell(): string {
       '.node text.tag { fill: ' + descColor + '; font-size: 9px; font-family: monospace; }',
       '.node.focus text.tag { fill: ' + focusFg + '; opacity: 0.9; }',
       '.elided { fill: ' + descColor + '; font-size: 9px; font-family: ' + font + '; }',
-    ].join('\\n');
+      '.fan-wedge { stroke: ' + widgetBorder + '; stroke-width: 1px; }',
+      '.fan-wedge.root { fill: ' + focusBg + '; }',
+      '.fan-wedge.paternal { fill: ' + widgetBg + '; }',
+      '.fan-wedge.maternal { fill: ' + widgetBg + '; }',
+      '.fan-wedge.empty { fill: transparent; stroke-dasharray: 2 3; opacity: 0.35; }',
+      '.fan-label { fill: ' + fgColor + '; font-size: 10px; font-family: ' + font + '; font-weight: 500; text-anchor: middle; dominant-baseline: central; }',
+      '.fan-label.root { fill: ' + focusFg + '; font-weight: bold; font-size: 11px; }',
+      '.fan-detail { fill: ' + descColor + '; font-size: 8px; font-family: ' + font + '; text-anchor: middle; dominant-baseline: central; }',
+    ].join('\n');
 
     const styleEl = document.createElementNS(NS, 'style');
     styleEl.textContent = css;
@@ -904,18 +1157,31 @@ function shell(): string {
     defs.after(bgRect);
 
     const serializer = new XMLSerializer();
-    const svgString = '<?xml version="1.0" encoding="UTF-8"?>\\n' + serializer.serializeToString(clone);
+    const svgString = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializer.serializeToString(clone);
 
     // Context-aware default filename based on selected person/family
-    const focusNode = currentGraph.nodes.find((n) => n.xref === currentGraph.focus);
-    const label = focusNode ? focusNode.label || focusNode.xref : currentGraph.focus || 'tree';
-    const sanitized = label
-      .replace(/[\\/\\\\:*?"<>|]/g, '')
-      .trim()
-      .replace(/\\s+/g, '-')
-      .toLowerCase();
-    const xrefPrefix = currentGraph.focus ? currentGraph.focus + '-' : '';
-    const filename = 'tree-' + xrefPrefix + (sanitized || 'export') + '.svg';
+    let filename = 'tree-export.svg';
+    if (isFan) {
+      const rootNode = currentFanChart.nodes.find((n) => n.ahnentafel === 1);
+      const label = rootNode ? rootNode.label : currentFanChart.rootXref || 'fan';
+      const sanitized = label
+        .replace(/[/\\:*?"<>|]/g, '')
+        .trim()
+        .replace(/s+/g, '-')
+        .toLowerCase();
+      const xrefPrefix = currentFanChart.rootXref ? currentFanChart.rootXref + '-' : '';
+      filename = 'fan-chart-' + xrefPrefix + (sanitized || 'export') + '.svg';
+    } else if (currentGraph) {
+      const focusNode = currentGraph.nodes.find((n) => n.xref === currentGraph.focus);
+      const label = focusNode ? focusNode.label || focusNode.xref : currentGraph.focus || 'tree';
+      const sanitized = label
+        .replace(/[/\\:*?"<>|]/g, '')
+        .trim()
+        .replace(/s+/g, '-')
+        .toLowerCase();
+      const xrefPrefix = currentGraph.focus ? currentGraph.focus + '-' : '';
+      filename = 'tree-' + xrefPrefix + (sanitized || 'export') + '.svg';
+    }
 
     vscode.postMessage({ type: 'export', format: 'svg', data: svgString, filename: filename });
   });
@@ -937,9 +1203,19 @@ function shell(): string {
         focus: message.graph.focus,
         nodes: message.graph.nodes.length,
       });
+    } else if (message.type === 'fanchart') {
+      if (directionSelect && message.direction) {
+        directionSelect.value = message.direction;
+      }
+      renderFanChart(message.fanChart);
+      vscode.postMessage({
+        type: 'drew',
+        focus: message.fanChart.rootXref,
+        nodes: message.fanChart.nodes.length,
+      });
     } else if (message.type === 'highlightPath') {
       const pathSet = new Set((message.path || []).map((x) => String(x).replace(/^@|@$/g, '')));
-      for (const nodeEl of Array.from(svg.querySelectorAll('.node'))) {
+      for (const nodeEl of Array.from(svg.querySelectorAll('.node, .fan-wedge'))) {
         const xref = nodeEl.dataset.xref;
         if (pathSet.size > 0) {
           if (pathSet.has(xref)) {
