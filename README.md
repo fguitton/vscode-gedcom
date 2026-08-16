@@ -47,7 +47,7 @@ Switch the tree view into a **$240^\circ$ Radial Fan Chart** to explore direct p
 
 - **Ahnentafel Numbering:** Standardized genealogical indexing from the root person ($1$) through parents ($2, 3$), grandparents ($4\text{--}7$), and beyond.
 - **Color-Coded Lineages:** Distinct visual styling for paternal and maternal branches with generation rings and empty-slot indicators.
-- **Standalone Export:** Export the entire circular fan chart directly to clean vector SVG.
+- **Standalone Export:** Export the entire circular fan chart directly to clean vector SVG (`fan-chart-<xref>-<name>.svg`).
 
 ---
 
@@ -81,16 +81,25 @@ Inspect a person's life journey in the **Details Panel** with an interactive ver
 
 Driven by the official FamilySearch GEDCOM specification and registries:
 
+![Genealogical Plausibility Diagnostic](images/plausibility-diagnostic.png)
+
 - **Genealogical Plausibility Checks:** Identifies biological contradictions, including death before birth, implausible parent ages at child birth ($< 12$ or $> 70$), post-mortem births, marriage outside lifespan, and unrecorded deaths for individuals born $> 120$ years ago.
 - **Syntax & Structural Validation:** Flags missing tags, invalid cardinality, unrecognized custom tags, and dangling or duplicate `@XREF@` pointers.
 - **Version Awareness:** Automatically adapts validation rules for **GEDCOM 5.5.1**, **GEDCOM 5.5.5**, and **GEDCOM 7.0**.
 
 ---
 
-### 💡 Automated Quick Fixes & Modernizer
+### 💡 Automated Quick Fixes & Exporter Repairs
+
+One-click Code Actions (`Ctrl+.` / 💡) to resolve errors, synthesize missing records, and repair corrupted files:
+
+![Dangling Pointer Repair Quick Fix](images/quickfix-dangling-pointer.png)
+
+![Exporter Defect Repair Quick Fix](images/quickfix-exporter-repair.png)
 
 - **Plausibility Quick Fixes:** Swap inverted birth and death dates or automatically insert missing `DEAT` entries.
-- **Exporter Defect Repair:** Batch repairs broken lines that lost their level numbers due to known exporter quirks (such as MyHeritage note continuations).
+- **Dangling Pointer Resolutions:** Replace missing pointers with standard `@VOID@` or synthesize a new skeleton `INDI` record.
+- **Exporter Defect Batch Repair:** Detects consecutive lines missing level numbers from exporter defects (such as MyHeritage notes) and repairs the entire block in a single click.
 - **One-Click GEDCOM 7 Upgrade:** `GEDCOM: Upgrade File to GEDCOM 7.0` updates headers, converts `CONC` to `CONT`, rewrites `RELA` to `ROLE`, collects custom `_TAG` extensions into a standard `HEAD.SCHMA` block, and ensures standard `0 TRLR`.
 
 ---
