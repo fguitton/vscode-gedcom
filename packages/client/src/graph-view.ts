@@ -56,6 +56,7 @@ type PanelMessage =
   | { readonly type: 'reveal'; readonly line: number }
   | { readonly type: 'select'; readonly xref: string }
   | { readonly type: 'direction'; readonly value: TreeViewMode }
+  | { readonly type: 'clearPath' }
   | { readonly type: 'drew'; readonly focus: string | null; readonly nodes: number }
   | {
       readonly type: 'export';
@@ -133,6 +134,9 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
         this.selection.set({ uri: this.documentUri, xref: message.xref });
       } else if (message.type === 'direction') {
         this.direction = message.value;
+        this.update(subjectEditor());
+      } else if (message.type === 'clearPath') {
+        this.activePath = undefined;
         this.update(subjectEditor());
       } else if (message.type === 'drew') {
         this.lastAcked = { focus: message.focus, nodes: message.nodes };
@@ -307,6 +311,17 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     }
   }
 
+  public clearPath(): void {
+    this.activePath = undefined;
+    this.update(subjectEditor());
+    if (this.view) {
+      void this.view.webview.postMessage({
+        type: 'highlightPath',
+        path: [],
+      });
+    }
+  }
+
   private async reveal(line: number): Promise<void> {
     if (!this.documentUri) return;
 
@@ -425,6 +440,31 @@ function shell(): string {
   #controls button:hover { background: var(--vscode-toolbar-hoverBackground); }
   #controls button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
   #controls button:active { background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground)); }
+  #btn-clear-path {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    height: 22px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 3px;
+    background: rgba(229, 160, 13, 0.15);
+    color: #e5a00d;
+    border: 1px solid rgba(229, 160, 13, 0.4);
+    cursor: pointer;
+    margin-left: 6px;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  #btn-clear-path:hover {
+    background: rgba(229, 160, 13, 0.28);
+    border-color: #e5a00d;
+  }
+  #btn-clear-path svg {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+  }
   /* The controls take a fixed strip; the drawing gets the rest. */
   #scroll {
     flex: 1;
@@ -555,6 +595,10 @@ function shell(): string {
     <option value="descendants">Descendants</option>
     <option value="fan">Circular Fan</option>
   </select>
+  <button type="button" id="btn-clear-path" title="Clear Highlighted Relationship Path (Esc)" aria-label="Clear Path">
+    <svg viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+    <span>Clear Path</span>
+  </button>
   <span style="flex: 1"></span>
   <div class="btn-group">
     <button type="button" id="btn-fit" title="Zoom to Fit (Fit all nodes in view)" aria-label="Zoom to Fit">
@@ -577,9 +621,32 @@ function shell(): string {
   const svg = document.getElementById('graph');
   const empty = document.getElementById('empty');
   const scroll = document.getElementById('scroll');
+  const btnClearPath = document.getElementById('btn-clear-path');
   const NS = 'http://www.w3.org/2000/svg';
   let currentGraph = null;
   let currentFanChart = null;
+  let activePathSet = null;
+
+  function clearPath() {
+    activePathSet = null;
+    if (btnClearPath) btnClearPath.style.display = 'none';
+    for (const nodeEl of Array.from(svg.querySelectorAll('.node, .fan-node, .fan-wedge'))) {
+      nodeEl.classList.remove('path-highlight', 'dimmed');
+    }
+    for (const edgeEl of Array.from(svg.querySelectorAll('.edge'))) {
+      edgeEl.classList.remove('path-highlight', 'dimmed');
+    }
+    vscode.postMessage({ type: 'clearPath' });
+  }
+
+  btnClearPath?.addEventListener('click', clearPath);
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && activePathSet && activePathSet.size > 0) {
+      event.preventDefault();
+      clearPath();
+    }
+  });
 
   // Notify extension host that webview script has loaded and is ready to draw
   vscode.postMessage({ type: 'ready' });
@@ -1258,6 +1325,10 @@ function shell(): string {
       });
     } else if (message.type === 'highlightPath') {
       const pathSet = new Set((message.path || []).map((x) => String(x).replace(/^@|@$/g, '')));
+      activePathSet = pathSet.size > 0 ? pathSet : null;
+      if (btnClearPath) {
+        btnClearPath.style.display = pathSet.size > 0 ? 'inline-flex' : 'none';
+      }
       for (const nodeEl of Array.from(svg.querySelectorAll('.node, .fan-node, .fan-wedge'))) {
         const xref = nodeEl.dataset.xref;
         if (pathSet.size > 0) {
@@ -1547,6 +1618,9 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
     }),
     commands.registerCommand('gedcom.highlightPath', (path: string[], focusXref?: string) => {
       provider.highlightPath(path, focusXref);
+    }),
+    commands.registerCommand('gedcom.clearPath', () => {
+      provider.clearPath();
     }),
   );
 
