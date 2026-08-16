@@ -162,8 +162,9 @@ export function registerCommands(context: ExtensionContext): void {
       );
 
       if (response === showBtn) {
+        const primaryFocus = kinship.commonAncestors[0] || kinship.path[0];
         await commands.executeCommand('gedcom.showGraph');
-        await commands.executeCommand('gedcom.highlightPath', kinship.path);
+        await commands.executeCommand('gedcom.highlightPath', kinship.path, primaryFocus);
       }
     }),
   );

@@ -385,6 +385,10 @@ export interface NeighbourhoodOptions {
    * the panel exists to show.
    */
   readonly includeReferences?: boolean;
+  /**
+   * Complete relationship path XREFs to include in the graph layout regardless of depth.
+   */
+  readonly path?: readonly string[];
 }
 
 /**
@@ -407,6 +411,12 @@ export function neighbourhood(
   const depth = options.depth ?? 2;
   const maxNodes = options.maxNodes ?? 60;
   const model = modelFor(analysis.version);
+
+  const pathIndis = new Set(
+    (options.path || [])
+      .map((x) => x.replace(/^@|@$/g, ''))
+      .filter((x) => analysis.xrefs.definitions.get(x)?.tag === 'INDI'),
+  );
 
   const family = relationships(analysis);
   const cited = options.includeReferences ? references(analysis, model) : new Map<string, Link[]>();
@@ -431,6 +441,7 @@ export function neighbourhood(
    */
   const travels = (link: Link): boolean => {
     if (direction === 'both' || link.kind !== 'parent') return true;
+    if (pathIndis.has(link.to)) return true;
     return direction === 'ancestors' ? link.label === 'Parent' : link.label === 'Child';
   };
 
@@ -455,17 +466,23 @@ export function neighbourhood(
   for (let index = 0; index < order.length; index++) {
     const xref = order[index]!;
     const distance = distances.get(xref)!;
-    if (distance >= depth) continue;
+    const isPathNode = pathIndis.has(xref);
+    if (distance >= depth && !isPathNode) continue;
 
     let skipped = 0;
     for (const link of neighboursOf(xref)) {
       if (distances.has(link.to)) continue;
       if (!analysis.xrefs.definitions.has(link.to)) continue;
 
-      if (order.length >= maxNodes) {
+      const isPathTarget = pathIndis.has(link.to);
+      if (!isPathTarget && order.length >= maxNodes) {
         skipped++;
         continue;
       }
+      if (distance >= depth && !isPathTarget) {
+        continue;
+      }
+
       distances.set(link.to, distance + 1);
       generations.set(link.to, generations.get(xref)! + link.step);
       order.push(link.to);

@@ -72,6 +72,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
    * Which way through the generations to travel, or circular fan chart mode.
    */
   private direction: TreeViewMode = 'both';
+  private activePath: string[] | undefined;
   private readonly selection: SelectionStore;
   private readonly log: Log;
 
@@ -266,6 +267,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
       depth: configuration.get<number>('graph.depth', 2),
       includeReferences: configuration.get<boolean>('graph.includeReferences', false),
       direction: this.direction,
+      path: this.activePath,
     });
 
     this.lastDrawn = { focus: graph.focus, nodes: graph.nodes.length };
@@ -279,9 +281,24 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
       graph: serialize(graph),
       direction: this.direction,
     });
+
+    if (this.activePath) {
+      void this.view.webview.postMessage({
+        type: 'highlightPath',
+        path: this.activePath,
+      });
+    }
   }
 
-  public highlightPath(path: string[]): void {
+  public highlightPath(path: string[], focusXref?: string): void {
+    this.activePath = path;
+    if (this.direction === 'fan') {
+      this.direction = 'both';
+    }
+    if (focusXref) {
+      this.selection.set({ uri: this.documentUri, xref: focusXref });
+    }
+    this.update(subjectEditor());
     if (this.view) {
       void this.view.webview.postMessage({
         type: 'highlightPath',
@@ -471,10 +488,10 @@ function shell(): string {
   .edge.dimmed { opacity: 0.12; transition: opacity 0.2s ease; }
 
   /* Fan Chart */
+  .fan-node { cursor: pointer; }
   .fan-wedge {
     stroke: var(--vscode-editorWidget-border, var(--vscode-focusBorder));
     stroke-width: 1;
-    cursor: pointer;
     transition: fill 0.15s ease, stroke 0.15s ease;
   }
   .fan-wedge.root {
@@ -492,15 +509,21 @@ function shell(): string {
     opacity: 0.35;
     cursor: default;
   }
-  .fan-wedge:hover:not(.empty) {
+  .fan-node:hover:not(.empty) .fan-wedge {
     stroke: var(--vscode-focusBorder);
     stroke-width: 2;
     filter: brightness(1.15);
   }
-  .fan-wedge.path-highlight {
+  .fan-node.dimmed { opacity: 0.22; transition: opacity 0.2s ease; }
+  .fan-node.path-highlight .fan-wedge {
     stroke: #e5a00d !important;
     stroke-width: 2.5px !important;
-    filter: drop-shadow(0 0 6px rgba(229, 160, 13, 0.45));
+    fill: rgba(229, 160, 13, 0.35) !important;
+    filter: drop-shadow(0 0 8px rgba(229, 160, 13, 0.6));
+  }
+  .fan-node.path-highlight .fan-label {
+    fill: #ffd54f !important;
+    font-weight: bold;
   }
   .fan-label {
     fill: var(--vscode-foreground);
@@ -643,6 +666,10 @@ function shell(): string {
     // Render Root (Gen 0)
     const rootNode = nodeMap.get('0:0');
     if (rootNode) {
+      const rootG = el('g', {
+        class: 'fan-node',
+        'data-xref': rootNode.xref,
+      });
       const rootPath = el('path', {
         class: 'fan-wedge root',
         'data-xref': rootNode.xref,
@@ -650,15 +677,15 @@ function shell(): string {
       });
       const title = el('title', {}, '#' + rootNode.ahnentafel + ' ' + rootNode.label + (rootNode.detail ? ' (' + rootNode.detail + ')' : ''));
       rootPath.appendChild(title);
-      rootPath.addEventListener('click', () => vscode.postMessage({ type: 'select', xref: rootNode.xref }));
-      svg.appendChild(rootPath);
+      rootG.appendChild(rootPath);
+      rootG.addEventListener('click', () => vscode.postMessage({ type: 'select', xref: rootNode.xref }));
 
       const labelEl = el('text', {
         class: 'fan-label root',
         x: cx,
         y: cy - 25,
       }, truncate(rootNode.label, 18));
-      svg.appendChild(labelEl);
+      rootG.appendChild(labelEl);
 
       if (rootNode.detail) {
         const detailEl = el('text', {
@@ -666,8 +693,9 @@ function shell(): string {
           x: cx,
           y: cy - 10,
         }, rootNode.detail);
-        svg.appendChild(detailEl);
+        rootG.appendChild(detailEl);
       }
+      svg.appendChild(rootG);
     }
 
     // Render Generations 1 .. maxGen - 1
@@ -688,6 +716,10 @@ function shell(): string {
         const branchClass = isPaternal ? 'paternal' : 'maternal';
 
         if (node) {
+          const group = el('g', {
+            class: 'fan-node',
+            'data-xref': node.xref,
+          });
           const wedge = el('path', {
             class: 'fan-wedge ' + branchClass,
             'data-xref': node.xref,
@@ -695,8 +727,8 @@ function shell(): string {
           });
           const title = el('title', {}, '#' + node.ahnentafel + ' ' + node.label + (node.detail ? ' (' + node.detail + ')' : ''));
           wedge.appendChild(title);
-          wedge.addEventListener('click', () => vscode.postMessage({ type: 'select', xref: node.xref }));
-          svg.appendChild(wedge);
+          group.appendChild(wedge);
+          group.addEventListener('click', () => vscode.postMessage({ type: 'select', xref: node.xref }));
 
           const xMid = cx + rMid * Math.cos(aMid);
           const yMid = cy + rMid * Math.sin(aMid);
@@ -714,7 +746,8 @@ function shell(): string {
           } else {
             textG.appendChild(el('text', { class: 'fan-label', y: 0 }, truncate(node.label, maxLen)));
           }
-          svg.appendChild(textG);
+          group.appendChild(textG);
+          svg.appendChild(group);
         } else {
           const emptyWedge = el('path', {
             class: 'fan-wedge empty ' + branchClass,
@@ -1225,7 +1258,7 @@ function shell(): string {
       });
     } else if (message.type === 'highlightPath') {
       const pathSet = new Set((message.path || []).map((x) => String(x).replace(/^@|@$/g, '')));
-      for (const nodeEl of Array.from(svg.querySelectorAll('.node, .fan-wedge'))) {
+      for (const nodeEl of Array.from(svg.querySelectorAll('.node, .fan-node, .fan-wedge'))) {
         const xref = nodeEl.dataset.xref;
         if (pathSet.size > 0) {
           if (pathSet.has(xref)) {
@@ -1512,8 +1545,8 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
       if (!event.affectsConfiguration('gedcom.graph')) return;
       provider.update(subjectEditor());
     }),
-    commands.registerCommand('gedcom.highlightPath', (path: string[]) => {
-      provider.highlightPath(path);
+    commands.registerCommand('gedcom.highlightPath', (path: string[], focusXref?: string) => {
+      provider.highlightPath(path, focusXref);
     }),
   );
 
