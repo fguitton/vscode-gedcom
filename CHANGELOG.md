@@ -3,6 +3,35 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.12.0]
+
+Relationship calculator with kinship path highlighting, 5-generation circular ancestor fan chart view, chronological life event timeline with computed ages, and panel lifecycle synchronization refinements.
+
+### Added
+
+- **Relationship calculator command (`GEDCOM: Find Relationship Between Individuals`).**
+  Calculates exact consanguinity (blood) and affinity (marriage/in-law) relationships
+  between any two people in the tree, computing cousin degrees, removals, common
+  ancestors, niblings, grand-relations, and step-relations with complete path tracking.
+- **Interactive kinship path highlighting & dynamic expansion.** **Show Path in Tree**
+  dynamically expands tree traversal beyond default depth limits to display the full
+  line of descent, highlighting connected relatives and intervening parent-child/spouse
+  edges in golden glow while dimming unrelated individuals and auto-framing the path.
+- **Circular ancestor fan chart view.** $240^\circ$ radial fan chart in the Tree panel
+  rendering up to 5 generations of direct paternal and maternal ancestors with Ahnentafel
+  numbering, standalone SVG vector export (`fan-chart-<xref>-<name>.svg`), smooth zoom/pan,
+  and wedge path highlighting.
+- **Chronological life event timeline.** Interactive vertical timeline in the Details
+  panel displaying birth, baptism, residence, census, marriage, occupation, death, and
+  burial events alongside computed ages at each milestone, with click-to-reveal navigation.
+- **Unconditional panel registration & lifecycle synchronization.** Tree and Details
+  views are unconditionally contributed in the dedicated `GEDCOM` view container,
+  ensuring they always mount on startup. A bidirectional `ready` handshake eliminates
+  webview race conditions when switching between non-GEDCOM and GEDCOM editor tabs.
+- **Details panel context & navigation.** Displays contextual document file name when
+  focus moves to other editor tabs, with a one-click header jump button to return to
+  the file.
+
 ## [0.11.0]
 
 Genealogical plausibility diagnostics with automated quick fixes, one-click GEDCOM 5.5.1 to 7.0 modernizer, tree graph SVG export with concrete theme baking, and refined tree panel controls.
