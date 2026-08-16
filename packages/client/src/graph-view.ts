@@ -272,6 +272,15 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     });
   }
 
+  public highlightPath(path: string[]): void {
+    if (this.view) {
+      void this.view.webview.postMessage({
+        type: 'highlightPath',
+        path,
+      });
+    }
+  }
+
   private async reveal(line: number): Promise<void> {
     if (!this.documentUri) return;
 
@@ -419,6 +428,20 @@ function shell(): string {
   .goto:hover .arrow { stroke: var(--vscode-foreground); }
   .goto:focus-visible rect { opacity: 1; stroke: var(--vscode-focusBorder); }
   .elided { fill: var(--vscode-descriptionForeground); font-size: 9px; }
+  .node.path-highlight rect {
+    stroke: #e5a00d !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(229, 160, 13, 0.45));
+  }
+  .node.path-highlight text.label { font-weight: bold; }
+  .edge.path-highlight {
+    stroke: #e5a00d !important;
+    stroke-width: 2.5px !important;
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 4px rgba(229, 160, 13, 0.5));
+  }
+  .node.dimmed { opacity: 0.25; transition: opacity 0.2s ease; }
+  .edge.dimmed { opacity: 0.12; transition: opacity 0.2s ease; }
 </style>
 </head>
 <body>
@@ -567,6 +590,9 @@ function shell(): string {
         svg.appendChild(
           el('path', {
             class: 'edge',
+            'data-from': edge.from,
+            'data-to': edge.to,
+            'data-union': edge.union || '',
             d: 'M ' + x + ' ' + (top.y + NODE_HEIGHT) + ' L ' + x + ' ' + bottom.y,
             fill: 'none',
           }),
@@ -580,6 +606,9 @@ function shell(): string {
         svg.appendChild(
           el('path', {
             class: 'edge',
+            'data-from': edge.from,
+            'data-to': edge.to,
+            'data-union': edge.union || '',
             d:
               'M ' + x + ' ' + y1 +
               ' C ' + bulge + ' ' + y1 + ', ' + bulge + ' ' + y2 + ', ' + x + ' ' + y2,
@@ -615,6 +644,9 @@ function shell(): string {
         svg.appendChild(
           el('path', {
             class: 'edge',
+            'data-from': edge.from,
+            'data-to': edge.to,
+            'data-union': edge.union || '',
             d:
               'M ' + x + ' ' + y1 +
               ' C ' + bulge + ' ' + y1 + ', ' + bulge + ' ' + y2 + ', ' + x + ' ' + y2,
@@ -660,6 +692,9 @@ function shell(): string {
       svg.appendChild(
         el('path', {
           class: 'edge',
+          'data-from': edge.from,
+          'data-to': edge.to,
+          'data-union': edge.union || '',
           d: 'M ' + x1 + ' ' + y1 + ' C ' + mid + ' ' + y1 + ', ' + mid + ' ' + y2 + ', ' + x2 + ' ' + y2,
           fill: 'none',
         }),
@@ -673,6 +708,7 @@ function shell(): string {
         // A family has no box of its own, so putting the cursor in one
         // highlights everybody it is about instead.
         class: 'node' + ((graph.focused || []).indexOf(node.xref) >= 0 ? ' focus' : ''),
+        'data-xref': node.xref,
         transform: 'translate(' + node.x + ',' + node.y + ')',
         tabindex: '0',
         role: 'button',
@@ -901,6 +937,57 @@ function shell(): string {
         focus: message.graph.focus,
         nodes: message.graph.nodes.length,
       });
+    } else if (message.type === 'highlightPath') {
+      const pathSet = new Set((message.path || []).map((x) => String(x).replace(/^@|@$/g, '')));
+      for (const nodeEl of Array.from(svg.querySelectorAll('.node'))) {
+        const xref = nodeEl.dataset.xref;
+        if (pathSet.size > 0) {
+          if (pathSet.has(xref)) {
+            nodeEl.classList.add('path-highlight');
+            nodeEl.classList.remove('dimmed');
+          } else {
+            nodeEl.classList.add('dimmed');
+            nodeEl.classList.remove('path-highlight');
+          }
+        } else {
+          nodeEl.classList.remove('path-highlight', 'dimmed');
+        }
+      }
+      for (const edgeEl of Array.from(svg.querySelectorAll('.edge'))) {
+        const from = edgeEl.dataset.from;
+        const to = edgeEl.dataset.to;
+        const union = edgeEl.dataset.union;
+        if (pathSet.size > 0) {
+          const isOnPath =
+            (pathSet.has(from) && pathSet.has(to)) ||
+            (union && pathSet.has(union));
+          if (isOnPath) {
+            edgeEl.classList.add('path-highlight');
+            edgeEl.classList.remove('dimmed');
+          } else {
+            edgeEl.classList.add('dimmed');
+            edgeEl.classList.remove('path-highlight');
+          }
+        } else {
+          edgeEl.classList.remove('path-highlight', 'dimmed');
+        }
+      }
+
+      if (pathSet.size > 0 && currentGraph) {
+        const pathNodes = currentGraph.nodes.filter((n) => pathSet.has(n.xref));
+        if (pathNodes.length) {
+          const minX = Math.min(...pathNodes.map((n) => n.x));
+          const maxX = Math.max(...pathNodes.map((n) => n.x + NODE_WIDTH));
+          const minY = Math.min(...pathNodes.map((n) => n.y));
+          const maxY = Math.max(...pathNodes.map((n) => n.y + NODE_HEIGHT));
+          const pad = 40;
+          const boxW = Math.max(100, maxX - minX + pad * 2);
+          const boxH = Math.max(100, maxY - minY + pad * 2);
+          svg.setAttribute('viewBox', (minX - pad) + ' ' + (minY - pad) + ' ' + boxW + ' ' + boxH);
+          svg.style.width = '100%';
+          svg.style.height = '100%';
+        }
+      }
     } else if (message.type === 'empty') {
       empty.textContent =
         message.reason === 'not-a-person'
@@ -1141,6 +1228,9 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
     workspace.onDidChangeConfiguration((event) => {
       if (!event.affectsConfiguration('gedcom.graph')) return;
       provider.update(subjectEditor());
+    }),
+    commands.registerCommand('gedcom.highlightPath', (path: string[]) => {
+      provider.highlightPath(path);
     }),
   );
 
