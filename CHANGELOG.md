@@ -3,6 +3,19 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.12.1]
+
+Interactive relationship trail deselect button and keyboard shortcut, enriched documentation with feature showcases, and tree controls refinements.
+
+### Added
+
+- **Relationship path deselect button & shortcut.** Added a conditional "Clear Path"
+  toolbar button in the Tree view and wired the <kbd>Esc</kbd> key to deselect active
+  relationship trails, un-dimming all relatives and restoring the default tree view.
+- **Enriched documentation & visual feature showcase.** Added screenshots and guides for
+  kinship path highlighting, 5-generation circular ancestor fan charts, life event timelines,
+  plausibility diagnostics, and automated quick fixes in the README.
+
 ## [0.12.0]
 
 Relationship calculator with kinship path highlighting, 5-generation circular ancestor fan chart view, chronological life event timeline with computed ages, and panel lifecycle synchronization refinements.
