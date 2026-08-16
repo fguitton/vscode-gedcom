@@ -22,6 +22,7 @@ import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts'
 import { parsePersonalName } from './name.ts';
 import { modelFor, recordNoun, tagLabel } from './spec/index.ts';
 import { statistics } from './stats.ts';
+import { individualTimeline, type TimelineEvent } from './timeline.ts';
 import { asPointer } from './xref.ts';
 
 export interface DetailField {
@@ -86,6 +87,7 @@ export interface Details {
   readonly xref?: string;
   readonly line?: number;
   readonly sections: readonly DetailSection[];
+  readonly timeline?: readonly TimelineEvent[];
 }
 
 /**
@@ -577,6 +579,7 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
       ...section('Media', media),
       ...section('Identifiers', identifiers),
     ],
+    ...(record.tag === 'INDI' ? { timeline: individualTimeline(analysis, xref) } : {}),
   };
 }
 

@@ -354,6 +354,73 @@ function shell(previews: boolean): string {
      hotlink. The row above still says what the file claims is there. */
   .thumb.broken { display: none; }
   #empty { padding: 1rem .75rem; color: var(--vscode-descriptionForeground); }
+
+  /* Life Timeline */
+  .timeline {
+    position: relative;
+    padding-left: 1.25rem;
+    margin: .5rem .75rem 1rem;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: .4rem;
+    bottom: .4rem;
+    left: .35rem;
+    width: 2px;
+    background: var(--vscode-editorIndentGuide-activeBackground, rgba(127,127,127,.3));
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: .75rem;
+  }
+  .timeline-item:last-child { margin-bottom: 0; }
+  .timeline-item.clickable { cursor: pointer; }
+  .timeline-item.clickable:hover .timeline-label { color: var(--vscode-textLink-activeForeground, var(--vscode-focusBorder)); }
+  .timeline-dot {
+    position: absolute;
+    left: -1.25rem;
+    top: .35rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--vscode-focusBorder, #007acc);
+    border: 2px solid var(--vscode-sideBar-background, var(--vscode-editor-background));
+  }
+  .timeline-header {
+    display: flex;
+    align-items: baseline;
+    gap: .4rem;
+    margin-bottom: .15rem;
+  }
+  .timeline-age {
+    font-weight: 600;
+    color: var(--vscode-badge-foreground, var(--vscode-foreground));
+    background: var(--vscode-badge-background, rgba(127,127,127,.2));
+    padding: .05rem .3rem;
+    border-radius: 3px;
+    font-size: calc(var(--vscode-font-size) * .75);
+  }
+  .timeline-date {
+    color: var(--vscode-descriptionForeground);
+    font-size: calc(var(--vscode-font-size) * .85);
+  }
+  .timeline-label {
+    font-weight: 500;
+    font-size: calc(var(--vscode-font-size) * .9);
+    color: var(--vscode-foreground);
+  }
+  .timeline-detail {
+    color: var(--vscode-descriptionForeground);
+    font-size: calc(var(--vscode-font-size) * .85);
+    margin-top: .1rem;
+  }
+  .timeline-place {
+    color: var(--vscode-descriptionForeground);
+    font-size: calc(var(--vscode-font-size) * .8);
+    font-style: italic;
+    margin-top: .1rem;
+  }
 </style>
 </head>
 <body>
@@ -586,7 +653,78 @@ function shell(previews: boolean): string {
 
     sections.replaceChildren();
 
-    if (!details.sections.length) {
+    if (details.timeline && details.timeline.length > 0) {
+      const heading = document.createElement('h2');
+      heading.textContent = 'Life Timeline';
+      sections.appendChild(heading);
+
+      const timelineContainer = document.createElement('div');
+      timelineContainer.className = 'timeline';
+
+      for (const event of details.timeline) {
+        const item = document.createElement('div');
+        item.className = 'timeline-item' + (event.line !== undefined ? ' clickable' : '');
+        if (event.line !== undefined) {
+          item.tabIndex = 0;
+          item.title = 'Show this event in the editor';
+          const go = () => vscode.postMessage({ type: 'reveal', line: event.line });
+          item.addEventListener('click', go);
+          item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              go();
+            }
+          });
+        }
+
+        const dot = document.createElement('div');
+        dot.className = 'timeline-dot';
+        item.appendChild(dot);
+
+        const header = document.createElement('div');
+        header.className = 'timeline-header';
+
+        if (event.age) {
+          const ageSpan = document.createElement('span');
+          ageSpan.className = 'timeline-age';
+          ageSpan.textContent = event.age;
+          header.appendChild(ageSpan);
+        }
+
+        if (event.date || event.year) {
+          const dateSpan = document.createElement('span');
+          dateSpan.className = 'timeline-date';
+          dateSpan.textContent = event.date || String(event.year);
+          header.appendChild(dateSpan);
+        }
+
+        item.appendChild(header);
+
+        const label = document.createElement('div');
+        label.className = 'timeline-label';
+        label.textContent = event.label;
+        item.appendChild(label);
+
+        if (event.detail) {
+          const detail = document.createElement('div');
+          detail.className = 'timeline-detail';
+          detail.textContent = event.detail;
+          item.appendChild(detail);
+        }
+
+        if (event.place) {
+          const place = document.createElement('div');
+          place.className = 'timeline-place';
+          place.textContent = event.place;
+          item.appendChild(place);
+        }
+
+        timelineContainer.appendChild(item);
+      }
+      sections.appendChild(timelineContainer);
+    }
+
+    if (!details.sections.length && (!details.timeline || !details.timeline.length)) {
       const nothing = document.createElement('div');
       nothing.id = 'empty';
       nothing.textContent = 'Nothing recorded beyond the relationships in the tree.';
