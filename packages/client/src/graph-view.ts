@@ -1242,11 +1242,8 @@ function shell(): string {
       for (const edgeEl of Array.from(svg.querySelectorAll('.edge'))) {
         const from = edgeEl.dataset.from;
         const to = edgeEl.dataset.to;
-        const union = edgeEl.dataset.union;
         if (pathSet.size > 0) {
-          const isOnPath =
-            (pathSet.has(from) && pathSet.has(to)) ||
-            (union && pathSet.has(union));
+          const isOnPath = pathSet.has(from) && pathSet.has(to);
           if (isOnPath) {
             edgeEl.classList.add('path-highlight');
             edgeEl.classList.remove('dimmed');
