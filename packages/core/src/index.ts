@@ -40,6 +40,9 @@ export type { ExactDate, AgeAt } from './date.ts';
 export { relationsOf, eventYear, lifespan } from './relations.ts';
 export type { Relations } from './relations.ts';
 
+export { calculateKinship } from './kinship.ts';
+export type { Kinship } from './kinship.ts';
+
 export { parseAge, describeAge, ageInDays } from './age.ts';
 export type { Age } from './age.ts';
 

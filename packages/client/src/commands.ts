@@ -30,7 +30,13 @@ const toPosition = (raw: RawRange['start']): Position => new Position(raw.line, 
 
 const toRange = (raw: RawRange): Range => new Range(toPosition(raw.start), toPosition(raw.end));
 
-import { upgradeToGedcom7 } from '@vscode-gedcom/core';
+import {
+  analyzeText,
+  calculateKinship,
+  lifespan,
+  recordAt,
+  upgradeToGedcom7,
+} from '@vscode-gedcom/core';
 
 export function registerCommands(context: ExtensionContext): void {
   context.subscriptions.push(
@@ -72,6 +78,92 @@ export function registerCommands(context: ExtensionContext): void {
         void window.showInformationMessage(
           `Successfully modernized file to GEDCOM 7.0 (${result.modifications} modifications applied).`,
         );
+      }
+    }),
+    commands.registerCommand('gedcom.findRelationship', async () => {
+      const editor = window.activeTextEditor;
+      if (!editor || editor.document.languageId !== 'gedcom') {
+        void window.showInformationMessage('Open a GEDCOM file to calculate relationships.');
+        return;
+      }
+
+      const text = editor.document.getText();
+      const analysis = analyzeText(text);
+
+      const individuals: { label: string; description: string; xref: string }[] = [];
+      for (const [xref, structure] of analysis.xrefs.definitions) {
+        if (structure.tag !== 'INDI') continue;
+        const name =
+          structure.children
+            .find((c) => c.tag === 'NAME')
+            ?.payload?.replace(/\//g, '')
+            .trim() || 'Unknown';
+        const span = lifespan(analysis, xref);
+        individuals.push({
+          label: name,
+          description: `${xref}${span ? ` (${span})` : ''}`,
+          xref,
+        });
+      }
+
+      if (individuals.length < 2) {
+        void window.showInformationMessage(
+          'At least two individual records are required to calculate relationships.',
+        );
+        return;
+      }
+
+      const currentXref = recordAt(analysis, editor.selection.active.line);
+      const isIndi = currentXref && analysis.xrefs.definitions.get(currentXref)?.tag === 'INDI';
+      let personA = isIndi ? individuals.find((i) => i.xref === currentXref) : undefined;
+
+      if (!personA) {
+        const pickedA = await window.showQuickPick(individuals, {
+          placeHolder: 'Select the first individual (Person A)',
+          matchOnDescription: true,
+        });
+        if (!pickedA) return;
+        personA = pickedA;
+      }
+
+      const remaining = individuals.filter((i) => i.xref !== personA!.xref);
+      const pickedB = await window.showQuickPick(remaining, {
+        placeHolder: `Select the second individual to compare with ${personA.label}`,
+        matchOnDescription: true,
+      });
+      if (!pickedB) return;
+
+      const kinship = calculateKinship(analysis, personA.xref, pickedB.xref);
+      if (!kinship) {
+        void window.showInformationMessage(
+          `No genealogical relationship found between ${personA.label} and ${pickedB.label}.`,
+        );
+        return;
+      }
+
+      const showBtn = 'Show Path in Tree';
+      const commonStr =
+        kinship.commonAncestors.length > 0
+          ? ` (Common Ancestor: ${kinship.commonAncestors
+              .map(
+                (x) =>
+                  analysis.xrefs.definitions
+                    .get(x)
+                    ?.children.find((c) => c.tag === 'NAME')
+                    ?.payload?.replace(/\//g, '')
+                    .trim() || x,
+              )
+              .join(' & ')})`
+          : '';
+
+      const response = await window.showInformationMessage(
+        `${pickedB.label} is the ${kinship.relationship} of ${personA.label}.${commonStr}`,
+        showBtn,
+      );
+
+      if (response === showBtn) {
+        await commands.executeCommand('gedcom.showGraph');
+        await commands.executeCommand('gedcom.highlightPath', kinship.path);
       }
     }),
   );

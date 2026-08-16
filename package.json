@@ -287,6 +287,11 @@
         "command": "gedcom.upgradeToGedcom7",
         "title": "Upgrade File to GEDCOM 7.0",
         "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.findRelationship",
+        "title": "Find Relationship Between Individuals",
+        "category": "GEDCOM"
       }
     ],
     "menus": {
@@ -297,9 +302,20 @@
           "group": "navigation"
         }
       ],
+      "editor/context": [
+        {
+          "command": "gedcom.findRelationship",
+          "when": "editorLangId == gedcom",
+          "group": "gedcom@1"
+        }
+      ],
       "commandPalette": [
         {
           "command": "gedcom.showGraph",
+          "when": "editorLangId == gedcom"
+        },
+        {
+          "command": "gedcom.findRelationship",
           "when": "editorLangId == gedcom"
         },
         {
