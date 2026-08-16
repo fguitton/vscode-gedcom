@@ -352,15 +352,27 @@ function shell(): string {
       content="${contentSecurityPolicy({ nonce: id })}">
 <style nonce="${id}">
   :root { color-scheme: light dark; }
-  body {
+  html, body {
     margin: 0;
     padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
     color: var(--vscode-foreground);
     background: var(--vscode-sideBar-background, var(--vscode-editor-background));
   }
+  #empty {
+    padding: 1rem;
+    color: var(--vscode-descriptionForeground);
+    font-size: calc(var(--vscode-font-size) * .95);
+    line-height: 1.4;
+  }
   #controls {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: .35rem;
@@ -412,7 +424,13 @@ function shell(): string {
   #controls button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
   #controls button:active { background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground)); }
   /* The controls take a fixed strip; the drawing gets the rest. */
-  #scroll { overflow: auto; width: 100%; height: calc(100vh - 2rem); }
+  #scroll {
+    flex: 1;
+    overflow: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
   .edge { stroke: var(--vscode-editorIndentGuide-activeBackground, currentColor); stroke-width: 1; opacity: .5; }
   .edge-label text {
     fill: var(--vscode-descriptionForeground);
@@ -589,9 +607,9 @@ function shell(): string {
     scroll.style.display = 'block';
 
     const width = 800;
-    const height = 540;
+    const height = 560;
     const cx = 400;
-    const cy = 460;
+    const cy = 360;
 
     svg.setAttribute('width', width);
     svg.setAttribute('height', height);
@@ -1051,7 +1069,7 @@ function shell(): string {
 
   document.getElementById('btn-fit')?.addEventListener('click', () => {
     if (currentFanChart) {
-      svg.setAttribute('viewBox', '0 0 800 540');
+      svg.setAttribute('viewBox', '0 0 800 560');
       svg.style.width = '100%';
       svg.style.height = '100%';
       return;
@@ -1074,8 +1092,8 @@ function shell(): string {
       svg.style.width = '';
       svg.style.height = '';
       svg.setAttribute('width', '800');
-      svg.setAttribute('height', '540');
-      svg.setAttribute('viewBox', '0 0 800 540');
+      svg.setAttribute('height', '560');
+      svg.setAttribute('viewBox', '0 0 800 560');
       return;
     }
     if (!currentGraph) return;
@@ -1108,7 +1126,7 @@ function shell(): string {
 
     const isFan = !!currentFanChart;
     const exportWidth = isFan ? 800 : currentGraph.width;
-    const exportHeight = isFan ? 540 : currentGraph.height;
+    const exportHeight = isFan ? 560 : currentGraph.height;
 
     const clone = svg.cloneNode(true);
     clone.setAttribute('xmlns', NS);
@@ -1142,7 +1160,7 @@ function shell(): string {
       '.fan-label { fill: ' + fgColor + '; font-size: 10px; font-family: ' + font + '; font-weight: 500; text-anchor: middle; dominant-baseline: central; }',
       '.fan-label.root { fill: ' + focusFg + '; font-weight: bold; font-size: 11px; }',
       '.fan-detail { fill: ' + descColor + '; font-size: 8px; font-family: ' + font + '; text-anchor: middle; dominant-baseline: central; }',
-    ].join('\n');
+    ].join(' ');
 
     const styleEl = document.createElementNS(NS, 'style');
     styleEl.textContent = css;
@@ -1157,28 +1175,32 @@ function shell(): string {
     defs.after(bgRect);
 
     const serializer = new XMLSerializer();
-    const svgString = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializer.serializeToString(clone);
+    const svgString = '<?xml version="1.0" encoding="UTF-8"?> ' + serializer.serializeToString(clone);
 
     // Context-aware default filename based on selected person/family
+    function sanitizeName(name) {
+      if (!name) return '';
+      let result = '';
+      for (let i = 0; i < name.length; i++) {
+        const ch = name[i];
+        if (ch !== '/' && ch !== '\\\\' && ch !== ':' && ch !== '*' && ch !== '?' && ch !== '"' && ch !== '<' && ch !== '>' && ch !== '|') {
+          result += ch;
+        }
+      }
+      return result.trim().split(' ').filter(Boolean).join('-').toLowerCase();
+    }
+
     let filename = 'tree-export.svg';
     if (isFan) {
       const rootNode = currentFanChart.nodes.find((n) => n.ahnentafel === 1);
       const label = rootNode ? rootNode.label : currentFanChart.rootXref || 'fan';
-      const sanitized = label
-        .replace(/[/\\:*?"<>|]/g, '')
-        .trim()
-        .replace(/s+/g, '-')
-        .toLowerCase();
+      const sanitized = sanitizeName(label);
       const xrefPrefix = currentFanChart.rootXref ? currentFanChart.rootXref + '-' : '';
       filename = 'fan-chart-' + xrefPrefix + (sanitized || 'export') + '.svg';
     } else if (currentGraph) {
       const focusNode = currentGraph.nodes.find((n) => n.xref === currentGraph.focus);
       const label = focusNode ? focusNode.label || focusNode.xref : currentGraph.focus || 'tree';
-      const sanitized = label
-        .replace(/[/\\:*?"<>|]/g, '')
-        .trim()
-        .replace(/s+/g, '-')
-        .toLowerCase();
+      const sanitized = sanitizeName(label);
       const xrefPrefix = currentGraph.focus ? currentGraph.focus + '-' : '';
       filename = 'tree-' + xrefPrefix + (sanitized || 'export') + '.svg';
     }

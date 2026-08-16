@@ -149,14 +149,31 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
 
     this.uri = document.uri;
 
+    const activeEditor = window.activeTextEditor;
+    const isDocumentActive = activeEditor?.document.uri.toString() === document.uri.toString();
+    const fileName = document.uri.path.split('/').pop() || 'This file';
+
     const analysis = analysisOf(document);
     // Nothing selected describes the file, which is a question worth answering
     // and the only place the header's own content belongs.
-    const details: Details =
+    let details: Details =
       (xref === null ? undefined : recordDetails(analysis, xref)) ?? documentDetails(analysis);
 
+    if (details.title === 'This file' && !isDocumentActive) {
+      details = {
+        ...details,
+        title: fileName,
+      };
+    }
+
     this.lastShown = details.title;
-    void this.view.webview.postMessage({ type: 'details', details, format: this.format });
+    void this.view.webview.postMessage({
+      type: 'details',
+      details,
+      format: this.format,
+      showFileLink: !isDocumentActive,
+      fileName,
+    });
   }
 
   /**
@@ -225,6 +242,38 @@ function shell(previews: boolean): string {
     background: var(--panel-background);
     /* Above anything that scrolls up to meet it, whatever order it appears in. */
     z-index: 1;
+  }
+  .header-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+  .header-link-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 2px 4px;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .header-link-btn:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+    color: var(--vscode-foreground);
+  }
+  .header-link-btn:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+  }
+  .header-link-btn svg {
+    display: block;
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
   }
   h1 { font-size: calc(var(--vscode-font-size) * 1.1); margin: 0; font-weight: 600; }
   .subtitle { color: var(--vscode-descriptionForeground); font-size: calc(var(--vscode-font-size) * .9); }
@@ -426,7 +475,15 @@ function shell(previews: boolean): string {
 <body>
 <div id="empty">Open a GEDCOM file.</div>
 <div id="content" hidden>
-  <header><h1 id="title"></h1><div class="subtitle" id="subtitle"></div></header>
+  <header>
+    <div class="header-main">
+      <h1 id="title"></h1>
+      <button type="button" id="btn-switch-file" class="header-link-btn" title="Switch to this file in the editor" aria-label="Switch to this file in the editor" hidden>
+        <svg viewBox="0 0 16 16"><path d="M1.5 1h10l3 3v10.5a.5.5 0 0 1-.5.5h-12.5a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5zm9.5.5v3h3l-3-3zM2 2v12h12V5h-3.5a.5.5 0 0 1-.5-.5V2H2z"/><path d="M8.5 7.5a.5.5 0 0 0-1 0v3.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2a.5.5 0 0 0-.708-.708L8.5 11.293V7.5z"/></svg>
+      </button>
+    </div>
+    <div class="subtitle" id="subtitle"></div>
+  </header>
   <div id="sections"></div>
 </div>
 <script nonce="${id}">
@@ -644,12 +701,25 @@ function shell(previews: boolean): string {
     return bar;
   }
 
-  function render(details) {
+  const btnSwitchFile = document.getElementById('btn-switch-file');
+  btnSwitchFile?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'reveal', line: 0 });
+  });
+
+  function render(message) {
+    const details = message.details;
     empty.hidden = true;
     content.hidden = false;
 
     document.getElementById('title').textContent = details.title;
     document.getElementById('subtitle').textContent = details.subtitle || '';
+
+    if (btnSwitchFile) {
+      btnSwitchFile.hidden = !message.showFileLink;
+      if (message.fileName) {
+        btnSwitchFile.title = 'Switch to ' + message.fileName + ' in editor';
+      }
+    }
 
     sections.replaceChildren();
 
@@ -820,7 +890,7 @@ function shell(previews: boolean): string {
       // The extension owns the choice, so a rebuilt panel is handed it back
       // rather than starting again from the setting.
       format = message.format === 'html' ? 'html' : 'text';
-      render(message.details);
+      render(message);
     } else if (message.type === 'empty') {
       content.hidden = true;
       empty.hidden = false;
