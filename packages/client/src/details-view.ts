@@ -163,10 +163,12 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     const analysis = analysisOf(document);
     // Nothing selected describes the file, which is a question worth answering
     // and the only place the header's own content belongs.
+    const locale = env?.language;
     let details: Details =
-      (xref === null ? undefined : recordDetails(analysis, xref)) ?? documentDetails(analysis);
+      (xref === null ? undefined : recordDetails(analysis, xref, { locale })) ??
+      documentDetails(analysis, { locale });
 
-    if (details.title === 'This file' && !isDocumentActive) {
+    if ((details.title === 'This file' || details.title === 'Ce fichier') && !isDocumentActive) {
       details = {
         ...details,
         title: fileName,

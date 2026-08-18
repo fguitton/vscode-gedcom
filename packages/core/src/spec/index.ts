@@ -161,6 +161,8 @@ const RECORD_NOUNS: Record<string, readonly [string, string]> = {
   SUBN: ['submission', 'submissions'],
 };
 
+import { translateRecordNoun, translateTag } from '../i18n/index.ts';
+
 /**
  * The plain English word for a kind of record, in the right number.
  *
@@ -169,28 +171,37 @@ const RECORD_NOUNS: Record<string, readonly [string, string]> = {
  * is a poor word but an honest one; an invented plural of an unknown noun is
  * neither.
  */
-export function recordNoun(tag: string, count: number, label?: string): string {
-  const known = RECORD_NOUNS[tag];
-  if (known) return count === 1 ? known[0] : known[1];
+export function recordNoun(tag: string, count: number, label?: string, locale?: string): string {
+  const english = (() => {
+    const known = RECORD_NOUNS[tag];
+    if (known) return count === 1 ? known[0] : known[1];
 
-  if (label && label !== tag) {
-    const lower = label.toLowerCase();
-    return count === 1 ? lower : `${lower}s`;
-  }
+    if (label && label !== tag) {
+      const lower = label.toLowerCase();
+      return count === 1 ? lower : `${lower}s`;
+    }
 
-  return tag;
+    return tag;
+  })();
+
+  return translateRecordNoun(tag, count, english, locale);
 }
 
 /**
- * The English name of a tag, in the plainest form available.
+ * The human-readable name of a tag, in the plainest form available.
  *
  * Tries the resolved slug first, since that is context-qualified and therefore
  * the most precise; then the tag read as a slug, which covers most structures;
  * then the two tables. Falls back to the tag itself, which is never wrong, only
  * unhelpful.
  */
-export function tagLabel(model: SpecModel, tag: string, slug?: string | null): string {
-  return (
+export function tagLabel(
+  model: SpecModel,
+  tag: string,
+  slug?: string | null,
+  locale?: string,
+): string {
+  const english =
     (slug ? labelOf(model, slug) : undefined) ??
     labelOf(model, tag) ??
     // Records are slugged `record-INDI`, never bare, so a caller that has only
@@ -199,8 +210,9 @@ export function tagLabel(model: SpecModel, tag: string, slug?: string | null): s
     labelOf(model, `record-${tag}`) ??
     UNLABELLED[tag] ??
     VENDOR_TAGS[tag] ??
-    tag
-  );
+    tag;
+
+  return translateTag(tag, english, locale);
 }
 
 /** Tags allowed directly inside a structure, for completion. */

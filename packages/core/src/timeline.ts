@@ -93,10 +93,20 @@ function pointers(record: Structure, tag: string): string[] {
   return found;
 }
 
+import {
+  formatTimelineAge,
+  formatTimelineChildBirth,
+  formatTimelineMarriage,
+} from './i18n/index.ts';
+
 /**
  * Extracts and synthesizes a chronological life timeline for an individual.
  */
-export function individualTimeline(analysis: Analysis, xref: string): TimelineEvent[] {
+export function individualTimeline(
+  analysis: Analysis,
+  xref: string,
+  options: { locale?: string } = {},
+): TimelineEvent[] {
   const id = norm(xref);
   const record = analysis.xrefs.definitions.get(id);
   if (!record || record.tag !== 'INDI') return [];
@@ -122,13 +132,13 @@ export function individualTimeline(analysis: Analysis, xref: string): TimelineEv
     if (birthYear !== undefined && year !== undefined) {
       const diff = year - birthYear;
       if (diff >= 0) {
-        age = `Age ${diff}`;
+        age = formatTimelineAge(diff, options.locale);
       }
     } else if (structure.tag === 'BIRT') {
-      age = 'Age 0';
+      age = formatTimelineAge(0, options.locale);
     }
 
-    const label = tagLabel(model, structure.tag) || structure.tag;
+    const label = tagLabel(model, structure.tag, null, options.locale) || structure.tag;
     const detail = structure.payload?.trim() || undefined;
 
     events.push({
@@ -136,7 +146,7 @@ export function individualTimeline(analysis: Analysis, xref: string): TimelineEv
       label,
       detail,
       year: year ?? undefined,
-      date: dateStr ? readableDate(dateStr) : undefined,
+      date: dateStr ? readableDate(dateStr, options.locale) : undefined,
       age,
       place: placeStr ? placeStr.replace(/,/g, ', ') : undefined,
       line: structure.span.line,
@@ -161,14 +171,14 @@ export function individualTimeline(analysis: Analysis, xref: string): TimelineEv
 
       let age: string | undefined;
       if (birthYear !== undefined && year !== undefined && year >= birthYear) {
-        age = `Age ${year - birthYear}`;
+        age = formatTimelineAge(year - birthYear, options.locale);
       }
 
       events.push({
         tag: 'MARR',
-        label: `Marriage to ${partnerName}`,
+        label: formatTimelineMarriage(partnerName, options.locale),
         year: year ?? undefined,
-        date: dateStr ? readableDate(dateStr) : undefined,
+        date: dateStr ? readableDate(dateStr, options.locale) : undefined,
         age,
         place: placeStr ? placeStr.replace(/,/g, ', ') : undefined,
         line: marr.span.line,
@@ -188,14 +198,14 @@ export function individualTimeline(analysis: Analysis, xref: string): TimelineEv
 
       let age: string | undefined;
       if (birthYear !== undefined && year !== undefined && year >= birthYear) {
-        age = `Age ${year - birthYear}`;
+        age = formatTimelineAge(year - birthYear, options.locale);
       }
 
       events.push({
         tag: 'CHIL',
-        label: `Birth of child ${childName}`,
+        label: formatTimelineChildBirth(childName, options.locale),
         year: year ?? undefined,
-        date: dateStr ? readableDate(dateStr) : undefined,
+        date: dateStr ? readableDate(dateStr, options.locale) : undefined,
         age,
         place: placeStr ? placeStr.replace(/,/g, ', ') : undefined,
         line: childBirt?.span.line ?? childRecord.span.line,

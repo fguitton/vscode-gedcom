@@ -18,6 +18,7 @@ import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
 import { readableDate } from './date.ts';
 import { meaningOf, standalone } from './enums.ts';
+import { isFrenchLocale, translateEnum, translateSection } from './i18n/index.ts';
 import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
 import { parsePersonalName } from './name.ts';
 import { modelFor, recordNoun, tagLabel } from './spec/index.ts';
@@ -164,19 +165,19 @@ function resolve(analysis: Analysis, structure: Structure): string | undefined {
 }
 
 /**
- * An enumerated payload said in English, or nothing where it is not one.
+ * An enumerated payload said in human words, or nothing where it is not one.
  *
  * `F` is a code, and the panel exists to be read rather than decoded — a row
  * saying "Sex: F" has passed the file's shorthand straight through. The code
  * itself is still one click away on the line it came from.
  */
-function coded(analysis: Analysis, structure: Structure): string | undefined {
+function coded(analysis: Analysis, structure: Structure, locale?: string): string | undefined {
   const payload = structure.payload?.trim();
   if (!payload) return undefined;
 
   const slug = analysis.validation.resolutions.get(structure)?.slug;
   const meaning = meaningOf(slug, structure.tag, payload, structure.parent?.tag);
-  return meaning ? standalone(meaning.label) : undefined;
+  return meaning ? standalone(meaning.label, locale) : undefined;
 }
 
 /**
@@ -186,15 +187,15 @@ function coded(analysis: Analysis, structure: Structure): string | undefined {
  * `1 OCCU Blacksmith / 2 PLAC Sheffield` has to be read as a whole to say
  * anything; the payload alone is half the fact.
  */
-function valueOf(analysis: Analysis, structure: Structure): string {
+function valueOf(analysis: Analysis, structure: Structure, locale?: string): string {
   const parts: string[] = [];
 
   const pointed = resolve(analysis, structure);
   if (pointed) parts.push(pointed);
   else if (structure.payload) {
     // A DATE shown as a field of its own reads like any other date in the panel.
-    const raw = coded(analysis, structure) ?? structure.payload;
-    parts.push(firstLine(structure.tag === 'DATE' ? readableDate(raw) : raw));
+    const raw = coded(analysis, structure, locale) ?? structure.payload;
+    parts.push(firstLine(structure.tag === 'DATE' ? readableDate(raw, locale) : raw));
   }
 
   // The time of day hangs under the date rather than beside it — `2 DATE` then
@@ -213,14 +214,18 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   if (asserted) {
     parts.length = 0;
     if (date === undefined && place === undefined && age === undefined) {
-      parts.push('recorded, without a date');
+      parts.push(
+        locale?.toLowerCase().startsWith('fr')
+          ? 'enregistré, sans date'
+          : 'recorded, without a date',
+      );
     }
   }
 
   // Written out for reading: the panel is prose, and the editor a click away
   // still shows exactly what the file holds.
   if (date) {
-    const written = readableDate(date.trim());
+    const written = readableDate(date.trim(), locale);
     parts.push(time ? `${written} at ${time.trim()}` : written);
   }
   if (place) parts.push(firstLine(place, 80));
@@ -233,10 +238,6 @@ function valueOf(analysis: Analysis, structure: Structure): string {
   }
   if (age) parts.push(`aged ${age.trim()}`);
 
-  // Nothing at all, which is a fact about the line rather than a failure to read
-  // it: `1 _MAYBE` with nothing beneath it is a tag somebody wrote and gave no
-  // value to. The panel says so in its own words; inventing one here — "recorded"
-  // — read as though the file had said something.
   return parts.join(' · ');
 }
 
@@ -280,13 +281,14 @@ function personalName(
   structure: Structure,
   fallbackLabel: string,
   line: number,
+  locale?: string,
 ): DetailField[] {
   const parsed = parsePersonalName(structure.payload ?? '');
 
   const type = child(structure, 'TYPE')?.payload?.trim();
   const meaning = type ? meaningOf(null, 'TYPE', type, 'NAME') : undefined;
   const label = meaning
-    ? standalone(meaning.label)
+    ? standalone(meaning.label, locale)
     : type
       ? `${fallbackLabel} (${type})`
       : fallbackLabel;
@@ -309,10 +311,11 @@ function personalName(
   // reading is not what the writer meant, seeing it is how a reader finds out.
   const suffix = child(structure, 'NSFX')?.payload?.trim() ?? parsed.suffix;
 
-  if (prefix) fields.push({ label: 'Title', value: prefix, line });
-  if (given) fields.push({ label: 'Given name', value: given, line });
-  fields.push({ label: 'Surname', value: surname, line });
-  if (suffix) fields.push({ label: 'Suffix', value: suffix, line });
+  const fr = isFrenchLocale(locale);
+  if (prefix) fields.push({ label: fr ? 'Titre' : 'Title', value: prefix, line });
+  if (given) fields.push({ label: fr ? 'Prénom' : 'Given name', value: given, line });
+  fields.push({ label: fr ? 'Nom de famille' : 'Surname', value: surname, line });
+  if (suffix) fields.push({ label: fr ? 'Suffixe' : 'Suffix', value: suffix, line });
 
   return fields;
 }
@@ -357,20 +360,10 @@ export function escapeDepth(text: string): number {
   /** How many recognisable tags a string holds. */
   const tags = (value: string): number => (value.match(MARKUP_ALL) ?? []).length;
 
-  // Decided by which reading yields the most markup, rather than by whether any
-  // markup is present. One MyHeritage citation carries `<a href=…>` written
-  // plainly while another is escaped twice over, and a payload could carry both:
-  // stopping at the first sign of literal markup would leave the escaped half
-  // showing as tag soup, and decoding regardless would mangle the plain half.
-  //
-  // Ties go to the shallower reading, so text that is already markup is left
-  // exactly as the author wrote it.
   let best = 0;
   let found = tags(text);
   let current = text;
 
-  // Four is far past anything seen in the wild, and stops a pathological payload
-  // — `&amp;amp;amp;…` — from spinning here.
   for (let depth = 1; depth <= 4; depth += 1) {
     const decoded = decodeEntitiesOnce(current);
     if (decoded === current) break;
@@ -420,13 +413,17 @@ function section(title: string, fields: DetailField[]): DetailSection[] {
 /**
  * Everything a record carries, minus what the graph is already showing.
  */
-export function recordDetails(analysis: Analysis, xref: string): Details | undefined {
+export function recordDetails(
+  analysis: Analysis,
+  xref: string,
+  options: { locale?: string } = {},
+): Details | undefined {
   const record = analysis.xrefs.definitions.get(xref);
   if (!record) return undefined;
 
   const model = modelFor(analysis.version);
   const slug = analysis.validation.resolutions.get(record)?.slug;
-  const kind = tagLabel(model, record.tag, slug);
+  const kind = tagLabel(model, record.tag, slug, options.locale);
 
   const facts: DetailField[] = [];
   const notes: DetailField[] = [];
@@ -438,11 +435,16 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
     const tag = structure.tag;
     if (DRAWN_BY_THE_GRAPH.has(tag)) continue;
 
-    const label = tagLabel(model, tag, analysis.validation.resolutions.get(structure)?.slug);
+    const label = tagLabel(
+      model,
+      tag,
+      analysis.validation.resolutions.get(structure)?.slug,
+      options.locale,
+    );
     const line = structure.span.line;
 
     if (tag === 'NAME' && structure.payload) {
-      facts.push(...personalName(analysis, structure, label, line));
+      facts.push(...personalName(analysis, structure, label, line, options.locale));
       continue;
     }
 
@@ -465,27 +467,28 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
       const page = child(structure, 'PAGE')?.payload?.trim();
       const cited = resolve(analysis, structure) ?? structure.payload ?? '';
 
-      // How much the citation is worth, which is the whole point of citing it.
-      // `2 QUAY 3` is a number nobody remembers the meaning of.
       const quay = child(structure, 'QUAY')?.payload?.trim();
       const quality = quay ? meaningOf(null, 'QUAY', quay) : undefined;
-
-      // What the event was, where the exporter says. MyHeritage writes
-      // `2 EVEN Smart Matching` with a `ROLE` beneath it.
       const even = child(structure, 'EVEN')?.payload?.trim();
+      const fr = isFrenchLocale(options.locale);
+
+      const qualityLabel = quality
+        ? fr
+          ? (translateEnum(quality.label, options.locale) ?? quality.label)
+          : quality.label
+        : quay;
 
       sources.push({
         label,
         value: [
           firstLine(cited, 80),
-          // A URL is never shortened: the panel turns it into a link, and a link
-          // with an ellipsis in the middle of it goes nowhere.
           page === undefined ? undefined : webUrl(page) ? page : firstLine(page, 80),
           even,
-          // Shown even when the code is not one the specification defines:
-          // MyHeritage writes `QUAY 4`, which means nothing, and hiding it would
-          // hide the fact that the file claims a confidence nobody can read.
-          quay === undefined ? undefined : `quality: ${quality?.label ?? quay}`,
+          quay === undefined
+            ? undefined
+            : fr
+              ? `qualité : ${qualityLabel}`
+              : `quality: ${qualityLabel}`,
         ]
           .filter(Boolean)
           .join(' · '),
@@ -493,14 +496,11 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
         line,
       });
 
-      // The transcription the exporter attached, which is often the only part of
-      // a citation with anything in it — MyHeritage puts a whole record summary
-      // here, in HTML, escaped twice over.
       const text = child(child(structure, 'DATA') ?? structure, 'TEXT')?.payload;
       if (text) {
         const whole = wholeText(text);
         sources.push({
-          label: `${label} text`,
+          label: fr ? `Texte de la ${label.toLowerCase()}` : `${label} text`,
           value: whole,
           block: isBlock(whole) || whole.length > 200,
           ...(MARKUP.test(whole) || escapeDepth(whole) > 0 ? { html: true } : {}),
@@ -512,18 +512,10 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
     }
 
     if (tag === 'OBJE') {
-      // Written inline, a media object is a FILE with a FORM and often a TITL
-      // beside it. The tag label alone ("Media object") says nothing a reader
-      // cannot see, so the object's own title takes its place where there is
-      // one, and the format follows the path — a reader scanning a list of
-      // files wants to know which is the photograph.
       const file = child(structure, 'FILE')?.payload;
       const form = child(structure, 'FORM')?.payload;
       const titl = child(structure, 'TITL')?.payload;
       const kind = form ? describeMediaType(form) : undefined;
-      // Never shortened when it is a URL. MyHeritage's media links run to 200
-      // characters of base64, and an ellipsis in the middle of one produces a
-      // link that looks right and resolves nowhere.
       const raw = file?.trim();
       const path =
         raw === undefined
@@ -531,8 +523,6 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
           : webUrl(raw)
             ? raw
             : firstLine(raw);
-      // The FORM is the authority where the file writes one; where it does not,
-      // the extension is the only evidence of what the thing is.
       const type = (form ? resolveMediaType(form) : undefined) ?? mediaTypeOfPath(path);
       media.push({
         label: titl ? firstLine(titl, 60) : label,
@@ -555,15 +545,12 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
       continue;
     }
 
-    // A payload written across CONT lines is text, whatever tag carries it —
-    // an address, a comment, a transcription. It gets the same treatment a note
-    // does rather than being cut down to its opening clause.
     if (structure.payload && isBlock(structure.payload)) {
       facts.push({ label, value: wholeText(structure.payload), block: true, line });
       continue;
     }
 
-    const value = valueOf(analysis, structure);
+    const value = valueOf(analysis, structure, options.locale);
     facts.push({ label, value, ...(value.length === 0 ? { empty: true } : {}), line });
   }
 
@@ -573,13 +560,13 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
     xref,
     line: record.span.line,
     sections: [
-      ...section('Facts', facts),
-      ...section('Notes', notes),
-      ...section('Sources', sources),
-      ...section('Media', media),
-      ...section('Identifiers', identifiers),
+      ...section(translateSection('Facts', options.locale), facts),
+      ...section(translateSection('Notes', options.locale), notes),
+      ...section(translateSection('Sources', options.locale), sources),
+      ...section(translateSection('Media', options.locale), media),
+      ...section(translateSection('Identifiers', options.locale), identifiers),
     ],
-    ...(record.tag === 'INDI' ? { timeline: individualTimeline(analysis, xref) } : {}),
+    ...(record.tag === 'INDI' ? { timeline: individualTimeline(analysis, xref, options) } : {}),
   };
 }
 
@@ -591,9 +578,10 @@ export function recordDetails(analysis: Analysis, xref: string): Details | undef
  * became a node with no generation and no relationships, hanging off the side of
  * a tree it has nothing to do with.
  */
-export function documentDetails(analysis: Analysis): Details {
+export function documentDetails(analysis: Analysis, options: { locale?: string } = {}): Details {
   const model = modelFor(analysis.version);
   const head = analysis.document.records.find((record) => record.tag === 'HEAD');
+  const fr = isFrenchLocale(options.locale);
 
   const file: DetailField[] = [];
   const submitter: DetailField[] = [];
@@ -607,13 +595,17 @@ export function documentDetails(analysis: Analysis): Details {
       const corporation = child(source, 'CORP')?.payload;
       if (program) {
         file.push({
-          label: 'Written by',
+          label: fr ? 'Écrit par' : 'Written by',
           value: [firstLine(program), version?.trim()].filter(Boolean).join(' '),
           line: source.span.line,
         });
       }
       if (corporation) {
-        file.push({ label: 'Publisher', value: firstLine(corporation), line: source.span.line });
+        file.push({
+          label: fr ? 'Éditeur' : 'Publisher',
+          value: firstLine(corporation),
+          line: source.span.line,
+        });
       }
     }
 
@@ -621,22 +613,24 @@ export function documentDetails(analysis: Analysis): Details {
       const structure = child(head, tag);
       if (!structure?.payload) continue;
       file.push({
-        label: tagLabel(model, tag, analysis.validation.resolutions.get(structure)?.slug),
+        label: tagLabel(
+          model,
+          tag,
+          analysis.validation.resolutions.get(structure)?.slug,
+          options.locale,
+        ),
         value: firstLine(structure.payload),
         line: structure.span.line,
       });
     }
 
     const version = child(head, 'GEDC') && child(child(head, 'GEDC')!, 'VERS')?.payload;
-    if (version) file.push({ label: 'GEDCOM version', value: version.trim() });
+    if (version)
+      file.push({ label: fr ? 'Version GEDCOM' : 'GEDCOM version', value: version.trim() });
 
     const form = child(head, 'PLAC') && child(child(head, 'PLAC')!, 'FORM')?.payload;
-    if (form) file.push({ label: 'Place form', value: firstLine(form) });
+    if (form) file.push({ label: fr ? 'Format des lieux' : 'Place form', value: firstLine(form) });
 
-    // The submitter is a record of its own, normally pointed at from the header.
-    // Normally: PAF-era files carry a `SUBM` record that nothing points at, and
-    // Linguist's own `Royal92.ged` is one of them — so an unreferenced submitter
-    // is found rather than lost.
     const pointer = child(head, 'SUBM');
     const target =
       (pointer ? analysis.xrefs.definitions.get(asPointer(pointer) ?? '') : undefined) ??
@@ -644,10 +638,8 @@ export function documentDetails(analysis: Analysis): Details {
 
     if (target) {
       const name = nameOf(target);
-      if (name) submitter.push({ label: 'Name', value: name, line: target.span.line });
+      if (name) submitter.push({ label: fr ? 'Nom' : 'Name', value: name, line: target.span.line });
 
-      // Everything else generically, so an address, a telephone number and a
-      // 1992 mailing-list posting under a custom tag all survive.
       for (const structure of target.children) {
         if (structure.tag === 'NAME') continue;
 
@@ -655,7 +647,7 @@ export function documentDetails(analysis: Analysis): Details {
           const text = noteText(analysis, structure);
           if (text) {
             notes.push({
-              label: 'Submitter note',
+              label: fr ? 'Note de l’auteur' : 'Submitter note',
               value: text,
               block: isBlock(text),
               line: structure.span.line,
@@ -670,9 +662,8 @@ export function documentDetails(analysis: Analysis): Details {
             model,
             structure.tag,
             analysis.validation.resolutions.get(structure)?.slug,
+            options.locale,
           ),
-          // Kept whole: an address and a mailing-list posting are both written
-          // across `CONT` lines, and the first of them is never enough.
           value: wholeText(structure.payload),
           block: isBlock(structure.payload),
           line: structure.span.line,
@@ -685,7 +676,7 @@ export function documentDetails(analysis: Analysis): Details {
       const text = noteText(analysis, structure);
       if (text) {
         notes.push({
-          label: 'File note',
+          label: fr ? 'Note du fichier' : 'File note',
           value: text,
           block: isBlock(text),
           line: structure.span.line,
@@ -699,23 +690,33 @@ export function documentDetails(analysis: Analysis): Details {
     .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
     .sort((a, b) => b[1] - a[1])
     .map(([tag, count]) => ({
-      // A count wants the plural: "Individuals — 3,010", not "Individual — 3,010".
-      label: standalone(recordNoun(tag, count, tagLabel(model, tag))),
-      value: count.toLocaleString('en'),
+      label: standalone(
+        recordNoun(tag, count, tagLabel(model, tag, null, options.locale), options.locale),
+        options.locale,
+      ),
+      value: count.toLocaleString(options.locale || 'en'),
     }));
 
   if (stats.earliest !== undefined && stats.latest !== undefined) {
-    contents.push({ label: 'Dates from', value: `${stats.earliest} to ${stats.latest}` });
+    contents.push({
+      label: fr ? 'Dates de' : 'Dates from',
+      value: fr ? `de ${stats.earliest} à ${stats.latest}` : `${stats.earliest} to ${stats.latest}`,
+    });
   }
 
   return {
-    title: 'This file',
-    subtitle: analysis.version === null ? 'GEDCOM, version unknown' : `GEDCOM ${analysis.version}`,
+    title: fr ? 'Ce fichier' : 'This file',
+    subtitle:
+      analysis.version === null
+        ? fr
+          ? 'GEDCOM, version inconnue'
+          : 'GEDCOM, version unknown'
+        : `GEDCOM ${analysis.version}`,
     sections: [
-      ...section('Contents', contents),
-      ...section('File', file),
-      ...section('Submitter', submitter),
-      ...section('Notes', notes),
+      ...section(translateSection('Contents', options.locale), contents),
+      ...section(translateSection('File', options.locale), file),
+      ...section(translateSection('Submitter', options.locale), submitter),
+      ...section(translateSection('Notes', options.locale), notes),
     ],
   };
 }

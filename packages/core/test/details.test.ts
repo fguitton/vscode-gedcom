@@ -491,4 +491,17 @@ describe('an event asserted with Y and nothing else', () => {
     // `Y` is only special as the whole payload; a name beginning with it is not.
     expect(person('1 OCCU Yeoman')['Facts/Occupation']).toBe('Yeoman');
   });
+
+  it('translates details sections, labels, and enums when French locale is requested', () => {
+    const analysis = analyze(bytes(PERSON));
+    const frenchDetails = recordDetails(analysis, 'I1', { locale: 'fr' })!;
+    const frenchFields = fields(frenchDetails);
+
+    expect(frenchDetails.subtitle).toBe('Individu');
+    expect(frenchFields['Faits/Nom']).toBe('John Smith');
+    expect(frenchFields['Faits/Sexe']).toBe('Masculin');
+    expect(frenchFields['Faits/Naissance']).toContain('12 août 1901');
+    expect(frenchFields['Faits/Profession']).toContain('Blacksmith');
+    expect(frenchFields['Notes/Note']).toBe('Identified from a photograph.');
+  });
 });

@@ -112,4 +112,22 @@ describe('individualTimeline', () => {
     const children = timeline.filter((e) => e.tag === 'CHIL');
     expect(children.length).toBeGreaterThan(0);
   });
+
+  it('formats French timeline labels and relative ages', () => {
+    const timeline = individualTimeline(analysis, 'I1', { locale: 'fr' });
+    expect(timeline[0]?.age).toBe('Âge 0');
+    expect(timeline[0]?.label).toBe('Naissance');
+    expect(timeline[0]?.date).toBe('10 janvier 1900');
+
+    const marr = timeline.find((e) => e.tag === 'MARR');
+    expect(marr?.label).toBe('Mariage avec Mary Jones');
+    expect(marr?.age).toBe('Âge 24');
+
+    const child = timeline.find((e) => e.tag === 'CHIL');
+    expect(child?.label).toBe("Naissance de l'enfant Alice Smith");
+
+    const deat = timeline.find((e) => e.tag === 'DEAT');
+    expect(deat?.label).toBe('Décès');
+    expect(deat?.date).toBe('15 mai 1975');
+  });
 });

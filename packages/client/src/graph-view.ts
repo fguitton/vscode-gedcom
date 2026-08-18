@@ -19,6 +19,7 @@ import {
 } from '@vscode-gedcom/core';
 import {
   commands,
+  env,
   Range,
   Selection,
   TextEditorRevealType,
@@ -273,6 +274,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
       includeReferences: configuration.get<boolean>('graph.includeReferences', false),
       direction: this.direction,
       path: this.activePath,
+      locale: env?.language,
     });
 
     this.lastDrawn = { focus: graph.focus, nodes: graph.nodes.length };

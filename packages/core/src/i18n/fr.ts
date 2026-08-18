@@ -1,0 +1,228 @@
+/**
+ * French translations for core GEDCOM concepts, tags, labels, and formats.
+ */
+
+export const FR_TAG_LABELS: Record<string, string> = {
+  // Level 0 record types
+  INDI: 'Individu',
+  FAM: 'Famille',
+  OBJE: 'Objet multimédia',
+  NOTE: 'Note',
+  SNOTE: 'Note partagée',
+  SOUR: 'Source',
+  REPO: 'Dépôt d’archives',
+  SUBM: 'Auteur',
+  SUBN: 'Soumission',
+  HEAD: 'En-tête',
+  TRLR: 'Fin de fichier',
+
+  // Names and identification
+  NAME: 'Nom',
+  GIVN: 'Prénom',
+  SURN: 'Nom de famille',
+  NPFX: 'Préfixe',
+  NSFX: 'Suffixe',
+  SPFX: 'Préfixe de nom',
+  NICK: 'Surnom',
+  TITL: 'Titre',
+  SEX: 'Sexe',
+  UID: 'Identifiant unique',
+  _UID: 'Identifiant unique',
+  RFN: 'Numéro de référence',
+  AFN: 'Numéro de fichier ancestral',
+  REFN: 'Référence utilisateur',
+  RIN: 'Numéro d’enregistrement',
+  IDNO: 'Numéro d’identification',
+  ALIA: 'Alias',
+  _AKA: 'Aussi connu sous le nom de',
+  _AKAN: 'Aussi connu sous le nom de',
+  _MARNM: 'Nom marital',
+  _BIRN: 'Nom de naissance',
+  _ADPN: 'Nom d’adoption',
+
+  // Individual events
+  BIRT: 'Naissance',
+  CHR: 'Baptême',
+  BAPM: 'Baptême',
+  CONF: 'Confirmation',
+  FCOM: 'Première communion',
+  BARM: 'Bar Mitzvah',
+  BASM: 'Bat Mitzvah',
+  GRAD: 'Diplôme',
+  EDUC: 'Formation',
+  OCCU: 'Profession',
+  RESI: 'Résidence',
+  CENS: 'Recensement',
+  NATU: 'Naturalisation',
+  EMIG: 'Émigration',
+  IMMI: 'Immigration',
+  RETI: 'Retraite',
+  PROB: 'Homologation',
+  WILL: 'Testament',
+  DEAT: 'Décès',
+  BURI: 'Inhumation',
+  CREM: 'Crémation',
+  EVEN: 'Événement',
+  FACT: 'Fait',
+  CAST: 'Caste',
+  DSCR: 'Description physique',
+  NATI: 'Nationalité',
+  NCHI: 'Nombre d’enfants',
+  NMR: 'Nombre de mariages',
+  PROP: 'Biens',
+  RELI: 'Religion',
+  SSN: 'Numéro de sécurité sociale',
+  ORDN: 'Ordination',
+
+  // Family events & links
+  MARR: 'Mariage',
+  MARB: 'Bans de mariage',
+  MARC: 'Contrat de mariage',
+  MARL: 'Licence de mariage',
+  MARS: 'Règlement de mariage',
+  DIV: 'Divorce',
+  DIVF: 'Demande de divorce',
+  ANUL: 'Annulation',
+  ENGA: 'Fiançailles',
+  SEPR: 'Séparation',
+  HUSB: 'Mari',
+  WIFE: 'Épouse',
+  CHIL: 'Enfant',
+  FAMC: 'Famille parentale',
+  FAMS: 'Famille conjugale',
+  ADOP: 'Adoption',
+  PEDI: 'Filiation',
+
+  // Sourcing & Media
+  PAGE: 'Page / Référence',
+  DATA: 'Données',
+  TEXT: 'Texte',
+  DATE: 'Date',
+  PLAC: 'Lieu',
+  TIME: 'Heure',
+  QUAY: 'Qualité des données',
+  CALN: 'Cote',
+  MEDI: 'Support',
+  FILE: 'Fichier',
+  FORM: 'Format',
+  AUTH: 'Auteur',
+  PUBL: 'Publication',
+  ABBR: 'Abréviation',
+  AGNC: 'Agence',
+  REPO_NAME: 'Nom du dépôt',
+
+  // Common metadata
+  ADDR: 'Adresse',
+  PHON: 'Téléphone',
+  EMAIL: 'E-mail',
+  _EMAIL: 'E-mail',
+  FAX: 'Fax',
+  WWW: 'Site web',
+  LANG: 'Langue',
+  CHAR: 'Jeu de caractères',
+  VERS: 'Version',
+  CORP: 'Organisation',
+  DEST: 'Destination',
+  COPR: 'Droits d’auteur',
+  COMM: 'Commentaire',
+  CHAN: 'Modification',
+};
+
+export const FR_RECORD_NOUNS: Record<string, readonly [string, string]> = {
+  INDI: ['individu', 'individus'],
+  FAM: ['famille', 'familles'],
+  SUBM: ['auteur', 'auteurs'],
+  SOUR: ['source', 'sources'],
+  REPO: ['dépôt d’archives', 'dépôts d’archives'],
+  OBJE: ['objet multimédia', 'objets multimédias'],
+  NOTE: ['note', 'notes'],
+  SNOTE: ['note partagée', 'notes partagées'],
+  SUBN: ['soumission', 'soumissions'],
+};
+
+export const FR_SECTION_TITLES: Record<string, string> = {
+  Facts: 'Faits',
+  Events: 'Événements',
+  Attributes: 'Attributs',
+  Notes: 'Notes',
+  Sources: 'Sources',
+  Multimedia: 'Médias',
+  Identifiers: 'Identifiants',
+  Summary: 'Résumé',
+  Header: 'En-tête',
+  Record: 'Fiche',
+};
+
+export const FR_ENUM_VALUES: Record<string, string> = {
+  // Sex
+  Male: 'Masculin',
+  Female: 'Féminin',
+  Unknown: 'Inconnu',
+  Other: 'Autre',
+  M: 'Masculin',
+  F: 'Féminin',
+  U: 'Inconnu',
+  X: 'Autre / Non binaire',
+
+  // Pedigree
+  birth: 'biologique',
+  adopted: 'adopté',
+  foster: 'accueil',
+  sealing: 'scellement',
+
+  // Restriction
+  confidential: 'confidentiel',
+  privacy: 'privé',
+  locked: 'verrouillé',
+
+  // Roles
+  CHIL: 'enfant',
+  HUSB: 'mari',
+  WIFE: 'épouse',
+  MOTH: 'mère',
+  FATH: 'père',
+  SPOU: 'conjoint',
+  WITN: 'témoin',
+  OFFI: 'officier d’état civil',
+  CLERGY: 'clergé',
+  OTHER: 'autre',
+
+  // Adopted by
+  BOTH: 'par les deux parents',
+};
+
+export const FR_MONTH_NAMES: Record<string, string> = {
+  JAN: 'janvier',
+  FEB: 'février',
+  MAR: 'mars',
+  APR: 'avril',
+  MAY: 'mai',
+  JUN: 'juin',
+  JUL: 'juillet',
+  AUG: 'août',
+  SEP: 'septembre',
+  OCT: 'octobre',
+  NOV: 'novembre',
+  DEC: 'décembre',
+};
+
+export const FR_KEYWORD_WORDS: Record<string, string> = {
+  ABT: 'vers',
+  EST: 'estimé',
+  CAL: 'calculé',
+  INT: 'interprété comme',
+  BEF: 'avant',
+  AFT: 'après',
+  BET: 'entre',
+  AND: 'et',
+  FROM: 'du',
+  TO: 'au',
+};
+
+export const FR_CALENDAR_NAMES: Record<string, string> = {
+  THAI: 'Thaï',
+  FRENCH_R: 'Révolutionnaire français',
+  HEBREW: 'Hébreu',
+  JULIAN: 'Julien',
+  GREGORIAN: 'Grégorien',
+};

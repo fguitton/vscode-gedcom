@@ -239,3 +239,5 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
 
   return { version, versionSource, text, document, xrefs, validation, diagnostics };
 }
+
+export * from './i18n/index.ts';

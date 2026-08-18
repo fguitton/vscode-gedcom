@@ -262,6 +262,16 @@ describe('against a real file', () => {
       expect(neighbourhood(royal, xref, { depth: 3 }).nodes.length).toBeLessThanOrEqual(60);
     }
   });
+
+  it('translates edge labels when French locale is requested', () => {
+    const frenchGraph = neighbourhood(analysis, 'I1', { depth: 2, locale: 'fr' });
+    const spouseEdge = frenchGraph.edges.find((e) => e.kind === 'spouse');
+    expect(spouseEdge?.label).toBe('Marié en 1925');
+
+    const parentEdge = frenchGraph.edges.find((e) => e.kind === 'parent');
+    expect(parentEdge?.label).toBe('Enfant');
+    expect(parentEdge?.reverseLabel).toBe('Parent');
+  });
 });
 
 describe('direction of travel', () => {

@@ -158,9 +158,6 @@ const EMPTY: Graph = {
   height: 0,
 };
 
-/** The tags that exist only to wire a family together, and are collapsed away. */
-const FAMILY_TAGS = new Set(['FAMC', 'FAMS', 'HUSB', 'WIFE', 'CHIL']);
-
 interface Link {
   readonly to: string;
   readonly kind: RelationKind;
@@ -240,6 +237,12 @@ function marriageYear(family: Structure): number | undefined {
     ?.children.find((c) => c.tag === 'DATE');
   return date?.payload ? yearOf(date.payload) : undefined;
 }
+import {
+  formatChildEdge,
+  formatParentEdge,
+  formatSiblingEdge,
+  formatSpouseEdge,
+} from './i18n/index.ts';
 
 /**
  * Relationships between people, with the family records joined out.
@@ -247,11 +250,13 @@ function marriageYear(family: Structure): number | undefined {
  * Both directions of every relationship are recorded, because the drawing decides
  * later which way round to run each edge and the label has to follow.
  */
-function relationships(analysis: Analysis): Map<string, Link[]> {
+function relationships(analysis: Analysis, locale?: string): Map<string, Link[]> {
   const links = new Map<string, Link[]>();
 
   const add = (from: string, link: Link): void => {
-    links.set(from, [...(links.get(from) ?? []), link]);
+    const list = links.get(from);
+    if (list) list.push(link);
+    else links.set(from, [link]);
   };
 
   /** Records a relationship from both ends, with the generation step inverted. */
@@ -263,9 +268,8 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     bToA: string,
     line: number,
     step: number,
-    union: string,
+    union?: string,
   ): void => {
-    if (a === b) return;
     add(a, { to: b, kind, label: aToB, reverseLabel: bToA, line, step, union });
     add(b, { to: a, kind, label: bToA, reverseLabel: aToB, line, step: -step, union });
   };
@@ -277,7 +281,10 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     const children = pointers(record, 'CHIL');
 
     const married = marriageYear(record);
-    const spouseLabel = married === undefined ? 'Spouse' : `Married ${married}`;
+    const spouseLabel = formatSpouseEdge(married, locale);
+    const childLabel = formatChildEdge(locale);
+    const parentLabel = formatParentEdge(locale);
+    const siblingLabel = formatSiblingEdge(locale);
 
     for (const [index, a] of partners.entries()) {
       for (const b of partners.slice(index + 1)) {
@@ -287,7 +294,7 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
 
     for (const parent of partners) {
       for (const child of children) {
-        pair(parent, child, 'parent', 'Child', 'Parent', lineOf(record, 'CHIL'), 1, family);
+        pair(parent, child, 'parent', childLabel, parentLabel, lineOf(record, 'CHIL'), 1, family);
       }
     }
 
@@ -299,7 +306,7 @@ function relationships(analysis: Analysis): Map<string, Link[]> {
     if (partners.length === 0) {
       for (const [index, a] of children.entries()) {
         for (const b of children.slice(index + 1)) {
-          pair(a, b, 'sibling', 'Sibling', 'Sibling', lineOf(record, 'CHIL'), 0, family);
+          pair(a, b, 'sibling', siblingLabel, siblingLabel, lineOf(record, 'CHIL'), 0, family);
         }
       }
     }
@@ -318,26 +325,34 @@ function references(analysis: Analysis, model: ReturnType<typeof modelFor>): Map
   const links = new Map<string, Link[]>();
 
   const add = (from: string, link: Link): void => {
-    links.set(from, [...(links.get(from) ?? []), link]);
+    const list = links.get(from);
+    if (list) list.push(link);
+    else links.set(from, [link]);
   };
 
-  const visit = (owner: string, structure: Structure): void => {
-    const pointer = asPointer(structure);
-    if (pointer !== null && pointer !== 'VOID' && !FAMILY_TAGS.has(structure.tag)) {
-      const label = tagLabel(model, structure.tag);
-      // A citation is not a generation, so it stays in the same column.
-      const shared = { kind: 'reference' as const, label, reverseLabel: label, step: 0 };
-      add(owner, { ...shared, to: pointer, line: structure.span.line });
-      add(pointer, { ...shared, to: owner, line: structure.span.line });
+  for (const [source, record] of analysis.xrefs.definitions) {
+    for (const child of record.children) {
+      const pointer = asPointer(child);
+      if (pointer === null || pointer === 'VOID') continue;
+
+      const target = analysis.xrefs.definitions.get(pointer);
+      if (!target) continue;
+
+      // Citations and pointers are directed: source points at target, not both
+      // ways.
+      add(source, {
+        to: pointer,
+        kind: 'reference',
+        label: tagLabel(model, child.tag, analysis.validation.resolutions.get(child)?.slug),
+        reverseLabel: tagLabel(
+          model,
+          record.tag,
+          analysis.validation.resolutions.get(record)?.slug,
+        ),
+        line: child.span.line,
+        step: 0,
+      });
     }
-    for (const child of structure.children) visit(owner, child);
-  };
-
-  for (const [xref, record] of analysis.xrefs.definitions) {
-    // A family's own pointers are its wiring, already collapsed into
-    // relationships; anything else it cites belongs to the couple, not the graph.
-    if (record.tag === 'FAM') continue;
-    for (const child of record.children) visit(xref, child);
   }
 
   return links;
@@ -370,23 +385,14 @@ function familySeeds(family: Structure): { xref: string; generation: number }[] 
 export type Direction = 'both' | 'ancestors' | 'descendants';
 
 export interface NeighbourhoodOptions {
-  /** How many hops to include. Two shows a person, their family and their in-laws. */
   readonly depth?: number;
-  /** Defaults to `both`. Spouses are kept whichever way the reader is travelling. */
-  readonly direction?: Direction;
-  /**
-   * Cap on nodes. A well-connected record in a large file can pull in hundreds
-   * at depth two, which is neither readable nor quick to draw.
-   */
   readonly maxNodes?: number;
-  /**
-   * Include citations, associates and media alongside relatives. Off by default:
-   * a well-sourced person cites dozens of records, and they crowd out the family
-   * the panel exists to show.
-   */
+  readonly direction?: Direction;
   readonly includeReferences?: boolean;
+  readonly locale?: string;
   /**
-   * Complete relationship path XREFs to include in the graph layout regardless of depth.
+   * Specific individual xrefs that form a highlighted path.
+   * Nodes on this path will always be included in the graph traversal regardless of depth cap.
    */
   readonly path?: readonly string[];
 }
@@ -418,7 +424,7 @@ export function neighbourhood(
       .filter((x) => analysis.xrefs.definitions.get(x)?.tag === 'INDI'),
   );
 
-  const family = relationships(analysis);
+  const family = relationships(analysis, options.locale);
   const cited = options.includeReferences ? references(analysis, model) : new Map<string, Link[]>();
 
   // Putting the cursor in a family asks to see that family, so its members are
@@ -434,15 +440,12 @@ export function neighbourhood(
   /**
    * Whether a link runs the way the reader is travelling.
    *
-   * A parent link's label says which end the neighbour is at, so the test is
-   * simply which word it carries. Spouses and everything else are kept in both
-   * directions: a marriage belongs to a line of descent as much as to a line of
-   * ancestry, and dropping it would leave half of every couple unexplained.
+   * Step indicates generation difference: negative step is ancestry, positive step is descent.
    */
   const travels = (link: Link): boolean => {
     if (direction === 'both' || link.kind !== 'parent') return true;
     if (pathIndis.has(link.to)) return true;
-    return direction === 'ancestors' ? link.label === 'Parent' : link.label === 'Child';
+    return direction === 'ancestors' ? link.step < 0 : link.step > 0;
   };
 
   // Families are collapsed away entirely, so one can never appear as a node.
@@ -524,7 +527,12 @@ export function neighbourhood(
   const included = new Set(order);
   const nodes: GraphNode[] = order.map((xref) => {
     const record = analysis.xrefs.definitions.get(xref)!;
-    const kind = tagLabel(model, record.tag, analysis.validation.resolutions.get(record)?.slug);
+    const kind = tagLabel(
+      model,
+      record.tag,
+      analysis.validation.resolutions.get(record)?.slug,
+      options.locale,
+    );
     return {
       xref,
       tag: record.tag,

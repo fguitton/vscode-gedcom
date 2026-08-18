@@ -191,4 +191,14 @@ describe('readableDate converts the calendar it names', () => {
     expect(readableDate('@#DHEBREW@ TSH 5760')).toBe('Tishrei 5760 (Hebrew)');
     expect(readableDate('ABT @#DJULIAN@ 14 SEP 1752')).toBe('About 14 September 1752 (Julian)');
   });
+
+  it('translates keywords and months when French locale is requested', () => {
+    expect(readableDate('ABT 3 NOV 1901', 'fr')).toBe('Vers 3 novembre 1901');
+    expect(readableDate('BET 1 JAN 1900 AND 31 DEC 1910', 'fr')).toBe(
+      'Entre 1 janvier 1900 et 31 décembre 1910',
+    );
+    expect(readableDate('BEF 1431', 'fr')).toBe('Avant 1431');
+    expect(readableDate('AFT 15 MAY 1975', 'fr')).toBe('Après 15 mai 1975');
+    expect(readableDate('FROM MAR 1914 TO NOV 1918', 'fr')).toBe('Du mars 1914 au novembre 1918');
+  });
 });

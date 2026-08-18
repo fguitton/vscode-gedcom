@@ -236,6 +236,8 @@ function monthsOf(payload: string): Record<string, string> {
   return MONTH_NAMES;
 }
 
+import { translateCalendar, translateDateKeyword, translateMonth } from './i18n/index.ts';
+
 /**
  * A date payload as a reader would say it.
  *
@@ -247,7 +249,7 @@ function monthsOf(payload: string): Record<string, string> {
  * `BET 1 JAN 1900 AND 31 DEC 1910` come out as a sentence rather than as a row
  * of proper nouns.
  */
-export function readableDate(payload: string): string {
+export function readableDate(payload: string, locale?: string): string {
   let first = true;
   const months = monthsOf(payload);
 
@@ -259,12 +261,17 @@ export function readableDate(payload: string): string {
     .replace(/^(FRENCH_R|HEBREW|JULIAN|GREGORIAN|THAI)\s+/, '')
     .replace(/\b([A-Z][A-Z_]{1,4})\b/g, (token) => {
       const month = months[token];
-      if (month) return month;
+      if (month) {
+        return translateMonth(token, month, locale);
+      }
 
       const word = KEYWORD_WORDS[token];
       if (!word) return token;
 
-      const capitalised = first ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+      const translatedWord = translateDateKeyword(token, word, locale);
+      const capitalised = first
+        ? translatedWord.charAt(0).toUpperCase() + translatedWord.slice(1)
+        : translatedWord;
       first = false;
       return capitalised;
     });
@@ -272,7 +279,8 @@ export function readableDate(payload: string): string {
   const calendar = calendarOf(payload);
   if (calendar === 'GREGORIAN') return said;
 
-  const name = CALENDAR_NAMES[calendar] ?? calendar;
+  const englishName = CALENDAR_NAMES[calendar] ?? calendar;
+  const name = translateCalendar(calendar, englishName, locale);
   const converted = toGregorian(payload, calendar);
 
   // The conversion is the point of the parenthetical: `15 Tishrei 5760` tells a

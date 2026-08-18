@@ -277,6 +277,8 @@ export function describeEnumValue(set: string, value: string): EnumMeaning | und
   return SETS[set]?.[value.trim().toUpperCase()];
 }
 
+import { translateEnum } from './i18n/index.ts';
+
 /**
  * A label as it should read where it stands on its own.
  *
@@ -285,8 +287,11 @@ export function describeEnumValue(set: string, value: string): EnumMeaning | und
  * and an inlay hint are not sentences: they are captions, and a caption that
  * starts lower case looks like a fragment of something else.
  */
-export function standalone(label: string): string {
-  return label.charAt(0).toUpperCase() + label.slice(1);
+export function standalone(label: string, locale?: string): string {
+  const direct = translateEnum(label, locale);
+  if (direct !== label) return direct;
+  const cap = label.charAt(0).toUpperCase() + label.slice(1);
+  return translateEnum(cap, locale);
 }
 
 /**
