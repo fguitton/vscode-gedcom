@@ -40,8 +40,8 @@ export type { ExactDate, AgeAt } from './date.ts';
 export { relationsOf, eventYear, lifespan } from './relations.ts';
 export type { Relations } from './relations.ts';
 
-export { calculateKinship } from './kinship.ts';
-export type { Kinship, KinshipOptions } from './kinship.ts';
+export { calculateKinship, getFormatter } from './kinship.ts';
+export type { Kinship, KinshipOptions, KinshipFormatter } from './kinship.ts';
 
 export { individualTimeline } from './timeline.ts';
 export type { TimelineEvent } from './timeline.ts';

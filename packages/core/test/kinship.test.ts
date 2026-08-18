@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { analyze, calculateKinship } from '../src/index.ts';
+import { analyze, calculateKinship, type KinshipFormatter } from '../src/index.ts';
 import { bytes, fixture } from './corpus.ts';
 
 const TREE = [
@@ -235,6 +235,27 @@ describe('calculateKinship', () => {
       const victoriaChild = calculateKinship(royalAnalysis, 'I1', 'I3', frOpt);
       expect(victoriaChild?.relationship).toBe('Fille');
       expect(victoriaChild?.description).toContain('est la fille de');
+    });
+  });
+
+  describe('pluggable custom formatters', () => {
+    it('allows a custom formatter implementation', () => {
+      const customFormatter: KinshipFormatter = {
+        locale: 'custom',
+        describeIdentity: (n) => `Identical to ${n}`,
+        describeConsanguinity: (dA, dB) => `BloodRelation(${dA},${dB})`,
+        describeAffinity: (k) => ({
+          title: `Affinity(${k})`,
+          description: (t, s) => `${t} <-> ${s} (${k})`,
+        }),
+        formatConsanguinityDescription: (t, s, r) => `${t} -> ${s}: ${r}`,
+      };
+
+      const father = calculateKinship(analysis, '@SELF@', '@FATHER@', {
+        formatter: customFormatter,
+      });
+      expect(father?.relationship).toBe('BloodRelation(1,0)');
+      expect(father?.description).toBe('Charles Pendleton -> George Pendleton: BloodRelation(1,0)');
     });
   });
 });
