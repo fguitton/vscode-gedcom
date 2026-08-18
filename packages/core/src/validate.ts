@@ -473,12 +473,28 @@ function checkCardinality(
     }
 
     if (present.length > max) {
-      diagnostics.push({
-        code: 'cardinality-violation',
-        message: `\`${structure.tag}\` permits at most ${max} \`${tag}\` substructure${max === 1 ? '' : 's'}, found ${present.length}.`,
-        severity: 'error',
-        span: present[max]!.tagSpan,
-      });
+      const isSameSexSpouseTolerance =
+        structure.tag === 'FAM' &&
+        (tag === 'HUSB' || tag === 'WIFE') &&
+        present.length === 2 &&
+        max === 1 &&
+        (counts.get(tag === 'HUSB' ? 'WIFE' : 'HUSB')?.length ?? 0) === 0;
+
+      if (isSameSexSpouseTolerance) {
+        diagnostics.push({
+          code: 'cardinality-violation',
+          message: `\`FAM\` permits at most 1 \`${tag}\` under the specification, but 2 are tolerated for same-sex unions.`,
+          severity: 'information',
+          span: present[max]!.tagSpan,
+        });
+      } else {
+        diagnostics.push({
+          code: 'cardinality-violation',
+          message: `\`${structure.tag}\` permits at most ${max} \`${tag}\` substructure${max === 1 ? '' : 's'}, found ${present.length}.`,
+          severity: 'error',
+          span: present[max]!.tagSpan,
+        });
+      }
     }
   }
 }

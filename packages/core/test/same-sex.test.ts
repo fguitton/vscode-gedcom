@@ -154,4 +154,61 @@ describe('same-sex unions and gender agreement', () => {
       expect(alice ?? beatrice).toBeDefined();
     });
   });
+
+  describe('same-sex couple cardinality validation', () => {
+    it('treats 2 WIFE in FAM as informational notice rather than error', () => {
+      const doc = analyze(
+        new TextEncoder().encode(
+          '0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @F1@ INDI\n0 @F2@ INDI\n0 @FAM@ FAM\n1 WIFE @F1@\n1 WIFE @F2@\n0 TRLR\n',
+        ),
+      );
+      const errors = doc.diagnostics.filter((d) => d.severity === 'error');
+      const infos = doc.diagnostics.filter(
+        (d) => d.code === 'cardinality-violation' && d.severity === 'information',
+      );
+      expect(errors).toEqual([]);
+      expect(infos.length).toBe(1);
+      expect(infos[0]?.message).toContain('tolerated for same-sex unions');
+    });
+
+    it('treats 2 HUSB in FAM as informational notice rather than error', () => {
+      const doc = analyze(
+        new TextEncoder().encode(
+          '0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @M1@ INDI\n0 @M2@ INDI\n0 @FAM@ FAM\n1 HUSB @M1@\n1 HUSB @M2@\n0 TRLR\n',
+        ),
+      );
+      const errors = doc.diagnostics.filter((d) => d.severity === 'error');
+      const infos = doc.diagnostics.filter(
+        (d) => d.code === 'cardinality-violation' && d.severity === 'information',
+      );
+      expect(errors).toEqual([]);
+      expect(infos.length).toBe(1);
+      expect(infos[0]?.message).toContain('tolerated for same-sex unions');
+    });
+
+    it('treats 3 or more HUSB/WIFE as an error', () => {
+      const doc = analyze(
+        new TextEncoder().encode(
+          '0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @M1@ INDI\n0 @M2@ INDI\n0 @M3@ INDI\n0 @FAM@ FAM\n1 HUSB @M1@\n1 HUSB @M2@\n1 HUSB @M3@\n0 TRLR\n',
+        ),
+      );
+      const errors = doc.diagnostics.filter(
+        (d) => d.code === 'cardinality-violation' && d.severity === 'error',
+      );
+      expect(errors.length).toBe(1);
+      expect(errors[0]?.message).toContain('permits at most 1 `HUSB`');
+    });
+
+    it('treats 2 HUSB + 1 WIFE as an error', () => {
+      const doc = analyze(
+        new TextEncoder().encode(
+          '0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @M1@ INDI\n0 @M2@ INDI\n0 @F1@ INDI\n0 @FAM@ FAM\n1 HUSB @M1@\n1 HUSB @M2@\n1 WIFE @F1@\n0 TRLR\n',
+        ),
+      );
+      const errors = doc.diagnostics.filter(
+        (d) => d.code === 'cardinality-violation' && d.severity === 'error',
+      );
+      expect(errors.length).toBe(1);
+    });
+  });
 });
