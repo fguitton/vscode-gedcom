@@ -617,7 +617,7 @@ export function neighbourhood(
  */
 const COLUMN_WIDTH = 280;
 const ROW_HEIGHT = 64;
-const MARGIN = 24;
+const MARGIN = 80;
 
 /**
  * Positions nodes in columns by generation.

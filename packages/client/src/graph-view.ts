@@ -944,8 +944,10 @@ function shell(bundle: Record<string, string> = {}): string {
         );
         labelled.push({ text: edge.label, x: x, y: (top.y + NODE_HEIGHT + bottom.y) / 2 });
       } else {
+        const width = edge.label ? edge.label.length * 5.4 + 8 : 0;
         const x = top.x;
-        const bulge = x - 16;
+        const labelX = width > 0 ? x - width / 2 - 8 : x - 16;
+        const bulge = Math.min(x - 24, labelX);
         const y1 = top.y + NODE_HEIGHT / 2;
         const y2 = bottom.y + NODE_HEIGHT / 2;
         svg.appendChild(
@@ -960,7 +962,7 @@ function shell(bundle: Record<string, string> = {}): string {
             fill: 'none',
           }),
         );
-        labelled.push({ text: edge.label, x: bulge, y: (y1 + y2) / 2 });
+        if (edge.label) labelled.push({ text: edge.label, x: labelX, y: (y1 + y2) / 2 });
       }
     }
 
@@ -981,8 +983,10 @@ function shell(bundle: Record<string, string> = {}): string {
       if (a.x === b.x) {
         const top = a.y <= b.y ? a : b;
         const bottom = a.y <= b.y ? b : a;
+        const width = edge.label ? edge.label.length * 5.4 + 8 : 0;
         const x = top.x;
-        const bulge = x - 14;
+        const labelX = width > 0 ? x - width / 2 - 8 : x - 14;
+        const bulge = Math.min(x - 20, labelX);
         const y1 = top.y + NODE_HEIGHT / 2;
         const y2 = bottom.y + NODE_HEIGHT / 2;
 
@@ -999,7 +1003,7 @@ function shell(bundle: Record<string, string> = {}): string {
           }),
         );
 
-        labelled.push({ text: edge.label, x: bulge, y: (y1 + y2) / 2 });
+        if (edge.label) labelled.push({ text: edge.label, x: labelX, y: (y1 + y2) / 2 });
         continue;
       }
 
@@ -1133,36 +1137,75 @@ function shell(bundle: Record<string, string> = {}): string {
     // marriage year came to be half hidden behind the spouse below it. A label
     // is the smallest thing on the drawing and the first thing to become
     // useless when partly covered, so it goes on top of everything.
+    const nodeBoxes = graph.nodes.map((node) => ({
+      left: node.x,
+      right: node.x + NODE_WIDTH,
+      top: node.y,
+      bottom: node.y + NODE_HEIGHT,
+    }));
+
     const occupied = [];
     for (const label of labelled) {
+      const width = label.text.length * 5.4 + 8;
+      let x = label.x;
       let y = label.y;
-      // Only a label close in *both* directions is in the way; comparing y alone
-      // pushed labels apart that were nowhere near each other horizontally.
-      const collides = (candidate) =>
+
+      const collidesWithNode = (cx, cy) => {
+        const pLeft = cx - width / 2;
+        const pRight = cx + width / 2;
+        const pTop = cy - 7;
+        const pBottom = cy + 7;
+        return nodeBoxes.find(
+          (box) =>
+            pRight > box.left - 2 &&
+            pLeft < box.right + 2 &&
+            pBottom > box.top - 2 &&
+            pTop < box.bottom + 2,
+        );
+      };
+
+      // If the label plate overlaps any person node box, adapt its position
+      const hitNode = collidesWithNode(x, y);
+      if (hitNode) {
+        if (x < hitNode.left + NODE_WIDTH / 2) {
+          x = hitNode.left - width / 2 - 8;
+        } else {
+          while (collidesWithNode(x, y)) {
+            y += LABEL_HEIGHT;
+          }
+        }
+      }
+
+      // Check if it collides with any previously placed label
+      const collidesWithLabel = (candidateY, candidateX) =>
         occupied.some(
           (taken) =>
-            Math.abs(taken.y - candidate) < LABEL_HEIGHT && Math.abs(taken.x - label.x) < 90,
+            Math.abs(taken.y - candidateY) < LABEL_HEIGHT &&
+            Math.abs(taken.x - candidateX) < (width + taken.width) / 2,
         );
-      while (collides(y)) y += LABEL_HEIGHT;
-      occupied.push({ x: label.x, y: y });
+
+      while (collidesWithLabel(y, x) || collidesWithNode(x, y)) {
+        y += LABEL_HEIGHT;
+      }
+
+      occupied.push({ x, y, width });
 
       const group = el('g', { class: 'edge-label' });
 
       // A backing plate, because a label sitting on a bundle of curves is
       // unreadable however it is coloured. Sized from the text, since SVG has no
       // way to ask for a background.
-      const width = label.text.length * 5.4 + 8;
       group.appendChild(
         el('rect', {
           class: 'edge-label-plate',
-          x: label.x - width / 2,
+          x: x - width / 2,
           y: y - 7,
           width: width,
           height: 13,
           rx: 2,
         }),
       );
-      group.appendChild(el('text', { x: label.x, y: y + 3, 'text-anchor': 'middle' }, label.text));
+      group.appendChild(el('text', { x, y: y + 3, 'text-anchor': 'middle' }, label.text));
       svg.appendChild(group);
     }
   }
