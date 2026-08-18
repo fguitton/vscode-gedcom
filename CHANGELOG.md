@@ -3,6 +3,44 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.13.0]
+
+Comprehensive French internationalization, same-sex union support with gender and plural agreements, personal name underscore normalization, and dynamic graph label collision resolution.
+
+### Added
+
+- **Full French localization & internationalization architecture.** Comprehensive French
+  language support across the extension, localized via VS Code L10N bundles and core i18n
+  formatters:
+  - **Tree view & graph edges:** Localized relationship labels (`Mariés en ...`, `Mariées en ...`,
+    `Époux`, `Épouses`, `Père`, `Mère`, `Fils`, `Fille`, `Frère`, `Sœur`, `Fratrie`).
+  - **Details panel:** Localized section titles (_Faits_, _Notes_, _Sources_, _Médias_, _Identifiants_,
+    _Contenu_, _Auteur_, _Fichier_), record nouns (_Individu_, _Famille_), enums (_Masculin_, _Féminin_),
+    and calendar date representations.
+  - **Life event timeline:** Localized relative age labels (_Âge 32_) and chronological event titles
+    (_Mariage avec ..._, _Naissance de la fille ..._, _Naissance du fils ..._).
+  - **Kinship calculator:** Comprehensive French relationship titles (_Père_, _Époux_, _Demi-frère_,
+    _Cousin issu de germains_, etc.).
+- **Same-sex union support & dedicated test corpus.** Created a comprehensive GEDCOM 7.0
+  fixture (`fixtures/v7/same-sex-unions.ged`) and test suite covering female/male same-sex
+  marriages with dates, un-dated unions, non-binary partners (`1 SEX X`), blended/reconstituted
+  families with half-siblings, and multi-generational fan chart traversal.
+- **Tolerated same-sex family cardinality.** Updated structural validation so that `FAM` records
+  with two `WIFE` or two `HUSB` tags are emitted as an informational notice (`severity: 'information'`)
+  rather than a blocking error, while continuing to strictly reject $> 2$ spouses.
+
+### Fixed
+
+- **Personal name underscore normalization.** Underscores used to bind multi-part names
+  in raw GEDCOM files (e.g. `Humphrey /De_Bohun/`, `Henry_IV`) are now automatically stripped
+  and converted to clean spaces across Tree node labels, Details panels, Timeline events,
+  Fan charts, QuickPick pickers, and editor hovers.
+- **Tree graph label & node collision detection.** Added active bounding box collision
+  detection and adaptive label positioning for non-adjacent spouse and same-column sibling
+  connection edges, preventing marriage label plates from overlapping intermediate person boxes.
+- **Directional tree traversal.** Upgraded tree graph traversal to rely on numerical generation
+  step indicators (`step < 0` / `step > 0`) rather than language-specific string matching.
+
 ## [0.12.1]
 
 Interactive relationship trail deselect button and keyboard shortcut, enriched documentation with feature showcases, and tree controls refinements.
