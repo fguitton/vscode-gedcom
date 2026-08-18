@@ -416,144 +416,98 @@ function shell(bundle: Record<string, string> = {}): string {
   .btn-group {
     display: flex;
     align-items: center;
-    background: var(--vscode-dropdown-background, var(--vscode-editorWidget-background));
-    border: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border, #454545));
-    border-radius: 3px;
-    overflow: hidden;
+    gap: .2rem;
   }
-  .btn-group button {
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    padding: .2rem .35rem;
+  #controls button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    cursor: pointer;
+    gap: .3rem;
+    font-family: inherit;
+    font-size: calc(var(--vscode-font-size) * .85);
     color: var(--vscode-foreground);
-    outline: none;
-    transition: background 0.1s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: .2rem .35rem;
+    cursor: pointer;
+    line-height: 1;
   }
-  .btn-group button:not(:last-child) {
-    border-right: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border, #454545));
+  #controls button svg {
+    display: block;
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
   }
-  .btn-group button:hover {
-    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+  #controls button:hover { background: var(--vscode-toolbar-hoverBackground); }
+  #controls button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  #controls button:active { background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground)); }
+  #btn-clear-path {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    height: 22px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 3px;
+    background: rgba(229, 160, 13, 0.15);
+    color: #e5a00d;
+    border: 1px solid rgba(229, 160, 13, 0.4);
+    cursor: pointer;
+    margin-left: 6px;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
-  .btn-group button:active {
-    background: var(--vscode-toolbar-activeBackground, rgba(90, 93, 94, 0.45));
+  #btn-clear-path:hover {
+    background: rgba(229, 160, 13, 0.28);
+    border-color: #e5a00d;
   }
-  .btn-group button svg {
+  #btn-clear-path svg {
     width: 12px;
     height: 12px;
     fill: currentColor;
   }
-  .btn-group button span {
-    font-size: calc(var(--vscode-font-size) * .75);
-    font-weight: 600;
-  }
-  #btn-clear-path {
-    display: none;
-    align-items: center;
-    gap: 3px;
-    background: var(--vscode-button-secondaryBackground, #3a3d41);
-    color: var(--vscode-button-secondaryForeground, #ffffff);
-    border: 1px solid var(--vscode-button-border, transparent);
-    border-radius: 3px;
-    padding: .15rem .35rem;
-    font-size: calc(var(--vscode-font-size) * .8);
-    cursor: pointer;
-  }
-  #btn-clear-path:hover {
-    background: var(--vscode-button-secondaryHoverBackground, #45494e);
-  }
-  #btn-clear-path svg {
-    width: 11px;
-    height: 11px;
-    fill: currentColor;
-  }
+  /* The controls take a fixed strip; the drawing gets the rest. */
   #scroll {
     flex: 1;
     overflow: auto;
-    cursor: grab;
-    user-select: none;
-    -webkit-user-select: none;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
   }
-  #scroll:active {
-    cursor: grabbing;
-  }
-  svg {
-    display: block;
-    min-width: 100%;
-    min-height: 100%;
-  }
-  .edge {
-    stroke: var(--vscode-editorIndentGuide-background, #404040);
-    stroke-width: 1.5;
-  }
-  .edge.child {
-    stroke: var(--vscode-editorIndentGuide-activeBackground, #707070);
-  }
-  .edge.reference {
-    stroke-dasharray: 3 3;
-    opacity: .7;
-  }
-  .edge.marriage-child {
-    stroke: var(--vscode-editorIndentGuide-activeBackground, #707070);
-  }
-  .edge-label {
+  .edge { stroke: var(--vscode-editorIndentGuide-activeBackground, currentColor); stroke-width: 1; opacity: .5; }
+  .edge-label text {
     fill: var(--vscode-descriptionForeground);
     font-size: 9px;
-    text-anchor: middle;
-    dominant-baseline: central;
-    pointer-events: none;
+  }
+  .edge-label-plate {
+    fill: var(--vscode-sideBar-background, var(--vscode-editor-background));
+    opacity: .85;
   }
   .node rect {
-    rx: 4;
-    ry: 4;
-    fill: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
-    stroke: var(--vscode-editorWidget-border, var(--vscode-panel-border, #404040));
+    fill: var(--vscode-editorWidget-background);
+    stroke: var(--vscode-editorWidget-border, var(--vscode-focusBorder));
     stroke-width: 1;
+    rx: 3;
   }
   .node.focus rect {
     stroke: var(--vscode-focusBorder);
-    stroke-width: 1.5;
+    stroke-width: 2;
+    fill: var(--vscode-list-activeSelectionBackground);
   }
-  .node.reference rect {
-    stroke-dasharray: 3 2;
-  }
-  .node text {
-    font-family: inherit;
-    pointer-events: none;
-  }
-  .node text.label {
-    font-size: var(--vscode-font-size);
-    fill: var(--vscode-foreground);
-  }
-  .node.focus text.label {
-    font-weight: 600;
-  }
-  .node text.detail {
-    font-size: calc(var(--vscode-font-size) * .8);
+  .node text.label { fill: var(--vscode-foreground); font-size: 11px; }
+  .node.focus text.label { fill: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground)); }
+  .node text.tag {
     fill: var(--vscode-descriptionForeground);
+    font-size: 9px;
+    font-family: var(--vscode-editor-font-family, monospace);
   }
-  .node.clickable {
-    cursor: pointer;
-  }
-  .node.clickable:hover rect {
-    fill: var(--vscode-list-hoverBackground, rgba(255, 255, 255, .05));
-  }
-  .node:focus-visible rect {
-    outline: 1px solid var(--vscode-focusBorder);
-    outline-offset: 1px;
-  }
-  .goto rect {
-    rx: 3;
-    ry: 3;
-    fill: transparent;
-    cursor: pointer;
-  }
+  .node { cursor: pointer; }
+  .node > rect:first-of-type:hover, .node:hover > rect:first-of-type { stroke: var(--vscode-focusBorder); }
+  .node:focus-visible > rect:first-of-type { stroke: var(--vscode-focusBorder); stroke-width: 2; }
+  /* Revealed on hover or focus: an arrow on every box at rest would be a column
+     of chrome competing with the names. */
+  .goto rect { fill: transparent; stroke: none; opacity: 0; }
   .goto .arrow { stroke: var(--vscode-descriptionForeground); stroke-width: 1.2; opacity: 0; }
   .node:hover .goto rect, .node:focus-within .goto rect { opacity: .6; fill: var(--vscode-toolbar-hoverBackground); }
   .node:hover .goto .arrow, .node:focus-within .goto .arrow { opacity: 1; }

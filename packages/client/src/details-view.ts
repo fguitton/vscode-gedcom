@@ -511,7 +511,7 @@ function shell(previews: boolean, bundle: Record<string, string> = {}): string {
     let str = L10N[k] || k;
     return args.length === 0
       ? str
-      : str.replace(/{(d+)}/g, (_, i) => args[Number(i)] !== undefined ? args[Number(i)] : '{' + i + '}');
+      : str.replace(/\\{(\\d+)\\}/g, (_, i) => args[Number(i)] !== undefined ? args[Number(i)] : '{' + i + '}');
   }
 
   // Notify extension host that webview script has loaded and is ready to draw
