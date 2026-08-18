@@ -86,31 +86,60 @@ export function formatTimelineMarriage(partnerName: string, locale?: string): st
   return `Marriage to ${partnerName}`;
 }
 
-export function formatTimelineChildBirth(childName: string, locale?: string): string {
+export function formatTimelineChildBirth(
+  childName: string,
+  childSex?: 'M' | 'F' | 'U',
+  locale?: string,
+): string {
   if (isFrenchLocale(locale)) {
+    if (childSex === 'F') return `Naissance de la fille ${childName}`;
+    if (childSex === 'M') return `Naissance du fils ${childName}`;
     return `Naissance de l'enfant ${childName}`;
   }
+  if (childSex === 'F') return `Birth of daughter ${childName}`;
+  if (childSex === 'M') return `Birth of son ${childName}`;
   return `Birth of child ${childName}`;
 }
 
-export function formatSpouseEdge(marriageYear?: number, locale?: string): string {
+export function formatSpouseEdge(
+  marriageYear?: number,
+  sexA?: 'M' | 'F' | 'U',
+  sexB?: 'M' | 'F' | 'U',
+  locale?: string,
+): string {
   if (isFrenchLocale(locale)) {
-    return marriageYear === undefined ? 'Conjoint(e)' : `Marié en ${marriageYear}`;
+    const isBothFemale = sexA === 'F' && sexB === 'F';
+    if (marriageYear !== undefined) {
+      return isBothFemale ? `Mariées en ${marriageYear}` : `Mariés en ${marriageYear}`;
+    }
+    return isBothFemale ? 'Mariées' : 'Mariés';
   }
   return marriageYear === undefined ? 'Spouse' : `Married ${marriageYear}`;
 }
 
-export function formatParentEdge(locale?: string): string {
-  if (isFrenchLocale(locale)) return 'Parent';
+export function formatParentEdge(parentSex?: 'M' | 'F' | 'U', locale?: string): string {
+  if (isFrenchLocale(locale)) {
+    if (parentSex === 'F') return 'Mère';
+    if (parentSex === 'M') return 'Père';
+    return 'Parent';
+  }
   return 'Parent';
 }
 
-export function formatChildEdge(locale?: string): string {
-  if (isFrenchLocale(locale)) return 'Enfant';
+export function formatChildEdge(childSex?: 'M' | 'F' | 'U', locale?: string): string {
+  if (isFrenchLocale(locale)) {
+    if (childSex === 'F') return 'Fille';
+    if (childSex === 'M') return 'Fils';
+    return 'Enfant';
+  }
   return 'Child';
 }
 
-export function formatSiblingEdge(locale?: string): string {
-  if (isFrenchLocale(locale)) return 'Fratrie';
+export function formatSiblingEdge(targetSex?: 'M' | 'F' | 'U', locale?: string): string {
+  if (isFrenchLocale(locale)) {
+    if (targetSex === 'F') return 'Sœur';
+    if (targetSex === 'M') return 'Frère';
+    return 'Fratrie';
+  }
   return 'Sibling';
 }

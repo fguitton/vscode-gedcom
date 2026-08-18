@@ -124,7 +124,7 @@ describe('individualTimeline', () => {
     expect(marr?.age).toBe('Âge 24');
 
     const child = timeline.find((e) => e.tag === 'CHIL');
-    expect(child?.label).toBe("Naissance de l'enfant Alice Smith");
+    expect(child?.label).toBe('Naissance de la fille Alice Smith');
 
     const deat = timeline.find((e) => e.tag === 'DEAT');
     expect(deat?.label).toBe('Décès');

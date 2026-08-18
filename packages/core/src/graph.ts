@@ -275,6 +275,17 @@ function relationships(analysis: Analysis, locale?: string): Map<string, Link[]>
     add(b, { to: a, kind, label: bToA, reverseLabel: aToB, line, step: -step, union });
   };
 
+  const sexOf = (xref: string): 'M' | 'F' | 'U' => {
+    const record = analysis.xrefs.definitions.get(xref);
+    const sex = record?.children
+      .find((c) => c.tag === 'SEX')
+      ?.payload?.trim()
+      .toUpperCase();
+    if (sex === 'M' || sex === 'MALE') return 'M';
+    if (sex === 'F' || sex === 'FEMALE') return 'F';
+    return 'U';
+  };
+
   for (const [family, record] of analysis.xrefs.definitions) {
     if (record.tag !== 'FAM') continue;
 
@@ -282,19 +293,22 @@ function relationships(analysis: Analysis, locale?: string): Map<string, Link[]>
     const children = pointers(record, 'CHIL');
 
     const married = marriageYear(record);
-    const spouseLabel = formatSpouseEdge(married, locale);
-    const childLabel = formatChildEdge(locale);
-    const parentLabel = formatParentEdge(locale);
-    const siblingLabel = formatSiblingEdge(locale);
 
     for (const [index, a] of partners.entries()) {
+      const sexA = sexOf(a);
       for (const b of partners.slice(index + 1)) {
+        const sexB = sexOf(b);
+        const spouseLabel = formatSpouseEdge(married, sexA, sexB, locale);
         pair(a, b, 'spouse', spouseLabel, spouseLabel, lineOf(record, 'MARR'), 0, family);
       }
     }
 
     for (const parent of partners) {
+      const sexParent = sexOf(parent);
       for (const child of children) {
+        const sexChild = sexOf(child);
+        const childLabel = formatChildEdge(sexChild, locale);
+        const parentLabel = formatParentEdge(sexParent, locale);
         pair(parent, child, 'parent', childLabel, parentLabel, lineOf(record, 'CHIL'), 1, family);
       }
     }
@@ -306,8 +320,12 @@ function relationships(analysis: Analysis, locale?: string): Map<string, Link[]>
     // group together.
     if (partners.length === 0) {
       for (const [index, a] of children.entries()) {
+        const sexA = sexOf(a);
         for (const b of children.slice(index + 1)) {
-          pair(a, b, 'sibling', siblingLabel, siblingLabel, lineOf(record, 'CHIL'), 0, family);
+          const sexB = sexOf(b);
+          const aToB = formatSiblingEdge(sexB, locale);
+          const bToA = formatSiblingEdge(sexA, locale);
+          pair(a, b, 'sibling', aToB, bToA, lineOf(record, 'CHIL'), 0, family);
         }
       }
     }

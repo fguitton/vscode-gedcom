@@ -77,6 +77,17 @@ function nameOf(analysis: Analysis, xref: string): string {
   return name ? displayName(name) : xref;
 }
 
+function sexOf(analysis: Analysis, xref: string): 'M' | 'F' | 'U' {
+  const record = analysis.xrefs.definitions.get(norm(xref));
+  const sex = record?.children
+    .find((c) => c.tag === 'SEX')
+    ?.payload?.trim()
+    .toUpperCase();
+  if (sex === 'M' || sex === 'MALE') return 'M';
+  if (sex === 'F' || sex === 'FEMALE') return 'F';
+  return 'U';
+}
+
 function childTag(structure: Structure, tag: string): Structure | undefined {
   return structure.children.find((c) => c.tag === tag);
 }
@@ -199,9 +210,11 @@ export function individualTimeline(
         age = formatTimelineAge(year - birthYear, options.locale);
       }
 
+      const childSex = sexOf(analysis, childId);
+
       events.push({
         tag: 'CHIL',
-        label: formatTimelineChildBirth(childName, options.locale),
+        label: formatTimelineChildBirth(childName, childSex, options.locale),
         year: year ?? undefined,
         date: dateStr ? readableDate(dateStr, options.locale) : undefined,
         age,

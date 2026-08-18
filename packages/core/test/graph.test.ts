@@ -263,14 +263,69 @@ describe('against a real file', () => {
     }
   });
 
-  it('translates edge labels when French locale is requested', () => {
+  it('translates edge labels with gender and plural agreement in French', () => {
     const frenchGraph = neighbourhood(analysis, 'I1', { depth: 2, locale: 'fr' });
     const spouseEdge = frenchGraph.edges.find((e) => e.kind === 'spouse');
-    expect(spouseEdge?.label).toBe('Marié en 1925');
+    expect(spouseEdge?.label).toBe('Mariés en 1925');
 
     const parentEdge = frenchGraph.edges.find((e) => e.kind === 'parent');
     expect(parentEdge?.label).toBe('Enfant');
     expect(parentEdge?.reverseLabel).toBe('Parent');
+
+    // Test female same-sex couple
+    const sameSexFemales = analyze(
+      bytes(
+        [
+          '0 HEAD',
+          '1 GEDC',
+          '2 VERS 7.0',
+          '0 @F1@ INDI',
+          '1 NAME Alice /Smith/',
+          '1 SEX F',
+          '1 FAMS @FAM1@',
+          '0 @F2@ INDI',
+          '1 NAME Beatrice /Jones/',
+          '1 SEX F',
+          '1 FAMS @FAM1@',
+          '0 @FAM1@ FAM',
+          '1 WIFE @F1@',
+          '1 WIFE @F2@',
+          '1 MARR',
+          '2 DATE 2015',
+          '0 TRLR',
+          '',
+        ].join('\n'),
+      ),
+    );
+    const femaleSpouseGraph = neighbourhood(sameSexFemales, 'F1', { depth: 2, locale: 'fr' });
+    const femaleSpouseEdge = femaleSpouseGraph.edges.find((e) => e.kind === 'spouse');
+    expect(femaleSpouseEdge?.label).toBe('Mariées en 2015');
+
+    // Without year:
+    const noYearAnalysis = analyze(
+      bytes(
+        [
+          '0 HEAD',
+          '1 GEDC',
+          '2 VERS 7.0',
+          '0 @F1@ INDI',
+          '1 NAME Alice /Smith/',
+          '1 SEX F',
+          '1 FAMS @FAM1@',
+          '0 @F2@ INDI',
+          '1 NAME Beatrice /Jones/',
+          '1 SEX F',
+          '1 FAMS @FAM1@',
+          '0 @FAM1@ FAM',
+          '1 WIFE @F1@',
+          '1 WIFE @F2@',
+          '0 TRLR',
+          '',
+        ].join('\n'),
+      ),
+    );
+    const noYearGraph = neighbourhood(noYearAnalysis, 'F1', { depth: 2, locale: 'fr' });
+    expect(noYearGraph.edges.find((e) => e.kind === 'spouse')?.label).toBe('Mariées');
   });
 });
 
