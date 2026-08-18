@@ -442,7 +442,7 @@ function shell(bundle: Record<string, string> = {}): string {
   #controls button:hover { background: var(--vscode-toolbar-hoverBackground); }
   #controls button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
   #controls button:active { background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground)); }
-  #btn-clear-path {
+  #controls #btn-clear-path {
     display: none;
     align-items: center;
     gap: 4px;
@@ -458,11 +458,11 @@ function shell(bundle: Record<string, string> = {}): string {
     margin-left: 6px;
     transition: background 0.15s ease, border-color 0.15s ease;
   }
-  #btn-clear-path:hover {
+  #controls #btn-clear-path:hover {
     background: rgba(229, 160, 13, 0.28);
     border-color: #e5a00d;
   }
-  #btn-clear-path svg {
+  #controls #btn-clear-path svg {
     width: 12px;
     height: 12px;
     fill: currentColor;
@@ -597,7 +597,7 @@ function shell(bundle: Record<string, string> = {}): string {
     <option value="descendants">${t('Descendants')}</option>
     <option value="fan">${t('Circular Fan')}</option>
   </select>
-  <button type="button" id="btn-clear-path" title="${t('Clear Highlighted Relationship Path (Esc)')}" aria-label="${t('Clear Path')}">
+  <button type="button" id="btn-clear-path" style="display: none;" title="${t('Clear Highlighted Relationship Path (Esc)')}" aria-label="${t('Clear Path')}">
     <svg viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
     <span>${t('Clear Path')}</span>
   </button>
@@ -676,6 +676,9 @@ function shell(bundle: Record<string, string> = {}): string {
   function renderFanChart(fanChart) {
     currentFanChart = fanChart;
     currentGraph = null;
+    if (btnClearPath && (!activePathSet || activePathSet.size === 0)) {
+      btnClearPath.style.display = 'none';
+    }
     svg.replaceChildren();
 
     if (!fanChart.nodes.length) {
@@ -859,6 +862,9 @@ function shell(bundle: Record<string, string> = {}): string {
   function render(graph) {
     currentGraph = graph;
     currentFanChart = null;
+    if (btnClearPath && (!activePathSet || activePathSet.size === 0)) {
+      btnClearPath.style.display = 'none';
+    }
     svg.replaceChildren();
 
     if (!graph.nodes.length) {
