@@ -21,6 +21,7 @@
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
 import { yearOf } from './date.ts';
+import { displayName } from './name.ts';
 import { modelFor, tagLabel } from './spec/index.ts';
 import { asPointer } from './xref.ts';
 
@@ -173,7 +174,7 @@ interface Link {
 /** A short description of a record, used as its label in the graph. */
 function labelFor(record: Structure): string {
   const name = record.children.find((c) => c.tag === 'NAME')?.payload;
-  if (name) return name.replace(/\//g, '').trim();
+  if (name) return displayName(name);
 
   const title = record.children.find((c) => c.tag === 'TITL')?.payload;
   if (title) return title.slice(0, 40);

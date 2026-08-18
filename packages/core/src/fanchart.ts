@@ -7,6 +7,7 @@
 
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
+import { displayName } from './name.ts';
 import { lifespan } from './relations.ts';
 import { asPointer } from './xref.ts';
 
@@ -41,11 +42,8 @@ function pointers(record: Structure, tag: string): string[] {
 }
 
 function nameOf(record: Structure): string {
-  const name = record.children
-    .find((c) => c.tag === 'NAME')
-    ?.payload?.replace(/\//g, '')
-    .trim();
-  return name || `@${record.xref ?? ''}@`;
+  const name = record.children.find((c) => c.tag === 'NAME')?.payload;
+  return name ? displayName(name) : `@${record.xref ?? ''}@`;
 }
 
 function sexOf(record: Structure): 'M' | 'F' | 'U' {

@@ -8,6 +8,7 @@
 
 import type { Diagnostic, Document, Structure } from './cst.ts';
 import { yearOf } from './date.ts';
+import { displayName } from './name.ts';
 import { asPointer, type XrefIndex } from './xref.ts';
 
 interface PersonDates {
@@ -19,15 +20,10 @@ interface PersonDates {
   readonly name: string;
 }
 
-function eventYear(structure: Structure | undefined): number | undefined {
-  if (!structure) return undefined;
-  for (const child of structure.children) {
-    if (child.tag === 'DATE' && child.payload) {
-      const year = yearOf(child.payload);
-      if (year !== undefined) return year;
-    }
-  }
-  return undefined;
+function eventYear(structure: Structure): number | undefined {
+  const dateStructure = structure.children.find((c) => c.tag === 'DATE');
+  if (!dateStructure?.payload) return undefined;
+  return yearOf(dateStructure.payload);
 }
 
 function personDates(record: Structure): PersonDates {
@@ -40,7 +36,7 @@ function personDates(record: Structure): PersonDates {
 
   for (const child of record.children) {
     if (child.tag === 'NAME' && child.payload) {
-      name = child.payload.replace(/\//g, '').trim() || name;
+      name = displayName(child.payload) || name;
     } else if (child.tag === 'BIRT') {
       birthStructure = child;
       birthYear = eventYear(child);

@@ -14,6 +14,7 @@ import {
   asPointer,
   completionsFor,
   describePayloadType,
+  displayName,
   fullSpan,
   glossOf,
   isExtensionTag,
@@ -212,9 +213,9 @@ export function renameEdits(
  */
 export function summarize(record: Structure, analysis?: Analysis): string {
   const name = record.children.find((c) => c.tag === 'NAME')?.payload;
-  // Whitespace collapsed as well as slashes removed: `Victoria  /Hanover/`, with
+  // Whitespace collapsed as well as slashes and underscores removed: `Victoria  /Hanover/`, with
   // an empty middle slot, otherwise comes out with a gap in the middle of it.
-  if (name) return name.replace(/\//g, ' ').replace(/\s+/g, ' ').trim();
+  if (name) return displayName(name);
 
   const title = record.children.find((c) => c.tag === 'TITL')?.payload;
   if (title) return title;
@@ -230,7 +231,7 @@ export function summarize(record: Structure, analysis?: Analysis): string {
 
     const target = analysis.xrefs.definitions.get(pointer);
     const targetName = target?.children.find((c) => c.tag === 'NAME')?.payload;
-    return targetName?.replace(/\//g, '') ?? structure.payload ?? undefined;
+    return (targetName ? displayName(targetName) : undefined) ?? structure.payload ?? undefined;
   };
 
   const husband = spouse('HUSB');

@@ -35,6 +35,7 @@ const toRange = (raw: RawRange): Range => new Range(toPosition(raw.start), toPos
 import {
   analyzeText,
   calculateKinship,
+  displayName,
   lifespan,
   recordAt,
   upgradeToGedcom7,
@@ -98,11 +99,8 @@ export function registerCommands(context: ExtensionContext): void {
       const individuals: { label: string; description: string; xref: string }[] = [];
       for (const [xref, structure] of analysis.xrefs.definitions) {
         if (structure.tag !== 'INDI') continue;
-        const name =
-          structure.children
-            .find((c) => c.tag === 'NAME')
-            ?.payload?.replace(/\//g, '')
-            .trim() || 'Unknown';
+        const namePayload = structure.children.find((c) => c.tag === 'NAME')?.payload;
+        const name = namePayload ? displayName(namePayload) : 'Unknown';
         const span = lifespan(analysis, xref);
         individuals.push({
           label: name,

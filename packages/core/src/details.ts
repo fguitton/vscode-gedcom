@@ -20,7 +20,7 @@ import { readableDate } from './date.ts';
 import { meaningOf, standalone } from './enums.ts';
 import { isFrenchLocale, translateEnum, translateSection } from './i18n/index.ts';
 import { describeMediaType, mediaTypeOfPath, resolveMediaType } from './lang.ts';
-import { parsePersonalName } from './name.ts';
+import { displayName, parsePersonalName } from './name.ts';
 import { modelFor, recordNoun, tagLabel } from './spec/index.ts';
 import { statistics } from './stats.ts';
 import { individualTimeline, type TimelineEvent } from './timeline.ts';
@@ -134,7 +134,7 @@ const child = (structure: Structure, tag: string): Structure | undefined =>
 /** A record's display name: a personal name, a title, or its payload. */
 function nameOf(record: Structure): string | undefined {
   const name = child(record, 'NAME')?.payload;
-  if (name) return name.replace(/\//g, ' ').replace(/\s+/g, ' ').trim();
+  if (name) return displayName(name);
 
   const title = child(record, 'TITL')?.payload;
   if (title) return firstLine(title, 60);
@@ -297,19 +297,27 @@ function personalName(
 
   // The substructures win where the file wrote them: they are what the exporting
   // program meant, and the slashes are only our reading of the string.
-  const given = child(structure, 'GIVN')?.payload?.trim() ?? parsed.given;
-  const surname = child(structure, 'SURN')?.payload?.trim() ?? parsed.surname;
+  const given =
+    child(structure, 'GIVN')?.payload?.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() ??
+    parsed.given;
+  const surname =
+    child(structure, 'SURN')?.payload?.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() ??
+    parsed.surname;
 
   // Only worth stating where the file marked a surname. Without one there is
   // nothing to distinguish: the whole payload is the given name by default, and
   // repeating it under a second label would say the same thing twice.
   if (!surname) return fields;
 
-  const prefix = child(structure, 'NPFX')?.payload?.trim() ?? parsed.prefix;
+  const prefix =
+    child(structure, 'NPFX')?.payload?.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() ??
+    parsed.prefix;
   // The payload's grammar is `given /surname/ suffix`, so anything after the
   // closing slash is read as a suffix. Shown rather than dropped: where that
   // reading is not what the writer meant, seeing it is how a reader finds out.
-  const suffix = child(structure, 'NSFX')?.payload?.trim() ?? parsed.suffix;
+  const suffix =
+    child(structure, 'NSFX')?.payload?.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() ??
+    parsed.suffix;
 
   const fr = isFrenchLocale(locale);
   if (prefix) fields.push({ label: fr ? 'Titre' : 'Title', value: prefix, line });

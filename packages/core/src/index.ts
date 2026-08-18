@@ -68,7 +68,7 @@ export type { PlaceLevel, Coordinate } from './place.ts';
 
 export { describeLanguage, resolveMediaType, describeMediaType, mediaTypeOfPath } from './lang.ts';
 
-export { parsePersonalName } from './name.ts';
+export { displayName, parsePersonalName } from './name.ts';
 export type { PersonalName } from './name.ts';
 
 export { statistics } from './stats.ts';

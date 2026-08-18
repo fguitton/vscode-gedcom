@@ -68,6 +68,28 @@ describe('parsePersonalName', () => {
     expect(parsePersonalName('John  /Smith/  Jr').display).toBe('John Smith Jr');
   });
 
+  it('removes underscores in names and replaces them with spaces', () => {
+    expect(parsePersonalName('Humphrey /De_Bohun/')).toEqual({
+      given: 'Humphrey',
+      surname: 'De Bohun',
+      display: 'Humphrey De Bohun',
+    });
+    expect(parsePersonalName('Henry_IV')).toEqual({
+      given: 'Henry IV',
+      display: 'Henry IV',
+    });
+    expect(parsePersonalName('Mary /De_Bohun/')).toEqual({
+      given: 'Mary',
+      surname: 'De Bohun',
+      display: 'Mary De Bohun',
+    });
+    expect(parsePersonalName('John /of_Gaunt/')).toEqual({
+      given: 'John',
+      surname: 'of Gaunt',
+      display: 'John of Gaunt',
+    });
+  });
+
   it('survives an empty payload', () => {
     expect(parsePersonalName('')).toEqual({ display: '' });
   });

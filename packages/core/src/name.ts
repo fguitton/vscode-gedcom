@@ -23,9 +23,17 @@ export interface PersonalName {
 }
 
 const tidy = (text: string): string | undefined => {
-  const clean = text.replace(/\s+/g, ' ').trim();
+  const clean = text.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
   return clean.length > 0 ? clean : undefined;
 };
+
+/**
+ * Cleans a name for display by stripping surname slashes, replacing underscores with spaces,
+ * and normalizing whitespace.
+ */
+export function displayName(raw: string): string {
+  return raw.replace(/\//g, ' ').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 /**
  * Splits a name payload on its surname slashes.

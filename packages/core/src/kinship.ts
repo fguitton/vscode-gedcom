@@ -10,6 +10,7 @@ import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
 import { getFormatter } from './kinship/formatters/index.ts';
 import type { KinshipFormatter } from './kinship/types.ts';
+import { displayName } from './name.ts';
 import { relationsOf } from './relations.ts';
 import { asPointer } from './xref.ts';
 
@@ -23,7 +24,7 @@ export interface Kinship {
   readonly description: string;
   /** Common ancestor individual XREFs (empty if relation is by affinity/marriage). */
   readonly commonAncestors: readonly string[];
-  /** Complete path of alternating individual and family XREFs connecting source to target. */
+  /** Detailed connection path between the two individuals. */
   readonly path: readonly string[];
   /** Graph distance in hops. */
   readonly distance: number;
@@ -48,11 +49,8 @@ const norm = (xref: string) => xref.replace(/^@|@$/g, '');
 function nameOf(analysis: Analysis, xref: string): string {
   const record = analysis.xrefs.definitions.get(norm(xref));
   if (!record) return xref;
-  const name = record.children
-    .find((c) => c.tag === 'NAME')
-    ?.payload?.replace(/\//g, '')
-    .trim();
-  return name || xref;
+  const name = record.children.find((c) => c.tag === 'NAME')?.payload;
+  return name ? displayName(name) : xref;
 }
 
 function sexOf(analysis: Analysis, xref: string): 'M' | 'F' | 'U' {

@@ -8,6 +8,7 @@
 import type { Analysis } from './index.ts';
 import type { Structure } from './cst.ts';
 import { readableDate, yearOf } from './date.ts';
+import { displayName } from './name.ts';
 import { relationsOf } from './relations.ts';
 import { modelFor, tagLabel } from './spec/index.ts';
 import { asPointer } from './xref.ts';
@@ -72,11 +73,8 @@ const TAG_ORDER: Record<string, number> = {
 function nameOf(analysis: Analysis, xref: string): string {
   const record = analysis.xrefs.definitions.get(norm(xref));
   if (!record) return xref;
-  const name = record.children
-    .find((c) => c.tag === 'NAME')
-    ?.payload?.replace(/\//g, '')
-    .trim();
-  return name || xref;
+  const name = record.children.find((c) => c.tag === 'NAME')?.payload;
+  return name ? displayName(name) : xref;
 }
 
 function childTag(structure: Structure, tag: string): Structure | undefined {
