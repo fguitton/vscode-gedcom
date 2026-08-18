@@ -10,6 +10,7 @@
 
 import {
   commands,
+  env,
   Location,
   Position,
   Range,
@@ -19,6 +20,7 @@ import {
   workspace,
   type ExtensionContext,
 } from 'vscode';
+import { t } from './l10n.ts';
 
 /** Shape the server sends: LSP ranges, which are structurally plain objects. */
 interface RawRange {
@@ -55,7 +57,7 @@ export function registerCommands(context: ExtensionContext): void {
     commands.registerCommand('gedcom.upgradeToGedcom7', async () => {
       const editor = window.activeTextEditor;
       if (!editor || editor.document.languageId !== 'gedcom') {
-        void window.showInformationMessage('Open a GEDCOM file to upgrade it to GEDCOM 7.0.');
+        void window.showInformationMessage(t('Open a GEDCOM file to upgrade it to GEDCOM 7.0.'));
         return;
       }
 
@@ -63,7 +65,7 @@ export function registerCommands(context: ExtensionContext): void {
       const result = upgradeToGedcom7(text);
       if (result.modifications === 0) {
         void window.showInformationMessage(
-          'File is already aligned with GEDCOM 7.0 (0 changes needed).',
+          t('File is already aligned with GEDCOM 7.0 (0 changes needed).'),
         );
         return;
       }
@@ -76,14 +78,17 @@ export function registerCommands(context: ExtensionContext): void {
 
       if (applied) {
         void window.showInformationMessage(
-          `Successfully modernized file to GEDCOM 7.0 (${result.modifications} modifications applied).`,
+          t(
+            'Successfully modernized file to GEDCOM 7.0 ({0} modifications applied).',
+            result.modifications,
+          ),
         );
       }
     }),
     commands.registerCommand('gedcom.findRelationship', async () => {
       const editor = window.activeTextEditor;
       if (!editor || editor.document.languageId !== 'gedcom') {
-        void window.showInformationMessage('Open a GEDCOM file to calculate relationships.');
+        void window.showInformationMessage(t('Open a GEDCOM file to calculate relationships.'));
         return;
       }
 
@@ -108,7 +113,7 @@ export function registerCommands(context: ExtensionContext): void {
 
       if (individuals.length < 2) {
         void window.showInformationMessage(
-          'At least two individual records are required to calculate relationships.',
+          t('At least two individual records are required to calculate relationships.'),
         );
         return;
       }
@@ -119,7 +124,7 @@ export function registerCommands(context: ExtensionContext): void {
 
       if (!personA) {
         const pickedA = await window.showQuickPick(individuals, {
-          placeHolder: 'Select the first individual (Person A)',
+          placeHolder: t('Select the first individual (Person A)'),
           matchOnDescription: true,
         });
         if (!pickedA) return;
@@ -128,38 +133,27 @@ export function registerCommands(context: ExtensionContext): void {
 
       const remaining = individuals.filter((i) => i.xref !== personA!.xref);
       const pickedB = await window.showQuickPick(remaining, {
-        placeHolder: `Select the second individual to compare with ${personA.label}`,
+        placeHolder: t('Select the second individual to compare with {0}', personA.label),
         matchOnDescription: true,
       });
       if (!pickedB) return;
 
-      const kinship = calculateKinship(analysis, personA.xref, pickedB.xref);
+      const kinship = calculateKinship(analysis, personA.xref, pickedB.xref, {
+        locale: env.language,
+      });
       if (!kinship) {
         void window.showInformationMessage(
-          `No genealogical relationship found between ${personA.label} and ${pickedB.label}.`,
+          t(
+            'No genealogical relationship found between {0} and {1}.',
+            personA.label,
+            pickedB.label,
+          ),
         );
         return;
       }
 
-      const showBtn = 'Show Path in Tree';
-      const commonStr =
-        kinship.commonAncestors.length > 0
-          ? ` (Common Ancestor: ${kinship.commonAncestors
-              .map(
-                (x) =>
-                  analysis.xrefs.definitions
-                    .get(x)
-                    ?.children.find((c) => c.tag === 'NAME')
-                    ?.payload?.replace(/\//g, '')
-                    .trim() || x,
-              )
-              .join(' & ')})`
-          : '';
-
-      const response = await window.showInformationMessage(
-        `${pickedB.label} is the ${kinship.relationship} of ${personA.label}.${commonStr}`,
-        showBtn,
-      );
+      const showBtn = t('Show Path in Tree');
+      const response = await window.showInformationMessage(kinship.description, showBtn);
 
       if (response === showBtn) {
         const primaryFocus = kinship.commonAncestors[0] || kinship.path[0];

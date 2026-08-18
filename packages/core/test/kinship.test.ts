@@ -174,4 +174,67 @@ describe('calculateKinship', () => {
     const victoriaChild = calculateKinship(royalAnalysis, 'I1', 'I3');
     expect(victoriaChild?.relationship).toBe('Daughter');
   });
+
+  describe('French locale support', () => {
+    const frOpt = { locale: 'fr' };
+
+    it('calculates French parent and child', () => {
+      const father = calculateKinship(analysis, '@SELF@', '@FATHER@', frOpt);
+      expect(father?.relationship).toBe('Père');
+      expect(father?.description).toContain('est le père de');
+
+      const son = calculateKinship(analysis, '@SELF@', '@SON@', frOpt);
+      expect(son?.relationship).toBe('Fils');
+      expect(son?.description).toContain('est le fils de');
+    });
+
+    it('calculates French grandparents and siblings', () => {
+      const gpM = calculateKinship(analysis, '@SELF@', '@GP_M@', frOpt);
+      expect(gpM?.relationship).toBe('Grand-père');
+      expect(gpM?.description).toContain('est le grand-père de');
+
+      const gpF = calculateKinship(analysis, '@SELF@', '@GP_F@', frOpt);
+      expect(gpF?.relationship).toBe('Grand-mère');
+      expect(gpF?.description).toContain('est la grand-mère de');
+
+      const sister = calculateKinship(analysis, '@SELF@', '@SISTER@', frOpt);
+      expect(sister?.relationship).toBe('Sœur');
+      expect(sister?.description).toContain('est la sœur de');
+    });
+
+    it('calculates French cousins and uncles', () => {
+      const uncle = calculateKinship(analysis, '@SELF@', '@UNCLE@', frOpt);
+      expect(uncle?.relationship).toBe('Oncle');
+      expect(uncle?.description).toContain("est l'oncle de");
+
+      const cousin = calculateKinship(analysis, '@SELF@', '@COUSIN@', frOpt);
+      expect(cousin?.relationship).toBe('Cousin germain');
+      expect(cousin?.description).toContain('est le cousin germain de');
+
+      const removed = calculateKinship(analysis, '@SELF@', '@COUSIN_CHILD@', frOpt);
+      expect(removed?.relationship).toContain('Cousin germain');
+      expect(removed?.relationship).toContain('1 génération');
+    });
+
+    it('calculates French spouse and alliance', () => {
+      const wife = calculateKinship(analysis, '@SELF@', '@WIFE@', frOpt);
+      expect(wife?.relationship).toBe('Épouse');
+      expect(wife?.description).toContain("est l'épouse de");
+
+      const auntByMarriage = calculateKinship(analysis, '@SELF@', '@AUNT@', frOpt);
+      expect(auntByMarriage?.relationship).toBe('Parente par alliance');
+      expect(auntByMarriage?.description).toContain('par alliance');
+    });
+
+    it('calculates French relationship in Royal92 benchmark', () => {
+      const royalAnalysis = analyze(fixture('v5/Royal92.ged').bytes);
+      const victoriaAlbert = calculateKinship(royalAnalysis, 'I1', 'I2', frOpt);
+      expect(victoriaAlbert?.relationship).toBe('Cousin germain');
+      expect(victoriaAlbert?.description).toContain('est le cousin germain de');
+
+      const victoriaChild = calculateKinship(royalAnalysis, 'I1', 'I3', frOpt);
+      expect(victoriaChild?.relationship).toBe('Fille');
+      expect(victoriaChild?.description).toContain('est la fille de');
+    });
+  });
 });

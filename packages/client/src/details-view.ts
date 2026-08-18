@@ -27,6 +27,7 @@ import {
 } from 'vscode';
 
 import { analysisOf } from './analysis.ts';
+import { getClientBundle } from './l10n.ts';
 import { contentSecurityPolicy } from './policy.ts';
 import { SelectionStore, subjectEditor } from './selection.ts';
 
@@ -78,7 +79,7 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
   resolveWebviewView(view: WebviewView, _context: unknown, _token: CancellationToken): void {
     this.view = view;
     view.webview.options = { enableScripts: true, localResourceRoots: [] };
-    view.webview.html = shell(previewsEnabled());
+    view.webview.html = shell(previewsEnabled(), getClientBundle());
 
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'ready') this.refresh();
@@ -101,7 +102,7 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     this.subscriptions.push(
       workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration(PREVIEWS)) return;
-        view.webview.html = shell(previewsEnabled());
+        view.webview.html = shell(previewsEnabled(), getClientBundle());
         this.refresh();
       }),
     );
@@ -214,7 +215,7 @@ function nonce(): string {
 }
 
 /** The panel document. Inline behind a nonce; see graph-view.ts for why. */
-function shell(previews: boolean): string {
+function shell(previews: boolean, bundle: Record<string, string> = {}): string {
   const id = nonce();
 
   return `<!DOCTYPE html>
@@ -504,6 +505,14 @@ function shell(previews: boolean): string {
   const content = document.getElementById('content');
   const sections = document.getElementById('sections');
   const previews = ${previews ? 'true' : 'false'};
+  const L10N = ${JSON.stringify(bundle)};
+
+  function t(k, ...args) {
+    let str = L10N[k] || k;
+    return args.length === 0
+      ? str
+      : str.replace(/{(d+)}/g, (_, i) => args[Number(i)] !== undefined ? args[Number(i)] : '{' + i + '}');
+  }
 
   // Notify extension host that webview script has loaded and is ready to draw
   vscode.postMessage({ type: 'ready' });
@@ -697,8 +706,8 @@ function shell(previews: boolean): string {
     bar.className = 'switch';
 
     for (const [value, label, title] of [
-      ['text', 'Text', 'Show the characters the file contains'],
-      ['html', 'HTML', 'Render the markup, sanitised'],
+      ['text', t('Text'), t('Show the characters the file contains')],
+      ['html', t('HTML'), t('Render the markup, sanitised')],
     ]) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -731,7 +740,7 @@ function shell(previews: boolean): string {
     if (btnSwitchFile) {
       btnSwitchFile.hidden = !message.showFileLink;
       if (message.fileName) {
-        btnSwitchFile.title = 'Switch to ' + message.fileName + ' in editor';
+        btnSwitchFile.title = t('Switch to {0} in editor', message.fileName);
       }
     }
 
@@ -739,7 +748,7 @@ function shell(previews: boolean): string {
 
     if (details.timeline && details.timeline.length > 0) {
       const heading = document.createElement('h2');
-      heading.textContent = 'Life Timeline';
+      heading.textContent = t('Life Timeline');
       sections.appendChild(heading);
 
       const timelineContainer = document.createElement('div');
@@ -750,7 +759,7 @@ function shell(previews: boolean): string {
         item.className = 'timeline-item' + (event.line !== undefined ? ' clickable' : '');
         if (event.line !== undefined) {
           item.tabIndex = 0;
-          item.title = 'Show this event in the editor';
+          item.title = t('Show this event in the editor');
           const go = () => vscode.postMessage({ type: 'reveal', line: event.line });
           item.addEventListener('click', go);
           item.addEventListener('keydown', (e) => {
@@ -811,7 +820,7 @@ function shell(previews: boolean): string {
     if (!details.sections.length && (!details.timeline || !details.timeline.length)) {
       const nothing = document.createElement('div');
       nothing.id = 'empty';
-      nothing.textContent = 'Nothing recorded beyond the relationships in the tree.';
+      nothing.textContent = t('Nothing recorded beyond the relationships in the tree.');
       sections.appendChild(nothing);
       return;
     }
@@ -830,7 +839,7 @@ function shell(previews: boolean): string {
           if (!clickable) return;
           element.tabIndex = 0;
           element.setAttribute('role', 'button');
-          element.title = 'Show this line in the editor';
+          element.title = t('Show this line in the editor');
           element.addEventListener('click', go);
           element.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); }
@@ -881,7 +890,7 @@ function shell(previews: boolean): string {
         if (field.empty) {
           const nothing = document.createElement('span');
           nothing.className = 'empty';
-          nothing.textContent = 'no value';
+          nothing.textContent = t('no value');
           value.replaceChildren(nothing);
         } else {
           value.replaceChildren(linkified(field.value));

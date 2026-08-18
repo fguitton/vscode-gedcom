@@ -189,3 +189,50 @@ describe('the contributions', () => {
     expect(views).toContain('gedcom.details');
   });
 });
+
+describe('the localization bundles', () => {
+  const nlsDefault = JSON.parse(readFileSync(join(root, 'package.nls.json'), 'utf8')) as Record<
+    string,
+    string
+  >;
+  const nlsFr = JSON.parse(readFileSync(join(root, 'package.nls.fr.json'), 'utf8')) as Record<
+    string,
+    string
+  >;
+  const bundleDefault = JSON.parse(
+    readFileSync(join(root, 'l10n', 'bundle.l10n.json'), 'utf8'),
+  ) as Record<string, string>;
+  const bundleFr = JSON.parse(
+    readFileSync(join(root, 'l10n', 'bundle.l10n.fr.json'), 'utf8'),
+  ) as Record<string, string>;
+
+  it('matches all %key% placeholders in package.json to package.nls.json', () => {
+    const rawManifest = readFileSync(join(root, 'package.json'), 'utf8');
+    const placeholders = [...rawManifest.matchAll(/%([a-zA-Z0-9_.]+)%/g)].map((m) => m[1]!);
+
+    expect(placeholders.length).toBeGreaterThan(0);
+    for (const key of placeholders) {
+      expect(nlsDefault, `Placeholder %${key}% missing in package.nls.json`).toHaveProperty(key);
+    }
+  });
+
+  it('ensures package.nls.fr.json provides translations for all keys in package.nls.json', () => {
+    const defaultKeys = Object.keys(nlsDefault);
+    const frKeys = Object.keys(nlsFr);
+
+    expect(frKeys.sort()).toEqual(defaultKeys.sort());
+    for (const key of defaultKeys) {
+      expect(nlsFr[key]?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('ensures l10n/bundle.l10n.fr.json provides translations for all keys in bundle.l10n.json', () => {
+    const defaultKeys = Object.keys(bundleDefault);
+    const frKeys = Object.keys(bundleFr);
+
+    expect(frKeys.sort()).toEqual(defaultKeys.sort());
+    for (const key of defaultKeys) {
+      expect(bundleFr[key]?.length).toBeGreaterThan(0);
+    }
+  });
+});

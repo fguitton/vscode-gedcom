@@ -14,6 +14,7 @@
 
 import { type Analysis } from '@vscode-gedcom/core';
 import { analysisOf } from './analysis.ts';
+import { t } from './l10n.ts';
 import {
   commands,
   MarkdownString,
@@ -35,26 +36,27 @@ function describe(analysis: Analysis): { text: string; detail: string; uncertain
     case 'declared':
       return {
         text: `GEDCOM ${version}`,
-        detail:
-          `This file declares version **${version}** in \`HEAD.GEDC.VERS\`, ` +
-          'which is what its structure is checked against.',
+        detail: t(
+          'This file declares version **{0}** in `HEAD.GEDC.VERS`, which is what its structure is checked against.',
+          version,
+        ),
         uncertain: false,
       };
     case 'inferred':
       return {
         text: `GEDCOM ${version}?`,
-        detail:
-          `This file declares no version in \`HEAD.GEDC.VERS\`, so **${version}** was inferred ` +
-          'from the tags it uses. Adding a version to the header will make validation exact.',
+        detail: t(
+          'This file declares no version in `HEAD.GEDC.VERS`, so **{0}** was inferred from the tags it uses. Adding a version to the header will make validation exact.',
+          version,
+        ),
         uncertain: true,
       };
     default:
       return {
-        text: 'GEDCOM version unknown',
-        detail:
-          'This file declares no version in `HEAD.GEDC.VERS`, and its vocabulary was not ' +
-          'conclusive either. It is being checked leniently against 5.5.1, the safer ' +
-          'assumption for a file of unknown age.',
+        text: t('GEDCOM version unknown'),
+        detail: t(
+          'This file declares no version in `HEAD.GEDC.VERS`, and its vocabulary was not conclusive either. It is being checked leniently against 5.5.1, the safer assumption for a file of unknown age.',
+        ),
         uncertain: true,
       };
   }
@@ -73,7 +75,7 @@ function contents(analysis: Analysis): string {
     .slice(0, 5)
     .map(([tag, count]) => `${count.toLocaleString()} ${tag}`);
 
-  return interesting.length > 0 ? interesting.join(' · ') : 'No records.';
+  return interesting.length > 0 ? interesting.join(' · ') : t('No records.');
 }
 
 export function registerVersionStatus(context: ExtensionContext): void {

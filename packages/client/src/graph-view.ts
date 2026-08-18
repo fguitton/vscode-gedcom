@@ -36,6 +36,7 @@ import {
 import { analysisOf, forget } from './analysis.ts';
 import { revealLine } from './commands.ts';
 import { DETAILS_VIEW_ID, GedcomDetailsViewProvider } from './details-view.ts';
+import { getClientBundle, t } from './l10n.ts';
 import type { Log } from './log.ts';
 import { contentSecurityPolicy } from './policy.ts';
 import {
@@ -120,10 +121,10 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
     _token: CancellationToken,
   ): void {
     this.view = view;
-    view.title = 'Tree';
+    view.title = t('Tree');
     view.description = '';
     view.webview.options = { enableScripts: true, localResourceRoots: [] };
-    view.webview.html = shell();
+    view.webview.html = shell(getClientBundle());
 
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'ready') {
@@ -358,8 +359,9 @@ function nonce(): string {
  * come from VS Code's theme variables rather than being chosen here, so the
  * panel matches whatever theme the reader is using, high-contrast included.
  */
-function shell(): string {
+function shell(bundle: Record<string, string> = {}): string {
   const id = nonce();
+  const t = (k: string) => bundle[k] || k;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -414,98 +416,144 @@ function shell(): string {
   .btn-group {
     display: flex;
     align-items: center;
-    gap: .2rem;
+    background: var(--vscode-dropdown-background, var(--vscode-editorWidget-background));
+    border: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border, #454545));
+    border-radius: 3px;
+    overflow: hidden;
   }
-  #controls button {
+  .btn-group button {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: .2rem .35rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: .3rem;
-    font-family: inherit;
-    font-size: calc(var(--vscode-font-size) * .85);
+    gap: 3px;
+    cursor: pointer;
     color: var(--vscode-foreground);
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 3px;
-    padding: .2rem .35rem;
-    cursor: pointer;
-    line-height: 1;
+    outline: none;
+    transition: background 0.1s ease;
   }
-  #controls button svg {
-    display: block;
-    width: 14px;
-    height: 14px;
-    fill: currentColor;
+  .btn-group button:not(:last-child) {
+    border-right: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border, #454545));
   }
-  #controls button:hover { background: var(--vscode-toolbar-hoverBackground); }
-  #controls button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
-  #controls button:active { background: var(--vscode-toolbar-activeBackground, var(--vscode-toolbar-hoverBackground)); }
-  #btn-clear-path {
-    display: none;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 7px;
-    height: 22px;
-    font-size: 11px;
-    font-weight: 500;
-    border-radius: 3px;
-    background: rgba(229, 160, 13, 0.15);
-    color: #e5a00d;
-    border: 1px solid rgba(229, 160, 13, 0.4);
-    cursor: pointer;
-    margin-left: 6px;
-    transition: background 0.15s ease, border-color 0.15s ease;
+  .btn-group button:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
   }
-  #btn-clear-path:hover {
-    background: rgba(229, 160, 13, 0.28);
-    border-color: #e5a00d;
+  .btn-group button:active {
+    background: var(--vscode-toolbar-activeBackground, rgba(90, 93, 94, 0.45));
   }
-  #btn-clear-path svg {
+  .btn-group button svg {
     width: 12px;
     height: 12px;
     fill: currentColor;
   }
-  /* The controls take a fixed strip; the drawing gets the rest. */
+  .btn-group button span {
+    font-size: calc(var(--vscode-font-size) * .75);
+    font-weight: 600;
+  }
+  #btn-clear-path {
+    display: none;
+    align-items: center;
+    gap: 3px;
+    background: var(--vscode-button-secondaryBackground, #3a3d41);
+    color: var(--vscode-button-secondaryForeground, #ffffff);
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 3px;
+    padding: .15rem .35rem;
+    font-size: calc(var(--vscode-font-size) * .8);
+    cursor: pointer;
+  }
+  #btn-clear-path:hover {
+    background: var(--vscode-button-secondaryHoverBackground, #45494e);
+  }
+  #btn-clear-path svg {
+    width: 11px;
+    height: 11px;
+    fill: currentColor;
+  }
   #scroll {
     flex: 1;
     overflow: auto;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
   }
-  .edge { stroke: var(--vscode-editorIndentGuide-activeBackground, currentColor); stroke-width: 1; opacity: .5; }
-  .edge-label text {
+  #scroll:active {
+    cursor: grabbing;
+  }
+  svg {
+    display: block;
+    min-width: 100%;
+    min-height: 100%;
+  }
+  .edge {
+    stroke: var(--vscode-editorIndentGuide-background, #404040);
+    stroke-width: 1.5;
+  }
+  .edge.child {
+    stroke: var(--vscode-editorIndentGuide-activeBackground, #707070);
+  }
+  .edge.reference {
+    stroke-dasharray: 3 3;
+    opacity: .7;
+  }
+  .edge.marriage-child {
+    stroke: var(--vscode-editorIndentGuide-activeBackground, #707070);
+  }
+  .edge-label {
     fill: var(--vscode-descriptionForeground);
     font-size: 9px;
-  }
-  .edge-label-plate {
-    fill: var(--vscode-sideBar-background, var(--vscode-editor-background));
-    opacity: .85;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
   }
   .node rect {
-    fill: var(--vscode-editorWidget-background);
-    stroke: var(--vscode-editorWidget-border, var(--vscode-focusBorder));
+    rx: 4;
+    ry: 4;
+    fill: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+    stroke: var(--vscode-editorWidget-border, var(--vscode-panel-border, #404040));
     stroke-width: 1;
-    rx: 3;
   }
   .node.focus rect {
     stroke: var(--vscode-focusBorder);
-    stroke-width: 2;
-    fill: var(--vscode-list-activeSelectionBackground);
+    stroke-width: 1.5;
   }
-  .node text.label { fill: var(--vscode-foreground); font-size: 11px; }
-  .node.focus text.label { fill: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground)); }
-  .node text.tag {
+  .node.reference rect {
+    stroke-dasharray: 3 2;
+  }
+  .node text {
+    font-family: inherit;
+    pointer-events: none;
+  }
+  .node text.label {
+    font-size: var(--vscode-font-size);
+    fill: var(--vscode-foreground);
+  }
+  .node.focus text.label {
+    font-weight: 600;
+  }
+  .node text.detail {
+    font-size: calc(var(--vscode-font-size) * .8);
     fill: var(--vscode-descriptionForeground);
-    font-size: 9px;
-    font-family: var(--vscode-editor-font-family, monospace);
   }
-  .node { cursor: pointer; }
-  .node > rect:first-of-type:hover, .node:hover > rect:first-of-type { stroke: var(--vscode-focusBorder); }
-  .node:focus-visible > rect:first-of-type { stroke: var(--vscode-focusBorder); stroke-width: 2; }
-  /* Revealed on hover or focus: an arrow on every box at rest would be a column
-     of chrome competing with the names. */
-  .goto rect { fill: transparent; stroke: none; opacity: 0; }
+  .node.clickable {
+    cursor: pointer;
+  }
+  .node.clickable:hover rect {
+    fill: var(--vscode-list-hoverBackground, rgba(255, 255, 255, .05));
+  }
+  .node:focus-visible rect {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+  }
+  .goto rect {
+    rx: 3;
+    ry: 3;
+    fill: transparent;
+    cursor: pointer;
+  }
   .goto .arrow { stroke: var(--vscode-descriptionForeground); stroke-width: 1.2; opacity: 0; }
   .node:hover .goto rect, .node:focus-within .goto rect { opacity: .6; fill: var(--vscode-toolbar-hoverBackground); }
   .node:hover .goto .arrow, .node:focus-within .goto .arrow { opacity: 1; }
@@ -589,31 +637,31 @@ function shell(): string {
 </head>
 <body>
 <div id="controls" role="toolbar" aria-label="Tree controls">
-  <select id="direction-select" title="Direction of branch traversal / View mode">
-    <option value="both">Both</option>
-    <option value="ancestors">Ancestors</option>
-    <option value="descendants">Descendants</option>
-    <option value="fan">Circular Fan</option>
+  <select id="direction-select" title="${t('Direction of branch traversal / View mode')}">
+    <option value="both">${t('Both')}</option>
+    <option value="ancestors">${t('Ancestors')}</option>
+    <option value="descendants">${t('Descendants')}</option>
+    <option value="fan">${t('Circular Fan')}</option>
   </select>
-  <button type="button" id="btn-clear-path" title="Clear Highlighted Relationship Path (Esc)" aria-label="Clear Path">
+  <button type="button" id="btn-clear-path" title="${t('Clear Highlighted Relationship Path (Esc)')}" aria-label="${t('Clear Path')}">
     <svg viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
-    <span>Clear Path</span>
+    <span>${t('Clear Path')}</span>
   </button>
   <span style="flex: 1"></span>
   <div class="btn-group">
-    <button type="button" id="btn-fit" title="Zoom to Fit (Fit all nodes in view)" aria-label="Zoom to Fit">
+    <button type="button" id="btn-fit" title="${t('Zoom to Fit (Fit all nodes in view)')}" aria-label="${t('Zoom to Fit')}">
       <svg viewBox="0 0 16 16"><path d="M3 3h3v1.5H4.5V6H3V3zm7 0h3v3h-1.5V4.5H10V3zm3 7v3h-3v-1.5h1.5V10H13zm-7 3H3v-3h1.5v1.5H6V13z"/></svg>
     </button>
-    <button type="button" id="btn-reset" title="Reset View (100% Zoom & Recenter)" aria-label="Reset View">
+    <button type="button" id="btn-reset" title="${t('Reset View (100% Zoom & Recenter)')}" aria-label="${t('Reset View')}">
       <svg viewBox="0 0 16 16"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
     </button>
-    <button type="button" id="btn-export-svg" title="Export Tree as SVG" aria-label="Export Tree as SVG">
+    <button type="button" id="btn-export-svg" title="${t('Export Tree as SVG')}" aria-label="${t('Export Tree as SVG')}">
       <svg viewBox="0 0 16 16"><path d="M8.5 1.5v7.293l2.146-2.147.708.708L8 10.707 4.646 7.354l.708-.708L7.5 8.793V1.5h1zM2 12.5h12v1.5H2v-1.5z"/></svg>
       <span>SVG</span>
     </button>
   </div>
 </div>
-<div id="empty">Open a GEDCOM file and place the cursor in a record.</div>
+<div id="empty">${t('Open a GEDCOM file and place the cursor in a record.')}</div>
 <div id="scroll"><svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg></div>
 <script nonce="${id}">
 (function () {
@@ -623,6 +671,8 @@ function shell(): string {
   const scroll = document.getElementById('scroll');
   const btnClearPath = document.getElementById('btn-clear-path');
   const NS = 'http://www.w3.org/2000/svg';
+  const L10N = ${JSON.stringify(bundle)};
+  function t(k) { return L10N[k] || k; }
   let currentGraph = null;
   let currentFanChart = null;
   let activePathSet = null;
@@ -858,7 +908,7 @@ function shell(): string {
     svg.replaceChildren();
 
     if (!graph.nodes.length) {
-      empty.textContent = 'No record at the cursor.';
+      empty.textContent = t('No record at the cursor.');
       empty.style.display = 'block';
       scroll.style.display = 'none';
       return;

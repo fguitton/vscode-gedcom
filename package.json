@@ -1,9 +1,9 @@
 {
   "name": "vscode-gedcom",
-  "displayName": "GEDCOM Language",
+  "displayName": "%extension.displayName%",
   "version": "0.12.1",
   "private": false,
-  "description": "GEDCOM language support for VS Code: syntax highlighting, validation, navigation and a family tree for GEDCOM 5.5.1, 5.5.5 and FamilySearch GEDCOM 7",
+  "description": "%extension.description%",
   "categories": [
     "Linters",
     "Programming Languages",
@@ -156,14 +156,14 @@
         {
           "type": "webview",
           "id": "gedcom.graph",
-          "name": "Tree",
-          "contextualTitle": "GEDCOM Tree"
+          "name": "%views.graph.name%",
+          "contextualTitle": "%views.graph.contextualTitle%"
         },
         {
           "type": "webview",
           "id": "gedcom.details",
-          "name": "Details",
-          "contextualTitle": "GEDCOM Details"
+          "name": "%views.details.name%",
+          "contextualTitle": "%views.details.contextualTitle%"
         }
       ]
     },
@@ -175,12 +175,12 @@
           "minimum": 1,
           "maximum": 5,
           "default": 2,
-          "markdownDescription": "How many hops from the record at the cursor the tree panel shows.\n\nOne shows a person and their families; two also reaches spouses, children and parents. Beyond three the neighbourhood is usually larger than the panel can show usefully."
+          "markdownDescription": "%config.graph.depth.markdownDescription%"
         },
         "gedcom.graph.includeReferences": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Include sources, notes and media in the tree alongside relatives.\n\nOff by default: a well-sourced person cites dozens of records, and they crowd out the family the panel exists to show."
+          "markdownDescription": "%config.graph.includeReferences.markdownDescription%"
         },
         "gedcom.validation.strictness": {
           "type": "string",
@@ -190,37 +190,37 @@
             "lenient"
           ],
           "enumDescriptions": [
-            "Follow the file's own version: strict for GEDCOM 7, lenient for 5.5.x and for files too old or damaged to identify.",
-            "Enforce placement and cardinality rules on every file, whatever version it claims.",
-            "Report only what is unambiguously wrong: malformed lines, dangling pointers, duplicate identifiers."
+            "%config.validation.strictness.enumDescriptions.auto%",
+            "%config.validation.strictness.enumDescriptions.strict%",
+            "%config.validation.strictness.enumDescriptions.lenient%"
           ],
           "default": "auto",
-          "markdownDescription": "How strictly to validate GEDCOM structure.\n\nTwo decades of exporters produced 5.5.1 files that violate the specification in ways every consumer tolerates, which is why `auto` does not apply GEDCOM 7's rules to them."
+          "markdownDescription": "%config.validation.strictness.markdownDescription%"
         },
         "gedcom.inlayHints.pointers": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show what each cross-reference points at, inline after the pointer.\n\nA GEDCOM file is mostly identifiers, and `1 FAMS @F1@` says nothing about the family it names without following it. This puts the answer at the end of the line."
+          "markdownDescription": "%config.inlayHints.pointers.markdownDescription%"
         },
         "gedcom.inlayHints.values": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show what coded payloads mean, inline after the value.\n\nCovers enumerated values such as `SEX`, `QUAY` and `PEDI`, and BCP 47 language tags."
+          "markdownDescription": "%config.inlayHints.values.markdownDescription%"
         },
         "gedcom.inlayHints.ages": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show how old the subject was, inline after an event's date.\n\nComputed against the record's own `BIRT` date, so it only appears where the file records one."
+          "markdownDescription": "%config.inlayHints.ages.markdownDescription%"
         },
         "gedcom.codeLens.enabled": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show a summary above each record: how many people depend on it, its shape in the tree, and a link into the tree panel."
+          "markdownDescription": "%config.codeLens.enabled.markdownDescription%"
         },
         "gedcom.details.imagePreviews": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show a thumbnail in the details panel for media the file points at over `http` or `https`.\n\nTurning this off leaves the link, and the panel then makes no network request of its own: a photograph hosted by a genealogy site is fetched from that site, which tells it the file is being read and from where."
+          "markdownDescription": "%config.details.imagePreviews.markdownDescription%"
         },
         "gedcom.details.noteFormat": {
           "type": "string",
@@ -229,23 +229,23 @@
             "html"
           ],
           "enumDescriptions": [
-            "Show the characters the file actually contains.",
-            "Render recognised markup, sanitised — a fixed list of formatting tags and links, and nothing else."
+            "%config.details.noteFormat.enumDescriptions.text%",
+            "%config.details.noteFormat.enumDescriptions.html%"
           ],
           "default": "text",
-          "markdownDescription": "How to show a note whose text is HTML.\n\nSome exporters write markup into notes, and GEDCOM 7 lets a note declare it with `MIME text/html`. This is the starting choice; the button on the note itself switches either way for the rest of the session.\n\nRendering never runs script, loads a remote resource, or keeps anything but a fixed list of formatting tags and `http(s)` links — a GEDCOM file is untrusted input."
+          "markdownDescription": "%config.details.noteFormat.markdownDescription%"
         },
         "gedcom.virtualIndent.enabled": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Indent each line by its level, without changing the file.\n\nA GEDCOM line must begin with its level number in column zero, so the format forbids the indentation that would make a deep structure readable. This draws it as a decoration: nothing is inserted, nothing is saved, and copying a line copies what the file actually holds.\n\nLines that already carry indentation of their own are left alone."
+          "markdownDescription": "%config.virtualIndent.enabled.markdownDescription%"
         },
         "gedcom.virtualIndent.width": {
           "type": "integer",
           "minimum": 1,
           "maximum": 8,
           "default": 2,
-          "markdownDescription": "Columns of drawn indentation per level, when `#gedcom.virtualIndent.enabled#` is on."
+          "markdownDescription": "%config.virtualIndent.width.markdownDescription%"
         },
         "gedcom.trace.server": {
           "type": "string",
@@ -255,40 +255,40 @@
             "verbose"
           ],
           "default": "off",
-          "description": "Trace the communication between VS Code and the GEDCOM language server."
+          "description": "%config.trace.server.description%"
         }
       }
     },
     "commands": [
       {
         "command": "gedcom.showGraph",
-        "title": "Show Tree",
+        "title": "%command.showGraph%",
         "category": "GEDCOM",
         "icon": "$(type-hierarchy)"
       },
       {
         "command": "gedcom.showVersion",
-        "title": "Explain Detected Version",
+        "title": "%command.showVersion%",
         "category": "GEDCOM"
       },
       {
         "command": "gedcom.showLog",
-        "title": "Show Log",
+        "title": "%command.showLog%",
         "category": "GEDCOM"
       },
       {
         "command": "gedcom.copyDiagnostics",
-        "title": "Copy Diagnostics",
+        "title": "%command.copyDiagnostics%",
         "category": "GEDCOM"
       },
       {
         "command": "gedcom.upgradeToGedcom7",
-        "title": "Upgrade File to GEDCOM 7.0",
+        "title": "%command.upgradeToGedcom7%",
         "category": "GEDCOM"
       },
       {
         "command": "gedcom.findRelationship",
-        "title": "Find Relationship Between Individuals",
+        "title": "%command.findRelationship%",
         "category": "GEDCOM"
       }
     ],
