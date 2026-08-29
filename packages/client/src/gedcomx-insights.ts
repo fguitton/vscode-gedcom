@@ -32,22 +32,33 @@ import { analysisOf } from './analysis.ts';
 
 import {
   CodeLens,
+  DocumentHighlight,
+  DocumentHighlightKind,
+  DocumentLink,
   Hover,
   InlayHint,
   InlayHintKind,
   languages,
+  Location,
   MarkdownString,
   Position,
   Range,
+  Uri,
   workspace,
   type CancellationToken,
   type CodeLensProvider,
+  type DefinitionProvider,
   type Disposable,
+  type DocumentHighlightProvider,
+  type DocumentLinkProvider,
   type ExtensionContext,
   type HoverProvider,
   type InlayHintsProvider,
+  type ReferenceContext,
+  type ReferenceProvider,
   type TextDocument,
 } from 'vscode';
+
 import type { Log } from './log.ts';
 
 const DOCUMENT_SELECTOR = [
@@ -446,13 +457,261 @@ export class GedcomXCodeLensProvider implements CodeLensProvider {
   }
 }
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findDefinitionLocation(document: TextDocument, id: string): Location | null {
+  const cleanId = id.replace(/^#/, '');
+  const escaped = escapeRegex(cleanId);
+  const defRegex = new RegExp(`(?:id)["\\s:=]+["']${escaped}["']`);
+
+  for (let l = 0; l < document.lineCount; l++) {
+    const lineText = document.lineAt(l).text;
+    const match = defRegex.exec(lineText);
+    if (match) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      return new Location(document.uri, new Range(l, start, l, end));
+    }
+  }
+
+  const xmlTagRegex = new RegExp(`<[a-zA-Z0-9_-]+[^>]*\\bid=["']${escaped}["']`);
+  for (let l = 0; l < document.lineCount; l++) {
+    const lineText = document.lineAt(l).text;
+    const match = xmlTagRegex.exec(lineText);
+    if (match) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      return new Location(document.uri, new Range(l, start, l, end));
+    }
+  }
+
+  return null;
+}
+
+function getIdentifierAtPosition(document: TextDocument, position: Position): string | null {
+  const lineText = document.lineAt(position.line).text;
+
+  // Check if position is on #id reference
+  const refRegex = /(?:resource|descriptionRef|about)?["\s:=]*#([a-zA-Z0-9_-]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = refRegex.exec(lineText)) !== null) {
+    if (position.character >= match.index && position.character <= match.index + match[0].length) {
+      return match[1]!;
+    }
+  }
+
+  // Check if position is on id definition
+  const defRegex = /(?:id)["\s:=]+["']([a-zA-Z0-9_-]+)["']/g;
+  while ((match = defRegex.exec(lineText)) !== null) {
+    if (position.character >= match.index && position.character <= match.index + match[0].length) {
+      return match[1]!;
+    }
+  }
+
+  const wordRange = document.getWordRangeAtPosition(position, /#?[a-zA-Z0-9_-]+/);
+  if (wordRange) {
+    return document.getText(wordRange).replace(/^#/, '');
+  }
+
+  return null;
+}
+
+export class GedcomXDefinitionProvider implements DefinitionProvider {
+  provideDefinition(
+    document: TextDocument,
+    position: Position,
+    _token: CancellationToken,
+  ): Location | Location[] | null {
+    const text = document.getText();
+    if (!isGedcomX(text)) return null;
+
+    const lineText = document.lineAt(position.line).text;
+
+    // 1. Is the cursor on a reference pointer (#id, resource="#id", descriptionRef="#id")?
+    const refRegex = /(?:resource|descriptionRef|about)?["\s:=]*#([a-zA-Z0-9_-]+)/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = refRegex.exec(lineText)) !== null) {
+      const matchStart = match.index;
+      const matchEnd = match.index + match[0].length;
+      if (position.character >= matchStart && position.character <= matchEnd) {
+        const id = match[1]!;
+        const defLoc = findDefinitionLocation(document, id);
+        if (defLoc) return defLoc;
+      }
+    }
+
+    // 2. Is the cursor on an ID definition (id="...", "id": "...")?
+    const defRegex = /(?:id)["\s:=]+["']([a-zA-Z0-9_-]+)["']/g;
+    while ((match = defRegex.exec(lineText)) !== null) {
+      const matchStart = match.index;
+      const matchEnd = match.index + match[0].length;
+      if (position.character >= matchStart && position.character <= matchEnd) {
+        const id = match[1]!;
+        const defLoc = findDefinitionLocation(document, id);
+        if (defLoc) return defLoc;
+      }
+    }
+
+    // 3. Fallback: check word at position if it starts with # or matches an ID
+    const wordRange = document.getWordRangeAtPosition(position, /#?[a-zA-Z0-9_-]+/);
+    if (wordRange) {
+      const rawWord = document.getText(wordRange).replace(/^#/, '');
+      const defLoc = findDefinitionLocation(document, rawWord);
+      if (defLoc && defLoc.range.start.line !== position.line) return defLoc;
+    }
+
+    return null;
+  }
+}
+
+export class GedcomXReferenceProvider implements ReferenceProvider {
+  provideReferences(
+    document: TextDocument,
+    position: Position,
+    context: ReferenceContext,
+    _token: CancellationToken,
+  ): Location[] {
+    const text = document.getText();
+    if (!isGedcomX(text)) return [];
+
+    const id = getIdentifierAtPosition(document, position);
+    if (!id) return [];
+
+    const locations: Location[] = [];
+
+    if (context.includeDeclaration) {
+      const defLoc = findDefinitionLocation(document, id);
+      if (defLoc) locations.push(defLoc);
+    }
+
+    const refRegex = new RegExp(
+      `(?:resource|descriptionRef|about)?["\\s:=]*#${escapeRegex(id)}(?![a-zA-Z0-9_-])`,
+      'g',
+    );
+
+    for (let l = 0; l < document.lineCount; l++) {
+      const lineText = document.lineAt(l).text;
+      let match: RegExpExecArray | null;
+      refRegex.lastIndex = 0;
+      while ((match = refRegex.exec(lineText)) !== null) {
+        const startChar = match.index;
+        const endChar = match.index + match[0].length;
+        locations.push(new Location(document.uri, new Range(l, startChar, l, endChar)));
+      }
+    }
+
+    return locations;
+  }
+}
+
+export class GedcomXDocumentHighlightProvider implements DocumentHighlightProvider {
+  provideDocumentHighlights(
+    document: TextDocument,
+    position: Position,
+    _token: CancellationToken,
+  ): DocumentHighlight[] {
+    const text = document.getText();
+    if (!isGedcomX(text)) return [];
+
+    const id = getIdentifierAtPosition(document, position);
+    if (!id) return [];
+
+    const highlights: DocumentHighlight[] = [];
+
+    const defLoc = findDefinitionLocation(document, id);
+    if (defLoc) {
+      highlights.push(new DocumentHighlight(defLoc.range, DocumentHighlightKind.Write));
+    }
+
+    const refRegex = new RegExp(
+      `(?:resource|descriptionRef|about)?["\\s:=]*#${escapeRegex(id)}(?![a-zA-Z0-9_-])`,
+      'g',
+    );
+    for (let l = 0; l < document.lineCount; l++) {
+      const lineText = document.lineAt(l).text;
+      let match: RegExpExecArray | null;
+      refRegex.lastIndex = 0;
+      while ((match = refRegex.exec(lineText)) !== null) {
+        const startChar = match.index;
+        const endChar = match.index + match[0].length;
+        highlights.push(
+          new DocumentHighlight(new Range(l, startChar, l, endChar), DocumentHighlightKind.Read),
+        );
+      }
+    }
+
+    return highlights;
+  }
+}
+
+export class GedcomXDocumentLinkProvider implements DocumentLinkProvider {
+  provideDocumentLinks(document: TextDocument, _token: CancellationToken): DocumentLink[] {
+    const text = document.getText();
+    if (!isGedcomX(text)) return [];
+
+    const links: DocumentLink[] = [];
+    const urlRegex = /https?:\/\/[^\s"'>]+/g;
+    const refRegex = /(?:resource|descriptionRef|about)["\s:=]+["']?#([a-zA-Z0-9_-]+)["']?/g;
+
+    for (let l = 0; l < document.lineCount; l++) {
+      const lineText = document.lineAt(l).text;
+
+      // Internal #id links (jump to definition on Ctrl+Click)
+      let match: RegExpExecArray | null;
+      refRegex.lastIndex = 0;
+      while ((match = refRegex.exec(lineText)) !== null) {
+        const id = match[1]!;
+        const defLoc = findDefinitionLocation(document, id);
+        if (defLoc) {
+          const hashIdx = lineText.indexOf('#' + id, match.index);
+          const start = hashIdx >= 0 ? hashIdx : match.index;
+          const end = start + ('#' + id).length;
+          const range = new Range(l, start, l, end);
+          const link = new DocumentLink(
+            range,
+            document.uri.with({ fragment: `L${defLoc.range.start.line + 1}` }),
+          );
+          link.tooltip = `Jump to definition of ${id}`;
+          links.push(link);
+        }
+      }
+
+      // External http:// URLs
+      urlRegex.lastIndex = 0;
+      while ((match = urlRegex.exec(lineText)) !== null) {
+        const urlStr = match[0];
+        if (urlStr.startsWith('http://gedcomx.org')) continue;
+        try {
+          const uri = Uri.parse(urlStr);
+          const range = new Range(l, match.index, l, match.index + urlStr.length);
+          links.push(new DocumentLink(range, uri));
+        } catch {
+          // ignore invalid URLs
+        }
+      }
+    }
+
+    return links;
+  }
+}
+
 export function registerGedcomXInsights(context: ExtensionContext, log: Log): Disposable[] {
-  log.info('Registering GEDCOM X inline insights (hover, inlay hints, code lenses)');
+  log.info('Registering GEDCOM X inline insights (hover, inlay hints, code lenses, navigation)');
 
   const disposables: Disposable[] = [
     languages.registerHoverProvider(DOCUMENT_SELECTOR, new GedcomXHoverProvider()),
     languages.registerInlayHintsProvider(DOCUMENT_SELECTOR, new GedcomXInlayHintsProvider()),
     languages.registerCodeLensProvider(DOCUMENT_SELECTOR, new GedcomXCodeLensProvider()),
+    languages.registerDefinitionProvider(DOCUMENT_SELECTOR, new GedcomXDefinitionProvider()),
+    languages.registerReferenceProvider(DOCUMENT_SELECTOR, new GedcomXReferenceProvider()),
+    languages.registerDocumentHighlightProvider(
+      DOCUMENT_SELECTOR,
+      new GedcomXDocumentHighlightProvider(),
+    ),
+    languages.registerDocumentLinkProvider(DOCUMENT_SELECTOR, new GedcomXDocumentLinkProvider()),
   ];
 
   context.subscriptions.push(...disposables);
