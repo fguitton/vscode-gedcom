@@ -6,6 +6,7 @@ import type { ExtensionContext } from 'vscode';
 import { LanguageClient, TransportKind, type ServerOptions } from 'vscode-languageclient/node';
 
 import { registerCommands } from './commands.ts';
+import { registerGedcomXInsights } from './gedcomx-insights.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
 import { createLog, logActivation, registerDiagnostics } from './log.ts';
@@ -24,6 +25,7 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
 
   registerCommands(context);
   const hooks = registerGraphView(context, log);
+  registerGedcomXInsights(context, log);
   registerDiagnostics(context, log, facts, () =>
     describePanel(hooks.graphVisible(), hooks.graphDrawn()),
   );

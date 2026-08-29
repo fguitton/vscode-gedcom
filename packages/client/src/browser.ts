@@ -11,6 +11,7 @@ import { env, Uri, type ExtensionContext } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/browser';
 
 import { registerCommands } from './commands.ts';
+import { registerGedcomXInsights } from './gedcomx-insights.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
 import { createLog, logActivation, registerDiagnostics } from './log.ts';
@@ -31,6 +32,7 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
   registerCommands(context);
   // Both read the document directly, so they work identically in either host.
   const hooks = registerGraphView(context, log);
+  registerGedcomXInsights(context, log);
   registerDiagnostics(context, log, facts, () =>
     describePanel(hooks.graphVisible(), hooks.graphDrawn()),
   );
