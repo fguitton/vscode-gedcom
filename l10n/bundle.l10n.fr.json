@@ -56,5 +56,19 @@
   "Successfully unpacked {0} files from GEDZIP archive.": "{0} fichier(s) décompressé(s) avec succès depuis l'archive GEDZIP.",
   "Failed to unpack GEDZIP archive: {0}": "Échec de la décompression de l'archive GEDZIP : {0}",
   "Open GEDZIP Archive": "Ouvrir l'archive GEDZIP",
-  "Failed to open GEDZIP archive: {0}": "Échec de l'ouverture de l'archive GEDZIP : {0}"
+  "Failed to open GEDZIP archive: {0}": "Échec de l'ouverture de l'archive GEDZIP : {0}",
+  "Open": "Ouvrir",
+  "Open {0}": "Ouvrir {0}",
+  "Show Tree": "Afficher l'arbre",
+  "Unpack Archive": "Décompresser l'archive",
+  "Individuals": "Individus",
+  "Families": "Familles",
+  "Files in Archive": "Fichiers dans l'archive",
+  "Media Assets": "Fichiers multimédias",
+  "Archive Files": "Fichiers de l'archive",
+  "File Name": "Nom de fichier",
+  "Path": "Chemin",
+  "Size": "Taille",
+  "Action": "Action",
+  "Media Gallery": "Galerie multimédia"
 }

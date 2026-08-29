@@ -6,7 +6,9 @@ import type { ExtensionContext } from 'vscode';
 import { LanguageClient, TransportKind, type ServerOptions } from 'vscode-languageclient/node';
 
 import { registerCommands } from './commands.ts';
+import { registerGdzCustomEditor } from './gdz-editor.ts';
 import { GdzFileSystemProvider, GDZ_SCHEME } from './gdz-fs.ts';
+import { registerGdzTreeView } from './gdz-tree.ts';
 import { registerGedcomXInsights } from './gedcomx-insights.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
@@ -31,6 +33,8 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
     }),
   );
 
+  registerGdzCustomEditor(context);
+  registerGdzTreeView(context);
   registerCommands(context);
   const hooks = registerGraphView(context, log);
   registerGedcomXInsights(context, log);

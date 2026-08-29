@@ -11,7 +11,9 @@ import { env, Uri, workspace, type ExtensionContext } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/browser';
 
 import { registerCommands } from './commands.ts';
+import { registerGdzCustomEditor } from './gdz-editor.ts';
 import { GdzFileSystemProvider, GDZ_SCHEME } from './gdz-fs.ts';
+import { registerGdzTreeView } from './gdz-tree.ts';
 import { registerGedcomXInsights } from './gedcomx-insights.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
@@ -36,6 +38,8 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
     }),
   );
 
+  registerGdzCustomEditor(context);
+  registerGdzTreeView(context);
   registerCommands(context);
   // Both read the document directly, so they work identically in either host.
   const hooks = registerGraphView(context, log);

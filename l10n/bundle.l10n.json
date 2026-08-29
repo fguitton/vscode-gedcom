@@ -55,5 +55,19 @@
   "Successfully unpacked {0} files from GEDZIP archive.": "Successfully unpacked {0} files from GEDZIP archive.",
   "Failed to unpack GEDZIP archive: {0}": "Failed to unpack GEDZIP archive: {0}",
   "Open GEDZIP Archive": "Open GEDZIP Archive",
-  "Failed to open GEDZIP archive: {0}": "Failed to open GEDZIP archive: {0}"
+  "Failed to open GEDZIP archive: {0}": "Failed to open GEDZIP archive: {0}",
+  "Open": "Open",
+  "Open {0}": "Open {0}",
+  "Show Tree": "Show Tree",
+  "Unpack Archive": "Unpack Archive",
+  "Individuals": "Individuals",
+  "Families": "Families",
+  "Files in Archive": "Files in Archive",
+  "Media Assets": "Media Assets",
+  "Archive Files": "Archive Files",
+  "File Name": "File Name",
+  "Path": "Path",
+  "Size": "Size",
+  "Action": "Action",
+  "Media Gallery": "Media Gallery"
 }

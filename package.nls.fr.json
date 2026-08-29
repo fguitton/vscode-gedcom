@@ -5,6 +5,9 @@
   "views.graph.contextualTitle": "Arbre GEDCOM",
   "views.details.name": "Détails",
   "views.details.contextualTitle": "Détails GEDCOM",
+  "views.gdzExplorer.name": "Archives GEDZIP",
+  "views.gdzExplorer.contextualTitle": "Contenu de l'archive GEDZIP",
+  "customEditors.gdzViewer.displayName": "Visualiseur d'archive GEDZIP",
   "command.showGraph": "Afficher l'arbre",
   "command.showVersion": "Expliquer la version détectée",
   "command.showLog": "Afficher le journal",
@@ -16,6 +19,7 @@
   "command.packageGdz": "Empaqueter le fichier en GEDZIP (.gdz)",
   "command.unpackGdz": "Décompresser l'archive GEDZIP (.gdz)",
   "command.openGdz": "Ouvrir l'archive GEDZIP",
+  "command.refreshGdzExplorer": "Actualiser l'explorateur GEDZIP",
 
   "config.graph.depth.markdownDescription": "Nombre de sauts affichés dans le panneau de l'arbre à partir de la fiche sous le curseur.\n\nUne valeur de 1 affiche une personne et ses familles ; 2 inclut également les conjoints, enfants et parents. Au-delà de 3, le voisinage est généralement plus large que ce que le panneau peut afficher utilement.",
   "config.graph.includeReferences.markdownDescription": "Inclure les sources, notes et médias dans l'arbre aux côtés des membres de la famille.\n\nDésactivé par défaut : une personne bien documentée cite des dizaines de fiches, ce qui encombre l'arbre familial que le panneau a pour but d'afficher.",

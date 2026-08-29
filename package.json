@@ -155,6 +155,13 @@
       ]
     },
     "views": {
+      "explorer": [
+        {
+          "id": "gedcom.gdzExplorer",
+          "name": "%views.gdzExplorer.name%",
+          "contextualTitle": "%views.gdzExplorer.contextualTitle%"
+        }
+      ],
       "gedcom": [
         {
           "type": "webview",
@@ -170,6 +177,18 @@
         }
       ]
     },
+    "customEditors": [
+      {
+        "viewType": "gedcom.gdzViewer",
+        "displayName": "%customEditors.gdzViewer.displayName%",
+        "selector": [
+          {
+            "filenamePattern": "*.gdz"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
     "configuration": {
       "title": "GEDCOM",
       "properties": {
@@ -318,6 +337,12 @@
         "command": "gedcom.openGdz",
         "title": "%command.openGdz%",
         "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.refreshGdzExplorer",
+        "title": "%command.refreshGdzExplorer%",
+        "category": "GEDCOM",
+        "icon": "$(refresh)"
       }
     ],
     "jsonValidation": [
@@ -331,6 +356,13 @@
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "gedcom.refreshGdzExplorer",
+          "when": "view == gedcom.gdzExplorer",
+          "group": "navigation"
+        }
+      ],
       "editor/title": [
         {
           "command": "gedcom.showGraph",
@@ -405,6 +437,9 @@
           "command": "gedcom.openGdz"
         },
         {
+          "command": "gedcom.refreshGdzExplorer"
+        },
+        {
           "command": "gedcom.showLog"
         },
         {
@@ -418,9 +453,12 @@
     "onCommand:gedcom.exportAsGedcomX",
     "onCommand:gedcom.openGdz",
     "onCommand:gedcom.packageGdz",
+    "onCommand:gedcom.refreshGdzExplorer",
     "onCommand:gedcom.unpackGdz",
+    "onCustomEditor:gedcom.gdzViewer",
     "onFileSystem:gdz",
     "onLanguage:gedcom",
+    "onView:gedcom.gdzExplorer",
     "workspaceContains:**/*.gdz",
     "workspaceContains:**/*.ged",
     "workspaceContains:**/*.gedcom",
