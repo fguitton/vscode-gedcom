@@ -3,6 +3,25 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.15.0]
+
+Full FamilySearch GEDCOM 7.0 Chapter 4 GEDZIP (`.gdz`) format support across all three tiers: in-memory archive reading & webview streaming, virtual `gdz://` FileSystemProvider with automatic repacking, dedicated Custom Editor archive viewer, and Explorer sidebar tree navigation.
+
+### Added
+
+- **Full GEDZIP (`.gdz`) format support (GEDCOM 7.0 Chapter 4 Specification).** Comprehensive cross-platform architecture for opening, exploring, editing, packaging, and unpacking GEDZIP archive packages:
+  - **`@vscode-gedcom/core` GDZ Engine:** Fast, zero-dependency, web-worker-safe archive compression, decompression, and inspection powered by `fflate` (`isGdz`, `readGdz`, `packageGdz`, `extractGdz`, `findLocalMediaReferences`, `toDataUrl`, `splitGdzPath`, `joinGdzPath`).
+  - **Virtual `FileSystemProvider` (`gdz://`):** Allows opening, browsing, and editing files inside `.gdz` archives. Saving changes to `gedcom.ged` inside an archive automatically repacks the `.gdz` container on disk.
+  - **Custom Editor Provider (`GdzCustomEditorProvider`):** Opening any `.gdz` file provides a rich interactive archive inspector with 1-click dataset opening, tree visualization, archive statistics (`INDI` and `FAM` counts), file table, and image gallery previews.
+  - **Explorer Sidebar Tree View (`GdzTreeDataProvider`):** Contributed a dedicated `GEDZIP Archives` view in the VS Code Explorer sidebar that automatically scans workspace archives and expands their internal directory and media structure.
+  - **Workspace Explorer Mount:** Command `GEDCOM: Mount GEDZIP in Workspace Explorer` (`gedcom.mountGdz`) to mount any `.gdz` container directly as a top-level workspace folder in VS Code.
+  - **In-Memory Webview Media Streaming:** Converts in-archive media assets to `data:` URLs for fast, zero-disk thumbnail rendering inside the Details panel and Custom Editor under a strict Content Security Policy.
+  - **Packaging & Unpackaging Commands:**
+    - `GEDCOM: Package File as GEDZIP (.gdz)` (`gedcom.packageGdz`): Automatically scans and bundles referenced media files with `gedcom.ged`.
+    - `GEDCOM: Unpack GEDZIP Archive (.gdz)` (`gedcom.unpackGdz`): Extracts archive datasets and media to any target directory.
+    - `GEDCOM: Open GEDZIP Archive` (`gedcom.openGdz`): Opens virtual `gedcom.ged` directly from the archive.
+  - **Multi-Format E2E Test Fixtures & Test Suite:** Added `fixtures/archive/mixed-formats.gdz` containing GEDCOM 7, companion GEDCOM X JSON metadata, XML records, images, and documents, verified via `packages/core/test/e2e-gdz.test.ts`.
+
 ## [0.14.0]
 
 Full GEDCOM X JSON & XML support, interactive multimedia image previews with local and remote source resolution, unified centralized language helpers, and cross-format navigation parity.
