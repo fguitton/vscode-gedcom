@@ -57,7 +57,6 @@ describe('shared summary and CodeLens line builders', () => {
     expect(summaryS1).toBe('Parish Register of St Mary');
   });
 
-
   it('formats reference counts accurately', () => {
     const refsI1 = formatRecordReferences(analysis, 'I1');
     expect(refsI1.count).toBe(1);

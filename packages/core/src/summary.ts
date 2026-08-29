@@ -158,7 +158,6 @@ export function formatRecordSummary(analysis: Analysis, recordOrXref: Structure 
     .join(' · ');
 }
 
-
 /**
  * Formats reference count and lens title for a record.
  */
