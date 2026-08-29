@@ -651,6 +651,183 @@ describe('hovers', () => {
   });
 });
 
+describe('GEDCOM X JSON and XML support (E2E)', () => {
+  const JSON_TREE = 'gedcomx/familysearch-tree.json';
+  const XML_TREE = 'gedcomx/familysearch-tree.xml';
+  const NEGATIVE_PACKAGE = 'gedcomx/negative-controls/package.json';
+  const NEGATIVE_POM = 'gedcomx/negative-controls/pom.xml';
+
+  it('provides CodeLenses, summaries, and tree action in GEDCOM X JSON', async () => {
+    const document = await openFixture(JSON_TREE);
+    const lenses = await vscode.commands.executeCommand(
+      'vscode.executeCodeLensProvider',
+      document.uri,
+      50,
+    );
+
+    assert.ok(lenses?.length, 'expected code lenses in GEDCOM X JSON');
+    assert.ok(
+      lenses.some((lens) => /individuals/.test(lens.command?.title ?? '')),
+      'expected header summary lens in JSON',
+    );
+    assert.ok(
+      lenses.some((lens) => /Show in Tree/.test(lens.command?.title ?? '')),
+      'expected Show in Tree action lens in JSON',
+    );
+    assert.ok(
+      lenses.some((lens) => /reference/.test(lens.command?.title ?? '')),
+      'expected reference count lens in JSON',
+    );
+  });
+
+  it('provides CodeLenses, summaries, and tree action in GEDCOM X XML', async () => {
+    const document = await openFixture(XML_TREE);
+    const lenses = await vscode.commands.executeCommand(
+      'vscode.executeCodeLensProvider',
+      document.uri,
+      50,
+    );
+
+    assert.ok(lenses?.length, 'expected code lenses in GEDCOM X XML');
+    assert.ok(
+      lenses.some((lens) => /individuals/.test(lens.command?.title ?? '')),
+      'expected header summary lens in XML',
+    );
+    assert.ok(
+      lenses.some((lens) => /Show in Tree/.test(lens.command?.title ?? '')),
+      'expected Show in Tree action lens in XML',
+    );
+  });
+
+  it('provides end-of-line age, event, and pointer inlay hints in JSON', async () => {
+    const document = await openFixture(JSON_TREE);
+    const hints = await vscode.commands.executeCommand(
+      'vscode.executeInlayHintProvider',
+      document.uri,
+      new vscode.Range(0, 0, document.lineCount, 0),
+    );
+
+    assert.ok(hints?.length, 'expected inlay hints in JSON');
+    const labelOf = (h) =>
+      (typeof h.label === 'string' ? h.label : h.label.map((p) => p.value).join('')).trim();
+    const allLabels = hints.map(labelOf);
+
+    assert.ok(
+      allLabels.some((l) => /Died age 70/.test(l)),
+      'expected "Died age 70" hint',
+    );
+    assert.ok(
+      allLabels.some((l) => /Male/.test(l)),
+      'expected Male gender hint',
+    );
+    assert.ok(
+      allLabels.some((l) => /FamilySearch User/.test(l)),
+      'expected pointer name hint',
+    );
+  });
+
+  it('provides end-of-line age, event, and pointer inlay hints in XML', async () => {
+    const document = await openFixture(XML_TREE);
+    const hints = await vscode.commands.executeCommand(
+      'vscode.executeInlayHintProvider',
+      document.uri,
+      new vscode.Range(0, 0, document.lineCount, 0),
+    );
+
+    assert.ok(hints?.length, 'expected inlay hints in XML');
+    const labelOf = (h) =>
+      (typeof h.label === 'string' ? h.label : h.label.map((p) => p.value).join('')).trim();
+    const allLabels = hints.map(labelOf);
+
+    assert.ok(
+      allLabels.some((l) => /Died age 70/.test(l)),
+      'expected "Died age 70" hint in XML',
+    );
+    assert.ok(
+      allLabels.some((l) => /Male/.test(l)),
+      'expected Male gender hint in XML',
+    );
+  });
+
+  it('provides rich hover cards on person definitions in JSON and XML', async () => {
+    const docJson = await openFixture(JSON_TREE);
+    const hoversJson = await vscode.commands.executeCommand(
+      'vscode.executeHoverProvider',
+      docJson.uri,
+      new vscode.Position(11, 15), // "id": "KWQS-BB1"
+    );
+    const textJson = (hoversJson ?? [])
+      .flatMap((h) => h.contents)
+      .map((c) => (typeof c === 'string' ? c : c.value))
+      .join('\n');
+    assert.match(textJson, /Henry Taylor/, 'expected Henry Taylor hover card in JSON');
+    assert.match(textJson, /1850/, 'expected birth year in JSON hover card');
+
+    const docXml = await openFixture(XML_TREE);
+    const hoversXml = await vscode.commands.executeCommand(
+      'vscode.executeHoverProvider',
+      docXml.uri,
+      new vscode.Position(6, 15), // <person id="KWQS-BB1">
+    );
+    const textXml = (hoversXml ?? [])
+      .flatMap((h) => h.contents)
+      .map((c) => (typeof c === 'string' ? c : c.value))
+      .join('\n');
+    assert.match(textXml, /Henry Taylor/, 'expected Henry Taylor hover card in XML');
+  });
+
+  it('supports Ctrl+Click (Go to Definition) in JSON and XML', async () => {
+    const docJson = await openFixture(JSON_TREE);
+    const targetRelLine = docJson
+      .getText()
+      .split('\n')
+      .findIndex((l) => l.includes('"resource": "#KWQS-BB1"'));
+    assert.ok(targetRelLine > 0);
+
+    const defLocs = await vscode.commands.executeCommand(
+      'vscode.executeDefinitionProvider',
+      docJson.uri,
+      new vscode.Position(targetRelLine, 20),
+    );
+
+    const loc = Array.isArray(defLocs) ? defLocs[0] : defLocs;
+    assert.ok(loc, 'expected definition location from #KWQS-BB1 in JSON');
+    assert.equal(loc.range.start.line, 11, 'expected jump to line 11 (KWQS-BB1 definition)');
+  });
+
+  it('supports Find All References in JSON', async () => {
+    const docJson = await openFixture(JSON_TREE);
+    const refs = await vscode.commands.executeCommand(
+      'vscode.executeReferenceProvider',
+      docJson.uri,
+      new vscode.Position(11, 15),
+    );
+    assert.ok(refs?.length >= 2, 'expected references to KWQS-BB1 in JSON relationships');
+  });
+
+  it('does not inject GEDCOM X insights into non-GEDCOM JSON/XML files', async () => {
+    const docPkg = await openFixture(NEGATIVE_PACKAGE);
+    const lensesPkg = await vscode.commands.executeCommand(
+      'vscode.executeCodeLensProvider',
+      docPkg.uri,
+    );
+    const gedcomLensesPkg = (lensesPkg ?? []).filter((l) =>
+      /individuals|Show in Tree|reference/i.test(l.command?.title ?? ''),
+    );
+    assert.equal(gedcomLensesPkg.length, 0, 'package.json should have no GEDCOM code lenses');
+
+    const docPom = await openFixture(NEGATIVE_POM);
+    const lensesPom = await vscode.commands.executeCommand(
+      'vscode.executeCodeLensProvider',
+      docPom.uri,
+    );
+    const gedcomLensesPom = (lensesPom ?? []).filter((l) =>
+      /individuals|Show in Tree|reference/i.test(l.command?.title ?? ''),
+    );
+    assert.equal(gedcomLensesPom.length, 0, 'pom.xml should have no GEDCOM code lenses');
+  });
+});
+
 /**
  * Last, so everything above has had its chance to misbehave.
  *
