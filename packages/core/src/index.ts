@@ -49,7 +49,7 @@ export type { TimelineEvent } from './timeline.ts';
 export { buildFanChart } from './fanchart.ts';
 export type { FanChartData, FanChartNode } from './fanchart.ts';
 
-export { parseAge, describeAge, ageInDays } from './age.ts';
+export { parseAge, describeAge, ageInDays, EVENT_VERBS, formatAgeAtEvent } from './age.ts';
 export type { Age } from './age.ts';
 
 export { enumSetFor, describeEnumValue, meaningOf, standalone, valuesOfSet } from './enums.ts';

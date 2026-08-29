@@ -8,10 +8,12 @@
  */
 
 import {
+  ageAt,
   buildKeywordTooltip,
   buildRecordTooltip,
   computeGedcomXEntitySpans,
   detectGedcomXFormat,
+  formatAgeAtEvent,
   formatHeaderSummary,
   formatRecordReferences,
   formatRecordSummary,
@@ -156,8 +158,12 @@ export class GedcomXHoverProvider implements HoverProvider {
 
 export class GedcomXInlayHintsProvider implements InlayHintsProvider {
   provideInlayHints(document: TextDocument, range: Range, _token: CancellationToken): InlayHint[] {
-    const enabled = workspace.getConfiguration('gedcom').get<boolean>('inlayHints.pointers', true);
-    if (!enabled) return [];
+    const config = workspace.getConfiguration('gedcom');
+    const enabledPointers = config.get<boolean>('inlayHints.pointers', true);
+    const enabledValues = config.get<boolean>('inlayHints.values', true);
+    const enabledAges = config.get<boolean>('inlayHints.ages', true);
+
+    if (!enabledPointers && !enabledValues && !enabledAges) return [];
 
     const text = document.getText();
     const format = detectGedcomXFormat(text);
@@ -186,44 +192,195 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
     const hints: InlayHint[] = [];
     const startLine = range.start.line;
     const endLine = Math.min(range.end.line, document.lineCount - 1);
+    const annotatedLines = new Set<number>();
 
-    const refRegex = /(?:resource|descriptionRef)["\s:=]+#([a-zA-Z0-9_-]+)/g;
+    // 1. Pointer Inlay Hints (Resource / DescriptionRef pointers)
+    if (enabledPointers) {
+      const refRegex = /(?:resource|descriptionRef)["\s:=]+#([a-zA-Z0-9_-]+)/g;
 
-    for (let l = startLine; l <= endLine; l++) {
-      const line = document.lineAt(l);
-      let match: RegExpExecArray | null;
-      refRegex.lastIndex = 0;
+      for (let l = startLine; l <= endLine; l++) {
+        const line = document.lineAt(l);
+        let match: RegExpExecArray | null;
+        refRegex.lastIndex = 0;
 
-      while ((match = refRegex.exec(line.text)) !== null) {
-        const id = match[1]!;
-        const matchEndIndex = match.index + match[0].length;
-        const pos = new Position(l, matchEndIndex);
+        while ((match = refRegex.exec(line.text)) !== null) {
+          const id = match[1]!;
+          const matchEndIndex = match.index + match[0].length;
+          const pos = new Position(l, matchEndIndex);
 
-        if (persons.has(id)) {
-          const p = persons.get(id)!;
-          const name = getPersonName(p);
-          const span = getPersonLifespan(p);
-          const label = ` › ${name}${span ? ` (${span})` : ''}`;
-          const hint = new InlayHint(pos, label, InlayHintKind.Type);
-          hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
+          if (persons.has(id)) {
+            const p = persons.get(id)!;
+            const name = getPersonName(p);
+            const span = getPersonLifespan(p);
+            const label = ` › ${name}${span ? ` (${span})` : ''}`;
+            const hint = new InlayHint(pos, label, InlayHintKind.Type);
+            hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
+            hint.paddingLeft = true;
+            hints.push(hint);
+          } else if (sources.has(id)) {
+            const s = sources.get(id)!;
+            const title = s.titles?.[0]?.value ?? 'Source';
+            const label = ` › ${title}`;
+            const hint = new InlayHint(pos, label, InlayHintKind.Type);
+            hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
+            hint.paddingLeft = true;
+            hints.push(hint);
+          } else if (agents.has(id)) {
+            const a = agents.get(id)!;
+            const name = a.names?.[0]?.value ?? 'Agent';
+            const label = ` › ${name}`;
+            const hint = new InlayHint(pos, label, InlayHintKind.Type);
+            hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
+            hint.paddingLeft = true;
+            hints.push(hint);
+          }
+        }
+      }
+    }
+
+    // 2. Coded Value Inlay Hints (Gender, Relationship types)
+    if (enabledValues) {
+      const genderRegex =
+        /(?:gender[^>}]*?type|type)["\s:=]+"?https?:\/\/gedcomx\.org\/(Male|Female)"?/i;
+      const coupleRegex = /(?:type)["\s:=]+"?https?:\/\/gedcomx\.org\/Couple"?/i;
+      const parentChildRegex = /(?:type)["\s:=]+"?https?:\/\/gedcomx\.org\/ParentChild"?/i;
+
+      for (let l = startLine; l <= endLine; l++) {
+        const lineText = document.lineAt(l).text;
+        const gMatch = genderRegex.exec(lineText);
+        if (gMatch) {
+          const isMale = /Male/i.test(gMatch[1]!);
+          const label = isMale ? ' › Male (♂)' : ' › Female (♀)';
+          const pos = new Position(l, lineText.length);
+          const hint = new InlayHint(pos, label, InlayHintKind.Parameter);
+          hint.tooltip = new MarkdownString(`**${label.slice(3)}** (Gender value)`);
           hint.paddingLeft = true;
           hints.push(hint);
-        } else if (sources.has(id)) {
-          const s = sources.get(id)!;
-          const title = s.titles?.[0]?.value ?? 'Source';
-          const label = ` › ${title}`;
-          const hint = new InlayHint(pos, label, InlayHintKind.Type);
-          hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
+          continue;
+        }
+
+        if (coupleRegex.test(lineText)) {
+          const pos = new Position(l, lineText.length);
+          const hint = new InlayHint(pos, ' › Couple (Spouses)', InlayHintKind.Parameter);
+          hint.tooltip = new MarkdownString('**Couple (Spouses)** (Relationship type)');
           hint.paddingLeft = true;
           hints.push(hint);
-        } else if (agents.has(id)) {
-          const a = agents.get(id)!;
-          const name = a.names?.[0]?.value ?? 'Agent';
-          const label = ` › ${name}`;
-          const hint = new InlayHint(pos, label, InlayHintKind.Type);
-          hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
+          continue;
+        }
+
+        if (parentChildRegex.test(lineText)) {
+          const pos = new Position(l, lineText.length);
+          const hint = new InlayHint(pos, ' › Parent-Child', InlayHintKind.Parameter);
+          hint.tooltip = new MarkdownString('**Parent-Child** (Relationship type)');
           hint.paddingLeft = true;
           hints.push(hint);
+          continue;
+        }
+      }
+    }
+
+    // 3. Age at Event End-of-Line Inlay Hints ("Died age 70", "Married age 25", etc.)
+    if (enabledAges) {
+      const spans = analysis.entitySpans ?? computeGedcomXEntitySpans(text, format);
+
+      for (const p of gx.persons ?? []) {
+        if (!p.id) continue;
+        const birthDate = getFactDate(p.facts, 'birth');
+        if (!birthDate) continue;
+
+        const span = spans.find((s) => s.xref.includes(p.id!));
+        const pStart = span?.startLine ?? 0;
+        const pEnd = span?.endLine ?? document.lineCount - 1;
+
+        for (const fact of p.facts ?? []) {
+          if (!fact.type || fact.type.toLowerCase().includes('birth')) continue;
+          const eventDate = fact.date?.original ?? fact.date?.formal;
+          if (!eventDate) continue;
+
+          const ageInfo = formatAgeAtEvent(birthDate, eventDate, fact.type);
+          if (!ageInfo) continue;
+
+          for (let l = pStart; l <= Math.min(pEnd, document.lineCount - 1); l++) {
+            if (l < startLine || l > endLine) continue;
+            if (annotatedLines.has(l)) continue;
+
+            const lineText = document.lineAt(l).text;
+            const matchesDate =
+              (fact.date?.original && lineText.includes(fact.date.original)) ||
+              (fact.date?.formal && lineText.includes(fact.date.formal)) ||
+              (fact.date?.original && lineText.includes('date'));
+
+            if (matchesDate) {
+              annotatedLines.add(l);
+              const pos = new Position(l, lineText.length);
+              const hint = new InlayHint(pos, ` › ${ageInfo.label}`, InlayHintKind.Parameter);
+              hint.tooltip = new MarkdownString(ageInfo.tooltip);
+              hint.paddingLeft = true;
+              hints.push(hint);
+              break;
+            }
+          }
+        }
+      }
+
+      // Couple relationships marriages
+      for (const rel of gx.relationships ?? []) {
+        if (!rel.type?.includes('Couple') || !rel.facts) continue;
+        const p1Id = rel.person1?.resource?.replace(/^#/, '');
+        const p2Id = rel.person2?.resource?.replace(/^#/, '');
+        const b1 = p1Id ? getFactDate(persons.get(p1Id)?.facts, 'birth') : undefined;
+        const b2 = p2Id ? getFactDate(persons.get(p2Id)?.facts, 'birth') : undefined;
+
+        for (const fact of rel.facts) {
+          const marrDate = fact.date?.original ?? fact.date?.formal;
+          if (!marrDate) continue;
+
+          let label: string | undefined;
+          let tooltip: string | undefined;
+
+          if (b1 && b2) {
+            const age1 = formatAgeAtEvent(b1, marrDate, 'Marriage');
+            const age2 = formatAgeAtEvent(b2, marrDate, 'Marriage');
+            if (age1 && age2) {
+              const num1 = ageAt(b1, marrDate)?.years;
+              const num2 = ageAt(b2, marrDate)?.years;
+              label = `Married (age ${num1}, age ${num2})`;
+              tooltip = `**Married** (Calculated ages from spouses' birth dates)`;
+            } else if (age1) {
+              label = age1.label;
+              tooltip = age1.tooltip;
+            } else if (age2) {
+              label = age2.label;
+              tooltip = age2.tooltip;
+            }
+          } else if (b1) {
+            const a = formatAgeAtEvent(b1, marrDate, 'Marriage');
+            label = a?.label;
+            tooltip = a?.tooltip;
+          } else if (b2) {
+            const a = formatAgeAtEvent(b2, marrDate, 'Marriage');
+            label = a?.label;
+            tooltip = a?.tooltip;
+          }
+
+          if (label && tooltip) {
+            for (let l = startLine; l <= endLine; l++) {
+              if (annotatedLines.has(l)) continue;
+              const lineText = document.lineAt(l).text;
+              if (
+                (fact.date?.original && lineText.includes(fact.date.original)) ||
+                (fact.date?.formal && lineText.includes(fact.date.formal))
+              ) {
+                annotatedLines.add(l);
+                const pos = new Position(l, lineText.length);
+                const hint = new InlayHint(pos, ` › ${label}`, InlayHintKind.Parameter);
+                hint.tooltip = new MarkdownString(tooltip);
+                hint.paddingLeft = true;
+                hints.push(hint);
+                break;
+              }
+            }
+          }
         }
       }
     }

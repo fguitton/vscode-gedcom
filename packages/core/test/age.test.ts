@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { ageInDays, describeAge, parseAge } from '../src/age.ts';
+import { ageInDays, describeAge, formatAgeAtEvent, parseAge } from '../src/age.ts';
 
 describe('parseAge', () => {
   it('reads each unit', () => {
@@ -78,5 +78,29 @@ describe('ageInDays', () => {
 
   it('has no answer for the words, which name a range', () => {
     expect(ageInDays({ phrase: 'CHILD' })).toBeUndefined();
+  });
+});
+
+describe('formatAgeAtEvent', () => {
+  it('formats event age phrases with verb and duration', () => {
+    const deathAge = formatAgeAtEvent('12 MAR 1850', '4 NOV 1920', 'DEAT');
+    expect(deathAge).toBeDefined();
+    expect(deathAge?.label).toBe('Died age 70');
+    expect(deathAge?.tooltip).toContain('**Died age 70**');
+
+    const gxDeathAge = formatAgeAtEvent('+1850-03-12', '+1920-11-04', 'http://gedcomx.org/Death');
+    expect(gxDeathAge).toBeDefined();
+    expect(gxDeathAge?.label).toBe('Died age 70');
+
+    const marrAge = formatAgeAtEvent('1900', '1925', 'MARR');
+    expect(marrAge?.label).toBe('Married age 25');
+
+    const infantAge = formatAgeAtEvent('12 AUG 1901', '14 SEP 1901', 'BAPM');
+    expect(infantAge?.label).toBe('Baptised under a year old');
+  });
+
+  it('returns undefined for invalid or out-of-range dates', () => {
+    expect(formatAgeAtEvent('1920', '1850', 'DEAT')).toBeUndefined();
+    expect(formatAgeAtEvent('invalid', '1850', 'DEAT')).toBeUndefined();
   });
 });

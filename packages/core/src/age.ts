@@ -10,6 +10,99 @@
  * rest of the file; nothing else in the format cross-checks it.
  */
 
+import { ageAt } from './date.ts';
+
+export const EVENT_VERBS: Record<string, string> = {
+  DEAT: 'died',
+  BURI: 'buried',
+  CREM: 'cremated',
+  PROB: 'probate',
+  WILL: 'will written',
+  MARR: 'married',
+  MARB: 'banns read',
+  MARC: 'contract signed',
+  MARL: 'licence issued',
+  MARS: 'settlement signed',
+  ENGA: 'engaged',
+  DIV: 'divorced',
+  DIVF: 'divorce filed',
+  ANUL: 'annulled',
+  BAPM: 'baptised',
+  CHR: 'christened',
+  CHRA: 'christened',
+  CONF: 'confirmed',
+  FCOM: 'first communion',
+  BARM: 'bar mitzvah',
+  BASM: 'bas mitzvah',
+  BLES: 'blessed',
+  ADOP: 'adopted',
+  EMIG: 'emigrated',
+  IMMI: 'immigrated',
+  NATU: 'naturalised',
+  CENS: 'recorded',
+  GRAD: 'graduated',
+  ORDN: 'ordained',
+  RETI: 'retired',
+  // GEDCOM X URIs & Member Names
+  'http://gedcomx.org/Death': 'died',
+  'http://gedcomx.org/Burial': 'buried',
+  'http://gedcomx.org/Cremation': 'cremated',
+  'http://gedcomx.org/Probate': 'probate',
+  'http://gedcomx.org/Will': 'will written',
+  'http://gedcomx.org/Marriage': 'married',
+  'http://gedcomx.org/Divorce': 'divorced',
+  'http://gedcomx.org/Baptism': 'baptised',
+  'http://gedcomx.org/Christening': 'christened',
+  'http://gedcomx.org/Adoption': 'adopted',
+  'http://gedcomx.org/Emigration': 'emigrated',
+  'http://gedcomx.org/Immigration': 'immigrated',
+  'http://gedcomx.org/Naturalization': 'naturalised',
+  'http://gedcomx.org/Census': 'recorded',
+  'http://gedcomx.org/Graduation': 'graduated',
+  'http://gedcomx.org/Retirement': 'retired',
+  'http://gedcomx.org/Residence': 'resided',
+  'http://gedcomx.org/Occupation': 'employed',
+  Death: 'died',
+  Burial: 'buried',
+  Marriage: 'married',
+  Divorce: 'divorced',
+  Baptism: 'baptised',
+  Christening: 'christened',
+  Residence: 'resided',
+  Occupation: 'employed',
+  Census: 'recorded',
+  Graduation: 'graduated',
+};
+
+/**
+ * Calculates and formats an age description phrase (e.g. "Died age 70", "Married age 25").
+ */
+export function formatAgeAtEvent(
+  birthDate: string,
+  eventDate: string,
+  eventTagOrType: string,
+): { label: string; tooltip: string } | undefined {
+  const age = ageAt(birthDate, eventDate);
+  if (!age || age.years < 0 || age.years > 125) return undefined;
+
+  const normalized = (eventTagOrType || '').trim();
+  const verb =
+    EVENT_VERBS[normalized] ??
+    EVENT_VERBS[normalized.split('/').pop() ?? ''] ??
+    EVENT_VERBS[normalized.toUpperCase()];
+
+  const measure = age.years === 0 ? 'under a year old' : `age ${age.years}`;
+  const phrase = verb ? `${verb} ${measure}` : measure;
+  const capitalized = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+
+  const tooltip = `**${capitalized}** (calculated from birth date)`;
+
+  return {
+    label: capitalized,
+    tooltip,
+  };
+}
+
 export interface Age {
   /** `<` or `>` — the true age is less or greater than what follows. */
   readonly bound?: '<' | '>';
