@@ -12,7 +12,7 @@
  * who missed the tooltip.
  */
 
-import { type Analysis } from '@vscode-gedcom/core';
+import { isGedcomX, type Analysis } from '@vscode-gedcom/core';
 import { analysisOf } from './analysis.ts';
 import { t } from './l10n.ts';
 import {
@@ -30,6 +30,21 @@ const SHOW_VERSION = 'gedcom.showVersion';
 
 /** Names for what the file actually says, which is not always what we validate against. */
 function describe(analysis: Analysis): { text: string; detail: string; uncertain: boolean } {
+  if (analysis.format === 'gedcomx-json') {
+    return {
+      text: 'GEDCOM X (JSON)',
+      detail: t('This file is a GEDCOM X JSON document (FamilySearch Platform API).'),
+      uncertain: false,
+    };
+  }
+  if (analysis.format === 'gedcomx-xml') {
+    return {
+      text: 'GEDCOM X (XML)',
+      detail: t('This file is a GEDCOM X XML document (FamilySearch Platform API).'),
+      uncertain: false,
+    };
+  }
+
   const version = analysis.version;
 
   switch (analysis.versionSource) {
@@ -85,7 +100,8 @@ export function registerVersionStatus(context: ExtensionContext): void {
   let current = '';
 
   const update = (editor: TextEditor | undefined): void => {
-    if (!editor || editor.document.languageId !== 'gedcom') {
+    const docText = editor?.document.getText() ?? '';
+    if (!editor || (editor.document.languageId !== 'gedcom' && !isGedcomX(docText))) {
       item.hide();
       return;
     }

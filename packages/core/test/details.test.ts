@@ -504,4 +504,16 @@ describe('an event asserted with Y and nothing else', () => {
     expect(frenchFields['Faits/Profession']).toContain('Blacksmith');
     expect(frenchFields['Notes/Note']).toBe('Identified from a photograph.');
   });
+
+  it('renders GEDCOM X JSON and XML subtitle in documentDetails', () => {
+    const jsonGx = '{"id":"gx1","persons":[{"id":"p1"}]}';
+    const jsonAnalysis = analyze(bytes(jsonGx));
+    const jsonDetails = documentDetails(jsonAnalysis);
+    expect(jsonDetails.subtitle).toBe('GEDCOM X JSON');
+
+    const xmlGx = '<gedcomx xmlns="http://gedcomx.org/v1/"><person id="p1"/></gedcomx>';
+    const xmlAnalysis = analyze(bytes(xmlGx));
+    const xmlDetails = documentDetails(xmlAnalysis);
+    expect(xmlDetails.subtitle).toBe('GEDCOM X XML');
+  });
 });

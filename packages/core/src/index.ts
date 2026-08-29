@@ -158,6 +158,8 @@ import {
   type VersionSource,
 } from './validate.ts';
 
+export type FileFormat = 'gedcom' | 'gedcomx-json' | 'gedcomx-xml';
+
 export interface Analysis {
   readonly version: GedcomVersion | null;
   /** How that version was arrived at, so a diagnostic can say. */
@@ -168,6 +170,8 @@ export interface Analysis {
   readonly validation: ValidationResult;
   /** Every diagnostic from lexing, parsing, cross-referencing and validation. */
   readonly diagnostics: readonly Diagnostic[];
+  /** File format: standard line-based GEDCOM, GEDCOM X JSON, or GEDCOM X XML. */
+  readonly format?: FileFormat;
 }
 
 export interface AnalyzeOptions {
@@ -176,7 +180,7 @@ export interface AnalyzeOptions {
   readonly version?: GedcomVersion | null;
 }
 
-import { isGedcomX, gedcomXToGedcom7 } from './gedcomx/index.ts';
+import { isGedcomX, detectGedcomXFormat, gedcomXToGedcom7 } from './gedcomx/index.ts';
 export * from './gedcomx/index.ts';
 
 /** Full analysis of a GEDCOM stream, from raw bytes to diagnostics. */
@@ -196,7 +200,8 @@ export function analyze(bytes: Uint8Array, options: AnalyzeOptions = {}): Analys
  * the decoding. Version detection still runs, over the text's own bytes.
  */
 export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysis {
-  const actualText = isGedcomX(text) ? gedcomXToGedcom7(text) : text;
+  const gxFormat = isGedcomX(text) ? detectGedcomXFormat(text) : null;
+  const actualText = gxFormat ? gedcomXToGedcom7(text) : text;
   const detected =
     options.version !== undefined
       ? options.version
@@ -245,7 +250,19 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
     (diagnostic) => byLine.get(diagnostic.span.line),
   );
 
-  return { version, versionSource, text: actualText, document, xrefs, validation, diagnostics };
+  const format: FileFormat =
+    gxFormat === 'json' ? 'gedcomx-json' : gxFormat === 'xml' ? 'gedcomx-xml' : 'gedcom';
+
+  return {
+    version,
+    versionSource,
+    text: actualText,
+    document,
+    xrefs,
+    validation,
+    diagnostics,
+    format,
+  };
 }
 
 export * from './i18n/index.ts';

@@ -712,14 +712,23 @@ export function documentDetails(analysis: Analysis, options: { locale?: string }
     });
   }
 
+  let subtitle =
+    analysis.version === null
+      ? fr
+        ? 'GEDCOM, version inconnue'
+        : 'GEDCOM, version unknown'
+      : `GEDCOM ${analysis.version}`;
+
+  if (analysis.format === 'gedcomx-json') {
+    subtitle = 'GEDCOM X JSON';
+  } else if (analysis.format === 'gedcomx-xml') {
+    subtitle = 'GEDCOM X XML';
+  }
+
   return {
     title: fr ? 'Ce fichier' : 'This file',
-    subtitle:
-      analysis.version === null
-        ? fr
-          ? 'GEDCOM, version inconnue'
-          : 'GEDCOM, version unknown'
-        : `GEDCOM ${analysis.version}`,
+    subtitle,
+
     sections: [
       ...section(translateSection('Contents', options.locale), contents),
       ...section(translateSection('File', options.locale), file),

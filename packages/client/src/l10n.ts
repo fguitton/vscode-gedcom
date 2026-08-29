@@ -62,6 +62,10 @@ const FR_BUNDLE: Record<string, string> = {
   'Open a GEDCOM file to export it to GEDCOM X JSON.':
     "Ouvrez un fichier GEDCOM pour l'exporter en GEDCOM X JSON.",
   'Successfully exported to GEDCOM X JSON.': 'Exporté avec succès en GEDCOM X JSON.',
+  'This file is a GEDCOM X JSON document (FamilySearch Platform API).':
+    'Ce fichier est un document GEDCOM X JSON (API FamilySearch Platform).',
+  'This file is a GEDCOM X XML document (FamilySearch Platform API).':
+    'Ce fichier est un document GEDCOM X XML (API FamilySearch Platform).',
 };
 
 let explicitLocale: string | undefined;
