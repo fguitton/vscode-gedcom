@@ -23,7 +23,10 @@ const shared = {
   sourcemap: true,
   clean: false,
   // The host provides this module; bundling it would break the extension.
-  external: ['vscode'],
+  deps: {
+    neverBundle: ['vscode'],
+    alwaysBundle: ['fflate', 'fflate/browser'],
+  },
 };
 
 /**

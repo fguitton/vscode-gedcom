@@ -44,7 +44,7 @@ const SPECIFIERS = /(?:^|\n)\s*(?:import|export)[\s\S]*?from\s+'([^']+)'/g;
  *
  * Anything else added to this list needs the same argument made for it.
  */
-const PERMITTED = new Set(['@internationalized/date', 'fflate']);
+const PERMITTED = new Set(['@internationalized/date', 'fflate', 'fflate/browser']);
 
 describe('no dependencies', () => {
   it.each(files.map((f) => f.name))('%s imports only relative paths', (name) => {

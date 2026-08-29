@@ -6,7 +6,7 @@
  * files referenced via relative paths.
  */
 
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate/browser';
 import { parse } from './parser.ts';
 import { webUrl } from './details.ts';
 import type { Document } from './cst.ts';
