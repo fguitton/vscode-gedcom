@@ -66,6 +66,37 @@ export function joinGdzPath(archivePath: string, entryPath = 'gedcom.ged'): stri
   return `${normArchive}/${normEntry}`;
 }
 
+/** Converts a byte array to base64 string without exceeding call stack limits. */
+export function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  return btoa(binary);
+}
+
+/** Resolves the MIME type for an image or media file extension. */
+export function getMimeType(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  if (lower.endsWith('.bmp')) return 'image/bmp';
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  return 'application/octet-stream';
+}
+
+/** Converts raw bytes into a data URL for in-memory previews. */
+export function toDataUrl(bytes: Uint8Array, filename: string): string {
+  const mime = getMimeType(filename);
+  const base64 = uint8ArrayToBase64(bytes);
+  return `data:${mime};base64,${base64}`;
+}
+
 /**
  * Reads a GEDZIP (.gdz) archive from bytes.
  * Throws if the archive cannot be read or contains no GEDCOM dataset.

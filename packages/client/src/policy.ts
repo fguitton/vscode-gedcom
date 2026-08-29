@@ -21,17 +21,26 @@ export interface Policy {
    * announcing which file is being read, and to whom.
    */
   readonly images?: boolean;
+  /** Allow data: URIs for embedded in-memory archive previews. */
+  readonly dataImages?: boolean;
   /** The webview's CSP source for loading local workspace resources. */
   readonly cspSource?: string;
 }
 
-export function contentSecurityPolicy({ nonce, images = false, cspSource }: Policy): string {
-  const imageSources = ['https:'];
-  if (cspSource) imageSources.push(cspSource);
+export function contentSecurityPolicy({
+  nonce,
+  images = false,
+  dataImages = false,
+  cspSource,
+}: Policy): string {
+  const imageSources: string[] = [];
+  if (images) imageSources.push('https:');
+  if (dataImages) imageSources.push('data:');
+  if (images && cspSource) imageSources.push(cspSource);
 
   return [
     "default-src 'none'",
-    ...(images ? [`img-src ${imageSources.join(' ')}`] : []),
+    ...(imageSources.length > 0 ? [`img-src ${imageSources.join(' ')}`] : []),
     `style-src 'nonce-${nonce}'`,
     `script-src 'nonce-${nonce}'`,
   ].join('; ');

@@ -109,6 +109,9 @@ export {
   normalizeZipPath,
   splitGdzPath,
   joinGdzPath,
+  uint8ArrayToBase64,
+  getMimeType,
+  toDataUrl,
 } from './gdz.ts';
 export type { GdzArchive, PackageGdzOptions } from './gdz.ts';
 

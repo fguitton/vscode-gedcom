@@ -18,7 +18,7 @@ import {
   type ExtensionContext,
   type WebviewPanel,
 } from 'vscode';
-import { analyzeText, detect, readGdz, statistics } from '@vscode-gedcom/core';
+import { analyzeText, detect, readGdz, statistics, toDataUrl } from '@vscode-gedcom/core';
 import { toGdzUri } from './gdz-fs.ts';
 import { contentSecurityPolicy } from './policy.ts';
 import { t } from './l10n.ts';
@@ -105,8 +105,7 @@ export class GdzCustomEditorProvider implements CustomReadonlyEditorProvider {
 
       let imageWebviewUri: string | undefined;
       if (isImage) {
-        const virtualUri = toGdzUri(document.uri, relPath);
-        imageWebviewUri = webview.asWebviewUri(virtualUri).toString();
+        imageWebviewUri = toDataUrl(fileBytes, relPath);
       }
 
       fileEntries.push({
@@ -137,6 +136,7 @@ export class GdzCustomEditorProvider implements CustomReadonlyEditorProvider {
     const csp = contentSecurityPolicy({
       nonce,
       images: true,
+      dataImages: true,
       cspSource: webview.cspSource,
     });
 

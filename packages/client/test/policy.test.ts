@@ -49,6 +49,14 @@ describe('the panel security policy', () => {
     expect(policy).toContain('img-src https: vscode-webview-resource:');
   });
 
+  it('grants data: source when dataImages is enabled', () => {
+    const policy = contentSecurityPolicy({
+      nonce: 'abc',
+      dataImages: true,
+    });
+    expect(policy).toContain('img-src data:');
+  });
+
   it('binds inline code to the nonce whatever else it permits', () => {
     for (const images of [true, false]) {
       const policy = contentSecurityPolicy({ nonce: 'xyz', images });

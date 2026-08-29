@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
   extractGdz,
   findLocalMediaReferences,
+  getMimeType,
   isGdz,
   joinGdzPath,
   normalizeZipPath,
   packageGdz,
   readGdz,
   splitGdzPath,
+  toDataUrl,
 } from '../src/gdz.ts';
 
 describe('GEDZIP (.gdz)', () => {
@@ -149,5 +151,19 @@ describe('GEDZIP (.gdz)', () => {
     const archive = readGdz(bytes);
     expect(archive.gedcomText).toContain('Einstein');
     expect(archive.listFiles().length).toBeGreaterThan(1);
+
+    const einsteinPhoto = archive.getFile('media/AlbertEinstein1921.jpg');
+    expect(einsteinPhoto).toBeDefined();
+    const dataUrl = toDataUrl(einsteinPhoto!, 'media/AlbertEinstein1921.jpg');
+    expect(dataUrl).toMatch(/^data:image\/jpeg;base64,/);
+  });
+
+  it('resolves MIME types correctly', () => {
+    expect(getMimeType('photo.jpg')).toBe('image/jpeg');
+    expect(getMimeType('photo.png')).toBe('image/png');
+    expect(getMimeType('photo.gif')).toBe('image/gif');
+    expect(getMimeType('photo.webp')).toBe('image/webp');
+    expect(getMimeType('doc.pdf')).toBe('application/pdf');
+    expect(getMimeType('other.dat')).toBe('application/octet-stream');
   });
 });
