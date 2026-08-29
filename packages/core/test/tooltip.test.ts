@@ -78,7 +78,6 @@ describe('syntax-independent tooltip builders', () => {
       expect(indi).toContain('- **GEDCOM X URI:** `http://gedcomx.org/Person`');
       expect(indi).toContain('- **JSON / XML:** `persons / <person>`');
 
-
       const person = buildKeywordTooltip('person');
       expect(person).toBeDefined();
       expect(person).toContain('Individual / Person');

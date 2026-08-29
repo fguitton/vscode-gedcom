@@ -566,7 +566,7 @@ export function recordDetails(
     title: nameOf(record) ?? `@${xref}@`,
     subtitle: kind,
     xref,
-    line: record.span.line,
+    line: analysis.entitySpans?.find((s) => s.xref === xref)?.startLine ?? record.span.line,
     sections: [
       ...section(translateSection('Facts', options.locale), facts),
       ...section(translateSection('Notes', options.locale), notes),

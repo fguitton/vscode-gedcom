@@ -67,9 +67,15 @@ describe('GEDCOM X test fixtures', () => {
     expect(recordAt(analysis, 170)).toBe('F_REL_COUPLE_1'); // Relationship Couple
     expect(recordAt(analysis, 215)).toBe('U_agent_fs'); // Agent
 
-    // Test tree navigation
+    // Test tree navigation & node line destinations
     const graph = neighbourhood(analysis, 'I_KWQS_BB3', { depth: 2 });
     expect(graph.nodes.length).toBe(5);
+    const nodeBB1 = graph.nodes.find((n) => n.xref === 'I_KWQS_BB1');
+    expect(nodeBB1?.line).toBe(10); // exact JSON line for KWQS-BB1
+    const nodeBB2 = graph.nodes.find((n) => n.xref === 'I_KWQS_BB2');
+    expect(nodeBB2?.line).toBe(42); // exact JSON line for KWQS-BB2
+    const nodeBB3 = graph.nodes.find((n) => n.xref === 'I_KWQS_BB3');
+    expect(nodeBB3?.line).toBe(73); // exact JSON line for KWQS-BB3
 
     // Test kinship (Grandfather <-> Granddaughter)
     const kinship = calculateKinship(analysis, 'I_KWQS_BB1', 'I_KWQS_BB5');
@@ -102,6 +108,13 @@ describe('GEDCOM X test fixtures', () => {
     expect(recordAt(analysis, 100)).toBe('I_KWQS_BB5'); // <person id="KWQS-BB5">
     expect(recordAt(analysis, 120)).toBe('F_R_1'); // <relationship type="http://gedcomx.org/Couple">
     expect(recordAt(analysis, 152)).toBe('U_agent_fs'); // <agent id="agent_fs">
+
+    // Test graph node line destinations in XML
+    const xmlGraph = neighbourhood(analysis, 'I_KWQS_BB3', { depth: 2 });
+    const xmlNodeBB1 = xmlGraph.nodes.find((n) => n.xref === 'I_KWQS_BB1');
+    expect(xmlNodeBB1?.line).toBe(6); // exact XML line for <person id="KWQS-BB1">
+    const xmlNodeBB2 = xmlGraph.nodes.find((n) => n.xref === 'I_KWQS_BB2');
+    expect(xmlNodeBB2?.line).toBe(32); // exact XML line for <person id="KWQS-BB2">
 
     const kinship = calculateKinship(analysis, 'I_KWQS_BB1', 'I_KWQS_BB5');
     expect(kinship).not.toBeNull();

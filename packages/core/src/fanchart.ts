@@ -83,6 +83,7 @@ export function buildFanChart(
     const totalSlots = Math.pow(2, current.generation);
     const detail = lifespan(analysis, current.xref);
 
+    const spanLine = analysis.entitySpans?.find((s) => s.xref === current.xref)?.startLine;
     nodes.push({
       xref: current.xref,
       ahnentafel: current.ahnentafel,
@@ -92,7 +93,7 @@ export function buildFanChart(
       label: nameOf(record),
       detail,
       sex: sexOf(record),
-      line: record.span.line,
+      line: spanLine ?? record.span.line,
     });
 
     if (current.generation + 1 < maxGenerations) {

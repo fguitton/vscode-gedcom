@@ -552,6 +552,7 @@ export function neighbourhood(
       analysis.validation.resolutions.get(record)?.slug,
       options.locale,
     );
+    const spanLine = analysis.entitySpans?.find((s) => s.xref === xref)?.startLine;
     return {
       xref,
       tag: record.tag,
@@ -570,7 +571,7 @@ export function neighbourhood(
               ? {}
               : { familyYear: familyYear(pointers(record, 'FAMC')[0]!) }),
           }),
-      line: record.span.line,
+      line: spanLine ?? record.span.line,
     };
   });
 
@@ -585,6 +586,9 @@ export function neighbourhood(
       const key = [xref, link.to].sort().join(' ');
       if (seen.has(key)) continue;
       seen.add(key);
+      const unionSpanLine = link.union
+        ? analysis.entitySpans?.find((s) => s.xref === link.union)?.startLine
+        : undefined;
       edges.push({
         from: xref,
         to: link.to,
@@ -597,7 +601,7 @@ export function neighbourhood(
         familyYear(link.union) !== undefined
           ? { unionYear: familyYear(link.union) }
           : {}),
-        line: link.line,
+        line: unionSpanLine ?? link.line,
       });
     }
   }
