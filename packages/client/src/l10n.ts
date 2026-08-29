@@ -53,9 +53,15 @@ const FR_BUNDLE: Record<string, string> = {
   'Zoom to Fit (Fit all nodes in view)': 'Ajuster à la vue (adapter tous les nœuds)',
   'Reset View (100% Zoom & Recenter)': 'Réinitialiser la vue (zoom 100% & recentrer)',
   'Export Tree as SVG': "Exporter l'arbre en SVG",
-  'No record at the cursor.': 'Aucune fiche sous le curseur.',
   'Open a GEDCOM file and place the cursor in a record.':
     'Ouvrez un fichier GEDCOM et placez le curseur sur une fiche.',
+  'Open a GEDCOM X file to convert it to GEDCOM 7.0.':
+    'Ouvrez un fichier GEDCOM X pour le convertir en GEDCOM 7.0.',
+  'Successfully converted GEDCOM X to GEDCOM 7.0.':
+    'Fichier GEDCOM X converti avec succès en GEDCOM 7.0.',
+  'Open a GEDCOM file to export it to GEDCOM X JSON.':
+    "Ouvrez un fichier GEDCOM pour l'exporter en GEDCOM X JSON.",
+  'Successfully exported to GEDCOM X JSON.': 'Exporté avec succès en GEDCOM X JSON.',
 };
 
 let explicitLocale: string | undefined;

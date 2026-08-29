@@ -36,8 +36,12 @@ import {
   analyzeText,
   calculateKinship,
   displayName,
+  gedcomToGedcomX,
+  gedcomXToGedcom7,
+  isGedcomX,
   lifespan,
   recordAt,
+  toGedcomXJson,
   upgradeToGedcom7,
 } from '@vscode-gedcom/core';
 
@@ -86,14 +90,55 @@ export function registerCommands(context: ExtensionContext): void {
         );
       }
     }),
+    commands.registerCommand('gedcom.convertGedcomXToGedcom7', async () => {
+      const editor = window.activeTextEditor;
+      const text = editor?.document.getText() ?? '';
+      if (!editor || (!isGedcomX(text) && editor.document.languageId !== 'gedcom')) {
+        void window.showInformationMessage(t('Open a GEDCOM X file to convert it to GEDCOM 7.0.'));
+        return;
+      }
+
+      try {
+        const gedcom7 = gedcomXToGedcom7(text);
+        const doc = await workspace.openTextDocument({
+          language: 'gedcom',
+          content: gedcom7,
+        });
+        await window.showTextDocument(doc);
+        void window.showInformationMessage(t('Successfully converted GEDCOM X to GEDCOM 7.0.'));
+      } catch (err) {
+        void window.showErrorMessage(`Failed to convert GEDCOM X: ${String(err)}`);
+      }
+    }),
+    commands.registerCommand('gedcom.exportAsGedcomX', async () => {
+      const editor = window.activeTextEditor;
+      if (!editor) {
+        void window.showInformationMessage(t('Open a GEDCOM file to export it to GEDCOM X JSON.'));
+        return;
+      }
+
+      try {
+        const text = editor.document.getText();
+        const gx = isGedcomX(text) ? JSON.parse(text) : gedcomToGedcomX(text);
+        const jsonText = toGedcomXJson(gx, true);
+        const doc = await workspace.openTextDocument({
+          language: 'json',
+          content: jsonText,
+        });
+        await window.showTextDocument(doc);
+        void window.showInformationMessage(t('Successfully exported to GEDCOM X JSON.'));
+      } catch (err) {
+        void window.showErrorMessage(`Failed to export as GEDCOM X: ${String(err)}`);
+      }
+    }),
     commands.registerCommand('gedcom.findRelationship', async () => {
       const editor = window.activeTextEditor;
-      if (!editor || editor.document.languageId !== 'gedcom') {
+      const text = editor?.document.getText() ?? '';
+      if (!editor || (editor.document.languageId !== 'gedcom' && !isGedcomX(text))) {
         void window.showInformationMessage(t('Open a GEDCOM file to calculate relationships.'));
         return;
       }
 
-      const text = editor.document.getText();
       const analysis = analyzeText(text);
 
       const individuals: { label: string; description: string; xref: string }[] = [];

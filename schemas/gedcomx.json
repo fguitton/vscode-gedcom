@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GEDCOM X JSON Schema",
+  "description": "JSON Schema for FamilySearch GEDCOM X genealogical data.",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "lang": { "type": "string" },
+    "description": { "type": "string" },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "contributor": { "$ref": "#/definitions/resourceReference" },
+        "modified": { "type": ["number", "string"] },
+        "changeMessage": { "type": "string" },
+        "created": { "type": ["number", "string"] },
+        "creator": { "$ref": "#/definitions/resourceReference" }
+      }
+    },
+    "persons": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/person" }
+    },
+    "relationships": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/relationship" }
+    },
+    "sourceDescriptions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/sourceDescription" }
+    },
+    "agents": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/agent" }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/event" }
+    },
+    "places": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/placeDescription" }
+    },
+    "documents": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/document" }
+    }
+  },
+  "definitions": {
+    "resourceReference": {
+      "type": "object",
+      "properties": {
+        "resource": { "type": "string" },
+        "resourceId": { "type": "string" }
+      }
+    },
+    "textValue": {
+      "type": "object",
+      "properties": {
+        "lang": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["value"]
+    },
+    "person": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "principal": { "type": "boolean" },
+        "living": { "type": "boolean" },
+        "extracted": { "type": "boolean" },
+        "gender": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" }
+          }
+        },
+        "names": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/name" }
+        },
+        "facts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fact" }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/note" }
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/sourceCitation" }
+        }
+      }
+    },
+    "name": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "preferred": { "type": "boolean" },
+        "nameForms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lang": { "type": "string" },
+              "fullText": { "type": "string" },
+              "parts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string" },
+                    "value": { "type": "string" }
+                  },
+                  "required": ["value"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "fact": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "value": { "type": "string" },
+        "primary": { "type": "boolean" },
+        "date": {
+          "type": "object",
+          "properties": {
+            "original": { "type": "string" },
+            "formal": { "type": "string" }
+          }
+        },
+        "place": {
+          "type": "object",
+          "properties": {
+            "original": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        }
+      },
+      "required": ["type"]
+    },
+    "relationship": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "person1": { "$ref": "#/definitions/resourceReference" },
+        "person2": { "$ref": "#/definitions/resourceReference" },
+        "facts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fact" }
+        }
+      },
+      "required": ["type", "person1", "person2"]
+    },
+    "sourceDescription": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "about": { "type": "string" },
+        "citation": { "type": "string" },
+        "titles": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/textValue" }
+        }
+      }
+    },
+    "sourceCitation": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "descriptionRef": { "type": "string" },
+        "value": { "type": "string" }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "names": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/textValue" }
+        }
+      }
+    },
+    "note": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subject": { "type": "string" },
+        "text": { "type": "string" }
+      },
+      "required": ["text"]
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "date": {
+          "type": "object",
+          "properties": {
+            "original": { "type": "string" },
+            "formal": { "type": "string" }
+          }
+        },
+        "place": {
+          "type": "object",
+          "properties": {
+            "original": { "type": "string" }
+          }
+        }
+      }
+    },
+    "placeDescription": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "names": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/textValue" }
+        },
+        "type": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" }
+      }
+    },
+    "document": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "text": { "type": "string" }
+      }
+    }
+  }
+}

@@ -290,6 +290,26 @@
         "command": "gedcom.findRelationship",
         "title": "%command.findRelationship%",
         "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.convertGedcomXToGedcom7",
+        "title": "%command.convertGedcomXToGedcom7%",
+        "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.exportAsGedcomX",
+        "title": "%command.exportAsGedcomX%",
+        "category": "GEDCOM"
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          "*.gedx.json",
+          "*gedcomx*.json",
+          "*.gedx"
+        ],
+        "url": "./schemas/gedcomx.json"
       }
     ],
     "menus": {
@@ -305,6 +325,11 @@
           "command": "gedcom.findRelationship",
           "when": "editorLangId == gedcom",
           "group": "gedcom@1"
+        },
+        {
+          "command": "gedcom.exportAsGedcomX",
+          "when": "editorLangId == gedcom",
+          "group": "gedcom@2"
         }
       ],
       "commandPalette": [
@@ -325,6 +350,12 @@
           "when": "editorLangId == gedcom"
         },
         {
+          "command": "gedcom.convertGedcomXToGedcom7"
+        },
+        {
+          "command": "gedcom.exportAsGedcomX"
+        },
+        {
           "command": "gedcom.showLog"
         },
         {
@@ -334,9 +365,13 @@
     }
   },
   "activationEvents": [
+    "onCommand:gedcom.convertGedcomXToGedcom7",
+    "onCommand:gedcom.exportAsGedcomX",
     "onLanguage:gedcom",
     "workspaceContains:**/*.ged",
-    "workspaceContains:**/*.gedcom"
+    "workspaceContains:**/*.gedcom",
+    "workspaceContains:**/*.gedcomx",
+    "workspaceContains:**/*.gedx"
   ],
   "icon": "images/icon.png",
   "galleryBanner": {

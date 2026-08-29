@@ -11,7 +11,13 @@
  * that has no place in a family tree: a submitter is not somebody's relative.
  */
 
-import { documentDetails, recordDetails, webUrl, type Details } from '@vscode-gedcom/core';
+import {
+  documentDetails,
+  isGedcomX,
+  recordDetails,
+  webUrl,
+  type Details,
+} from '@vscode-gedcom/core';
 import {
   env,
   Range,
@@ -147,7 +153,7 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
       document = subjectEditor()?.document;
     }
 
-    if (!document || document.languageId !== 'gedcom') {
+    if (!document || (document.languageId !== 'gedcom' && !isGedcomX(document.getText()))) {
       this.uri = undefined;
       this.lastShown = undefined;
       void this.view.webview.postMessage({ type: 'empty' });

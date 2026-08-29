@@ -176,8 +176,15 @@ export interface AnalyzeOptions {
   readonly version?: GedcomVersion | null;
 }
 
+import { isGedcomX, gedcomXToGedcom7 } from './gedcomx/index.ts';
+export * from './gedcomx/index.ts';
+
 /** Full analysis of a GEDCOM stream, from raw bytes to diagnostics. */
 export function analyze(bytes: Uint8Array, options: AnalyzeOptions = {}): Analysis {
+  if (isGedcomX(bytes)) {
+    const text = new TextDecoder('utf-8').decode(bytes);
+    return analyzeText(text, options);
+  }
   const detection = detect(bytes);
   const version = options.version !== undefined ? options.version : detection.version;
   const text = decode(bytes, detection.encoding);
@@ -189,20 +196,21 @@ export function analyze(bytes: Uint8Array, options: AnalyzeOptions = {}): Analys
  * the decoding. Version detection still runs, over the text's own bytes.
  */
 export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysis {
+  const actualText = isGedcomX(text) ? gedcomXToGedcom7(text) : text;
   const detected =
     options.version !== undefined
       ? options.version
-      : detect(new TextEncoder().encode(text)).version;
+      : detect(new TextEncoder().encode(actualText)).version;
 
   // Parsed twice where the exporter is one that writes broken continuations:
   // the first pass is only to read `HEAD.SOUR`, which is what says who wrote the
   // file. Cheap — the header is the first few lines — and it keeps the repair
   // policy a property of the document rather than a setting the caller must know
   // to pass.
-  const first = parse(text);
+  const first = parse(actualText);
   const profile = exporterProfile(first);
   const document = profile?.repairsContinuations
-    ? parse(text, { joinOrphanLines: true, exporter: profile.name })
+    ? parse(actualText, { joinOrphanLines: true, exporter: profile.name })
     : first;
 
   // Files without a GEDC structure cannot be detected but are common enough to
@@ -237,7 +245,7 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
     (diagnostic) => byLine.get(diagnostic.span.line),
   );
 
-  return { version, versionSource, text, document, xrefs, validation, diagnostics };
+  return { version, versionSource, text: actualText, document, xrefs, validation, diagnostics };
 }
 
 export * from './i18n/index.ts';

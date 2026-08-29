@@ -12,6 +12,7 @@
 
 import {
   buildFanChart,
+  isGedcomX,
   neighbourhood,
   recordAt,
   type Direction,
@@ -222,7 +223,7 @@ export class GedcomGraphViewProvider implements WebviewViewProvider {
         : undefined) ??
       subjectEditor()?.document;
 
-    if (!document || document.languageId !== 'gedcom') {
+    if (!document || (document.languageId !== 'gedcom' && !isGedcomX(document.getText()))) {
       this.documentUri = undefined;
       this.nothing('no-document');
       return;
@@ -1550,11 +1551,12 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
    * A key of our own answers the question actually being asked — is there a
    * GEDCOM file open — and does not depend on where focus happens to be.
    */
+  const isGenealogyDoc = (doc?: { languageId: string; getText: () => string }): boolean =>
+    !!doc && (doc.languageId === 'gedcom' || isGedcomX(doc.getText()));
+
   let announced: boolean | undefined;
   const announce = (): void => {
-    const documents = workspace.textDocuments.filter(
-      (document) => document.languageId === 'gedcom',
-    ).length;
+    const documents = workspace.textDocuments.filter((document) => isGenealogyDoc(document)).length;
     const open = documents > 0;
 
     if (open !== announced) {
@@ -1572,7 +1574,7 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
     // Anything but a GEDCOM file — including no editor at all, which is what
     // arrives when focus leaves the editor area — leaves the panels on the file
     // the reader can still see.
-    const subject = editor?.document.languageId === 'gedcom' ? editor : subjectEditor();
+    const subject = isGenealogyDoc(editor?.document) ? editor : subjectEditor();
 
     if (!subject) {
       // Nothing on screen is not the same as nothing open: maximising a panel
@@ -1655,9 +1657,10 @@ export function registerGraphView(context: ExtensionContext, log: Log): GedcomTe
     // would re-read and lay out the whole tree on each keystroke in whatever
     // else is open, to draw what is already on screen.
     window.onDidChangeTextEditorSelection((event) => {
-      if (event.textEditor.document.languageId !== 'gedcom') return;
+      if (!isGenealogyDoc(event.textEditor.document)) return;
       followCursor(event.textEditor);
     }),
+
     workspace.onDidChangeTextDocument((event) => {
       const editor = subjectEditor();
       if (editor && event.document === editor.document) {
