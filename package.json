@@ -40,6 +40,9 @@
     "test": "vp test",
     "check": "vp check"
   },
+  "dependencies": {
+    "fflate": "^0.8.3"
+  },
   "devDependencies": {
     "@internationalized/date": "^3.12.3",
     "@primer/primitives": "^11.10.0",
@@ -300,6 +303,21 @@
         "command": "gedcom.exportAsGedcomX",
         "title": "%command.exportAsGedcomX%",
         "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.packageGdz",
+        "title": "%command.packageGdz%",
+        "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.unpackGdz",
+        "title": "%command.unpackGdz%",
+        "category": "GEDCOM"
+      },
+      {
+        "command": "gedcom.openGdz",
+        "title": "%command.openGdz%",
+        "category": "GEDCOM"
       }
     ],
     "jsonValidation": [
@@ -330,6 +348,28 @@
           "command": "gedcom.exportAsGedcomX",
           "when": "editorLangId == gedcom",
           "group": "gedcom@2"
+        },
+        {
+          "command": "gedcom.packageGdz",
+          "when": "editorLangId == gedcom",
+          "group": "gedcom@3"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "gedcom.openGdz",
+          "when": "resourceExtname == .gdz",
+          "group": "gedcom@1"
+        },
+        {
+          "command": "gedcom.unpackGdz",
+          "when": "resourceExtname == .gdz",
+          "group": "gedcom@2"
+        },
+        {
+          "command": "gedcom.packageGdz",
+          "when": "resourceExtname == .ged || resourceExtname == .gedcom",
+          "group": "gedcom@1"
         }
       ],
       "commandPalette": [
@@ -356,6 +396,15 @@
           "command": "gedcom.exportAsGedcomX"
         },
         {
+          "command": "gedcom.packageGdz"
+        },
+        {
+          "command": "gedcom.unpackGdz"
+        },
+        {
+          "command": "gedcom.openGdz"
+        },
+        {
           "command": "gedcom.showLog"
         },
         {
@@ -367,7 +416,12 @@
   "activationEvents": [
     "onCommand:gedcom.convertGedcomXToGedcom7",
     "onCommand:gedcom.exportAsGedcomX",
+    "onCommand:gedcom.openGdz",
+    "onCommand:gedcom.packageGdz",
+    "onCommand:gedcom.unpackGdz",
+    "onFileSystem:gdz",
     "onLanguage:gedcom",
+    "workspaceContains:**/*.gdz",
     "workspaceContains:**/*.ged",
     "workspaceContains:**/*.gedcom",
     "workspaceContains:**/*.gedcomx",

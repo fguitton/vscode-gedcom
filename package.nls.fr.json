@@ -13,6 +13,9 @@
   "command.findRelationship": "Rechercher un lien de parenté entre individus",
   "command.convertGedcomXToGedcom7": "Convertir GEDCOM X en GEDCOM 7.0",
   "command.exportAsGedcomX": "Exporter le fichier en GEDCOM X JSON",
+  "command.packageGdz": "Empaqueter le fichier en GEDZIP (.gdz)",
+  "command.unpackGdz": "Décompresser l'archive GEDZIP (.gdz)",
+  "command.openGdz": "Ouvrir l'archive GEDZIP",
 
   "config.graph.depth.markdownDescription": "Nombre de sauts affichés dans le panneau de l'arbre à partir de la fiche sous le curseur.\n\nUne valeur de 1 affiche une personne et ses familles ; 2 inclut également les conjoints, enfants et parents. Au-delà de 3, le voisinage est généralement plus large que ce que le panneau peut afficher utilement.",
   "config.graph.includeReferences.markdownDescription": "Inclure les sources, notes et médias dans l'arbre aux côtés des membres de la famille.\n\nDésactivé par défaut : une personne bien documentée cite des dizaines de fiches, ce qui encombre l'arbre familial que le panneau a pour but d'afficher.",

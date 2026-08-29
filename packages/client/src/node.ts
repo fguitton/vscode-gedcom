@@ -6,6 +6,7 @@ import type { ExtensionContext } from 'vscode';
 import { LanguageClient, TransportKind, type ServerOptions } from 'vscode-languageclient/node';
 
 import { registerCommands } from './commands.ts';
+import { GdzFileSystemProvider, GDZ_SCHEME } from './gdz-fs.ts';
 import { registerGedcomXInsights } from './gedcomx-insights.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
@@ -13,6 +14,7 @@ import { createLog, logActivation, registerDiagnostics } from './log.ts';
 import { describePanel } from './report.ts';
 import { registerVersionStatus } from './version-status.ts';
 import { clientOptions, SERVER_ID, SERVER_NAME } from './shared.ts';
+import { workspace } from 'vscode';
 
 let client: LanguageClient | undefined;
 
@@ -22,6 +24,12 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
 
   const facts = { host: 'node', platform: process.platform } as const;
   logActivation(context, log, facts);
+
+  context.subscriptions.push(
+    workspace.registerFileSystemProvider(GDZ_SCHEME, new GdzFileSystemProvider(), {
+      isCaseSensitive: false,
+    }),
+  );
 
   registerCommands(context);
   const hooks = registerGraphView(context, log);

@@ -36,14 +36,18 @@ import {
   analyzeText,
   calculateKinship,
   displayName,
+  extractGdz,
+  findLocalMediaReferences,
   gedcomToGedcomX,
   gedcomXToGedcom7,
   isGedcomX,
   lifespan,
+  packageGdz,
   recordAt,
   toGedcomXJson,
   upgradeToGedcom7,
 } from '@vscode-gedcom/core';
+import { toGdzUri } from './gdz-fs.ts';
 
 export function registerCommands(context: ExtensionContext): void {
   context.subscriptions.push(
@@ -202,6 +206,173 @@ export function registerCommands(context: ExtensionContext): void {
         const primaryFocus = kinship.commonAncestors[0] || kinship.path[0];
         await commands.executeCommand('gedcom.showGraph');
         await commands.executeCommand('gedcom.highlightPath', kinship.path, primaryFocus);
+      }
+    }),
+    commands.registerCommand('gedcom.packageGdz', async (fileUri?: Uri) => {
+      let targetDocUri = fileUri;
+      let text = '';
+
+      if (!targetDocUri) {
+        const editor = window.activeTextEditor;
+        if (editor && editor.document.languageId === 'gedcom') {
+          targetDocUri = editor.document.uri;
+          text = editor.document.getText();
+        }
+      }
+
+      if (!targetDocUri) {
+        const picked = await window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: false,
+          canSelectMany: false,
+          filters: { 'GEDCOM Files': ['ged', 'gedcom'] },
+          openLabel: t('Select GEDCOM File to Package'),
+        });
+        if (!picked || picked.length === 0) return;
+        targetDocUri = picked[0];
+      }
+
+      if (!targetDocUri) return;
+
+      if (!text) {
+        const bytes = await workspace.fs.readFile(targetDocUri);
+        text = new TextDecoder('utf-8').decode(bytes);
+      }
+
+      try {
+        const localRefs = findLocalMediaReferences(text);
+        const files = new Map<string, Uint8Array>();
+        const docDir = Uri.joinPath(targetDocUri, '..');
+        const missing: string[] = [];
+
+        for (const ref of localRefs) {
+          try {
+            let mediaUri: Uri;
+            if (ref.startsWith('file://')) {
+              mediaUri = Uri.parse(ref);
+            } else if (/^[a-zA-Z]:[\\/]/.test(ref) || ref.startsWith('/')) {
+              mediaUri = Uri.file(ref);
+            } else {
+              mediaUri = Uri.joinPath(docDir, ref);
+            }
+            const data = await workspace.fs.readFile(mediaUri);
+            files.set(ref, data);
+          } catch {
+            missing.push(ref);
+          }
+        }
+
+        if (missing.length > 0) {
+          const proceed = await window.showWarningMessage(
+            t(
+              'Could not find {0} referenced media file(s) on disk. Package anyway without them?',
+              missing.length,
+            ),
+            t('Package Anyway'),
+            t('Cancel'),
+          );
+          if (proceed !== t('Package Anyway')) return;
+        }
+
+        const gdzBytes = packageGdz({
+          gedcomText: text,
+          files,
+        });
+
+        const defaultSavePath = targetDocUri.path.replace(/\.(ged|gedcom)$/i, '') + '.gdz';
+        const defaultSaveUri = targetDocUri.with({ path: defaultSavePath });
+
+        const saveUri = await window.showSaveDialog({
+          defaultUri: defaultSaveUri,
+          filters: { 'GEDZIP Archive': ['gdz'] },
+          saveLabel: t('Save GEDZIP Archive'),
+        });
+
+        if (!saveUri) return;
+
+        await workspace.fs.writeFile(saveUri, gdzBytes);
+
+        const openBtn = t('Open Archive');
+        const response = await window.showInformationMessage(
+          t('Successfully packaged GEDZIP archive with {0} media file(s).', files.size),
+          openBtn,
+        );
+
+        if (response === openBtn) {
+          await commands.executeCommand('gedcom.openGdz', saveUri);
+        }
+      } catch (err) {
+        void window.showErrorMessage(t('Failed to package GEDZIP archive: {0}', String(err)));
+      }
+    }),
+    commands.registerCommand('gedcom.unpackGdz', async (fileUri?: Uri) => {
+      let sourceGdzUri = fileUri;
+      if (!sourceGdzUri) {
+        const picked = await window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: false,
+          canSelectMany: false,
+          filters: { 'GEDZIP Archives': ['gdz', 'zip'] },
+          openLabel: t('Select GEDZIP File to Unpack'),
+        });
+        if (!picked || picked.length === 0) return;
+        sourceGdzUri = picked[0];
+      }
+
+      if (!sourceGdzUri) return;
+
+      const destFolders = await window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: t('Select Extraction Folder'),
+      });
+      if (!destFolders || destFolders.length === 0) return;
+      const targetFolder = destFolders[0];
+      if (!targetFolder) return;
+
+      try {
+        const rawBytes = await workspace.fs.readFile(sourceGdzUri);
+        const { gedcomPath, files } = extractGdz(rawBytes);
+
+        for (const [relPath, fileBytes] of files.entries()) {
+          const destFileUri = Uri.joinPath(targetFolder, relPath);
+          await workspace.fs.writeFile(destFileUri, fileBytes);
+        }
+
+        const mainDocUri = Uri.joinPath(targetFolder, gedcomPath);
+        const doc = await workspace.openTextDocument(mainDocUri);
+        await window.showTextDocument(doc);
+
+        void window.showInformationMessage(
+          t('Successfully unpacked {0} files from GEDZIP archive.', files.size),
+        );
+      } catch (err) {
+        void window.showErrorMessage(t('Failed to unpack GEDZIP archive: {0}', String(err)));
+      }
+    }),
+    commands.registerCommand('gedcom.openGdz', async (fileUri?: Uri) => {
+      let gdzUri = fileUri;
+      if (!gdzUri) {
+        const picked = await window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: false,
+          canSelectMany: false,
+          filters: { 'GEDZIP Archives': ['gdz'] },
+          openLabel: t('Open GEDZIP Archive'),
+        });
+        if (!picked || picked.length === 0) return;
+        gdzUri = picked[0];
+      }
+
+      if (!gdzUri) return;
+
+      try {
+        const virtualUri = toGdzUri(gdzUri, 'gedcom.ged');
+        const doc = await workspace.openTextDocument(virtualUri);
+        await window.showTextDocument(doc);
+      } catch (err) {
+        void window.showErrorMessage(t('Failed to open GEDZIP archive: {0}', String(err)));
       }
     }),
   );

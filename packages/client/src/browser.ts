@@ -7,10 +7,11 @@
  * imports are not supported there.
  */
 
-import { env, Uri, type ExtensionContext } from 'vscode';
+import { env, Uri, workspace, type ExtensionContext } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/browser';
 
 import { registerCommands } from './commands.ts';
+import { GdzFileSystemProvider, GDZ_SCHEME } from './gdz-fs.ts';
 import { registerGedcomXInsights } from './gedcomx-insights.ts';
 import { registerVirtualIndent } from './indent.ts';
 import { registerGraphView, type GedcomTestHooks } from './graph-view.ts';
@@ -28,6 +29,12 @@ export function activate(context: ExtensionContext): GedcomTestHooks {
   // No `process` in a worker; the host itself is the platform worth naming.
   const facts = { host: 'browser', platform: env.appHost } as const;
   logActivation(context, log, facts);
+
+  context.subscriptions.push(
+    workspace.registerFileSystemProvider(GDZ_SCHEME, new GdzFileSystemProvider(), {
+      isCaseSensitive: false,
+    }),
+  );
 
   registerCommands(context);
   // Both read the document directly, so they work identically in either host.

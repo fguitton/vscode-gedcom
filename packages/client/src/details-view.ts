@@ -35,6 +35,7 @@ import {
 } from 'vscode';
 
 import { analysisOf } from './analysis.ts';
+import { parseGdzUri, toGdzUri } from './gdz-fs.ts';
 import { getClientBundle } from './l10n.ts';
 import { contentSecurityPolicy } from './policy.ts';
 import { SelectionStore, subjectEditor } from './selection.ts';
@@ -69,7 +70,10 @@ function resolveResourceUri(webview: Webview, baseDocUri: Uri, rawPath: string):
   if (webUrl(rawPath)) return rawPath;
   try {
     let fileUri: Uri;
-    if (rawPath.startsWith('file://')) {
+    if (baseDocUri.scheme === 'gdz') {
+      const { archiveUri } = parseGdzUri(baseDocUri);
+      fileUri = toGdzUri(archiveUri, rawPath);
+    } else if (rawPath.startsWith('file://')) {
       fileUri = Uri.parse(rawPath);
     } else if (/^[a-zA-Z]:[\\/]/.test(rawPath) || rawPath.startsWith('/')) {
       fileUri = Uri.file(rawPath);

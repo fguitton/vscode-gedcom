@@ -41,5 +41,19 @@
   "Open a GEDCOM file to export it to GEDCOM X JSON.": "Open a GEDCOM file to export it to GEDCOM X JSON.",
   "Successfully exported to GEDCOM X JSON.": "Successfully exported to GEDCOM X JSON.",
   "This file is a GEDCOM X JSON document (FamilySearch Platform API).": "This file is a GEDCOM X JSON document (FamilySearch Platform API).",
-  "This file is a GEDCOM X XML document (FamilySearch Platform API).": "This file is a GEDCOM X XML document (FamilySearch Platform API)."
+  "This file is a GEDCOM X XML document (FamilySearch Platform API).": "This file is a GEDCOM X XML document (FamilySearch Platform API).",
+  "Select GEDCOM File to Package": "Select GEDCOM File to Package",
+  "Could not find {0} referenced media file(s) on disk. Package anyway without them?": "Could not find {0} referenced media file(s) on disk. Package anyway without them?",
+  "Package Anyway": "Package Anyway",
+  "Cancel": "Cancel",
+  "Save GEDZIP Archive": "Save GEDZIP Archive",
+  "Successfully packaged GEDZIP archive with {0} media file(s).": "Successfully packaged GEDZIP archive with {0} media file(s).",
+  "Open Archive": "Open Archive",
+  "Failed to package GEDZIP archive: {0}": "Failed to package GEDZIP archive: {0}",
+  "Select GEDZIP File to Unpack": "Select GEDZIP File to Unpack",
+  "Select Extraction Folder": "Select Extraction Folder",
+  "Successfully unpacked {0} files from GEDZIP archive.": "Successfully unpacked {0} files from GEDZIP archive.",
+  "Failed to unpack GEDZIP archive: {0}": "Failed to unpack GEDZIP archive: {0}",
+  "Open GEDZIP Archive": "Open GEDZIP Archive",
+  "Failed to open GEDZIP archive: {0}": "Failed to open GEDZIP archive: {0}"
 }

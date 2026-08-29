@@ -100,6 +100,18 @@ export { detectIndentation } from './indentation.ts';
 export type { Indentation, IndentStyle } from './indentation.ts';
 export type { LexedLine, LexResult } from './lexer.ts';
 
+export {
+  isGdz,
+  readGdz,
+  packageGdz,
+  extractGdz,
+  findLocalMediaReferences,
+  normalizeZipPath,
+  splitGdzPath,
+  joinGdzPath,
+} from './gdz.ts';
+export type { GdzArchive, PackageGdzOptions } from './gdz.ts';
+
 export { parse, structureAt, fullSpan } from './parser.ts';
 export { walk, span } from './cst.ts';
 export type {
