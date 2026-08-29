@@ -552,6 +552,36 @@ describe('the graph panel', () => {
       'details panel should display John Smith with media',
     );
   });
+
+  it('renders media previews for individuals in v7/obje-1.ged fixture', async () => {
+    const _document = await openFixture('v7/obje-1.ged');
+    await vscode.commands.executeCommand('gedcom.details.focus');
+    await settle();
+
+    // Put cursor on 0 @2@ INDI which points to 1 OBJE @1@
+    await putCursorOn(21);
+    await settle();
+
+    assert.ok(
+      (await hooks()).detailsShowing(),
+      'details panel should display individual with OBJE in v7/obje-1.ged',
+    );
+  });
+
+  it('renders local and remote image previews for individuals in media/images.ged fixture', async () => {
+    const _document = await openFixture('media/images.ged');
+    await vscode.commands.executeCommand('gedcom.details.focus');
+    await settle();
+
+    // Put cursor on 0 @I1@ INDI which points to @M1@, @M2@, and @M3@
+    await putCursorOn(10);
+    await settle();
+
+    assert.ok(
+      (await hooks()).detailsShowing(),
+      'details panel should display Sophia Taylor with local and remote images in media/images.ged',
+    );
+  });
 });
 
 describe('inlay hints', () => {
@@ -684,7 +714,10 @@ describe('hovers', () => {
 describe('GEDCOM X JSON and XML support (E2E)', () => {
   const JSON_TREE = 'gedcomx/familysearch-tree.json';
   const XML_TREE = 'gedcomx/familysearch-tree.xml';
+  const JSON_MEDIA = 'media/images.json';
+  const XML_MEDIA = 'media/images.xml';
   const NEGATIVE_PACKAGE = 'gedcomx/negative-controls/package.json';
+
   const NEGATIVE_POM = 'gedcomx/negative-controls/pom.xml';
 
   it('provides CodeLenses, summaries, and tree action in GEDCOM X JSON', async () => {
@@ -871,6 +904,36 @@ describe('GEDCOM X JSON and XML support (E2E)', () => {
       /individuals|Show in Tree|reference/i.test(l.command?.title ?? ''),
     );
     assert.equal(gedcomLensesPom.length, 0, 'pom.xml should have no GEDCOM code lenses');
+  });
+
+  it('renders remote and local image previews in GEDCOM X JSON fixture', async () => {
+    const _docJson = await openFixture(JSON_MEDIA);
+    await vscode.commands.executeCommand('gedcom.details.focus');
+    await settle();
+
+    // Put cursor on P-1 (Sophia Taylor)
+    await putCursorOn(4);
+    await settle();
+
+    assert.ok(
+      (await hooks()).detailsShowing(),
+      'details panel should display Sophia Taylor with remote and local images in JSON',
+    );
+  });
+
+  it('renders remote and local image previews in GEDCOM X XML fixture', async () => {
+    const _docXml = await openFixture(XML_MEDIA);
+    await vscode.commands.executeCommand('gedcom.details.focus');
+    await settle();
+
+    // Put cursor on P-1 (Sophia Taylor)
+    await putCursorOn(3);
+    await settle();
+
+    assert.ok(
+      (await hooks()).detailsShowing(),
+      'details panel should display Sophia Taylor with remote and local images in XML',
+    );
   });
 });
 

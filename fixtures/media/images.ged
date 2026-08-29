@@ -1,0 +1,28 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SOUR VSCODE_GEDCOM
+2 NAME VS Code GEDCOM Extension
+2 VERS 1.0
+1 SUBM @SUBM1@
+0 @SUBM1@ SUBM
+1 NAME Visual Test Suite
+0 @I1@ INDI
+1 NAME Sophia /Taylor/
+1 SEX F
+1 OBJE @M1@
+1 OBJE @M2@
+1 OBJE @M3@
+0 @M1@ OBJE
+1 FILE portrait.jpg
+2 FORM image/jpeg
+2 TITL Sophia Portrait (Local JPG)
+0 @M2@ OBJE
+1 FILE portrait.png
+2 FORM image/png
+2 TITL Sophia Portrait (Local PNG)
+0 @M3@ OBJE
+1 FILE https://picsum.photos/200/300.jpg
+2 FORM image/jpeg
+2 TITL Sophia Photo (Picsum Web Photo)
+0 TRLR

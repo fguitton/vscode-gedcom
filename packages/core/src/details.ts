@@ -535,10 +535,18 @@ export function recordDetails(
       const target = pointer ? analysis.xrefs.definitions.get(pointer) : undefined;
       const effective = target ?? structure;
 
-      const file = child(effective, 'FILE')?.payload;
-      const form = child(effective, 'FORM')?.payload ?? child(structure, 'FORM')?.payload;
-      const titl = child(effective, 'TITL')?.payload ?? child(structure, 'TITL')?.payload;
+      const fileNode = child(effective, 'FILE') ?? child(structure, 'FILE');
+      const file = fileNode?.payload;
+      const form =
+        (fileNode ? child(fileNode, 'FORM')?.payload : undefined) ??
+        child(effective, 'FORM')?.payload ??
+        child(structure, 'FORM')?.payload;
+      const titl =
+        (fileNode ? child(fileNode, 'TITL')?.payload : undefined) ??
+        child(effective, 'TITL')?.payload ??
+        child(structure, 'TITL')?.payload;
       const kind = form ? describeMediaType(form) : undefined;
+
       const raw = file?.trim();
       const path =
         raw === undefined

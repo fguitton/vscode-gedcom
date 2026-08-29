@@ -1,0 +1,42 @@
+{
+  "id": "media-tree-json",
+  "description": "Tree with local and remote media attachments",
+  "persons": [
+    {
+      "id": "P-1",
+      "gender": { "type": "http://gedcomx.org/Female" },
+      "names": [
+        {
+          "preferred": true,
+          "nameForms": [{ "fullText": "Sophia /Taylor/" }]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Birth",
+          "date": { "original": "1890" }
+        }
+      ],
+      "sources": [
+        { "descriptionRef": "#SRC-REMOTE-PHOTO" },
+        { "descriptionRef": "#SRC-LOCAL-PHOTO" }
+      ]
+    }
+  ],
+  "sourceDescriptions": [
+    {
+      "id": "SRC-REMOTE-PHOTO",
+      "about": "https://picsum.photos/200/300.jpg",
+      "mediaType": "image/jpeg",
+      "resourceType": "http://gedcomx.org/DigitalArtifact",
+      "titles": [{ "value": "Sophia Photo (Picsum Web Photo)" }]
+    },
+    {
+      "id": "SRC-LOCAL-PHOTO",
+      "about": "portrait.png",
+      "mediaType": "image/png",
+      "resourceType": "http://gedcomx.org/DigitalArtifact",
+      "titles": [{ "value": "Sophia Portrait (Local PNG)" }]
+    }
+  ]
+}

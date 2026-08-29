@@ -451,11 +451,14 @@ export function gedcomXToGedcom7(input: Gedcomx | string): string {
         const mUrl = m.about || srcDesc?.about;
         const mType = m.mediaType || srcDesc?.mediaType;
         const mTitle = m.titles?.[0]?.value || srcDesc?.titles?.[0]?.value;
-        if (mUrl || refId) {
+        if (mUrl) {
           lines.push('1 OBJE');
-          if (mUrl) lines.push(`2 FILE ${mUrl}`);
-          if (mType) lines.push(`2 FORM ${mType}`);
-          if (mTitle) lines.push(`2 TITL ${mTitle}`);
+          lines.push(`2 FILE ${mUrl}`);
+          if (mType) lines.push(`3 FORM ${mType}`);
+          if (mTitle) lines.push(`3 TITL ${mTitle}`);
+        } else if (refId) {
+          const srcXref = sourceIdToXref.get(refId);
+          if (srcXref) lines.push(`1 OBJE ${srcXref}`);
         }
       }
     }
@@ -476,8 +479,8 @@ export function gedcomXToGedcom7(input: Gedcomx | string): string {
         ) {
           lines.push('1 OBJE');
           lines.push(`2 FILE ${srcDesc.about}`);
-          if (srcDesc.mediaType) lines.push(`2 FORM ${srcDesc.mediaType}`);
-          if (srcDesc.titles?.[0]?.value) lines.push(`2 TITL ${srcDesc.titles[0].value}`);
+          if (srcDesc.mediaType) lines.push(`3 FORM ${srcDesc.mediaType}`);
+          if (srcDesc.titles?.[0]?.value) lines.push(`3 TITL ${srcDesc.titles[0].value}`);
         }
       }
     }
@@ -548,12 +551,12 @@ export function gedcomXToGedcom7(input: Gedcomx | string): string {
       lines.push(`0 ${xref} OBJE`);
       if (src.about) {
         lines.push(`1 FILE ${src.about}`);
-      }
-      if (src.mediaType) {
-        lines.push(`1 FORM ${src.mediaType}`);
-      }
-      if (src.titles?.[0]?.value) {
-        lines.push(`1 TITL ${src.titles[0].value}`);
+        if (src.mediaType) {
+          lines.push(`2 FORM ${src.mediaType}`);
+        }
+        if (src.titles?.[0]?.value) {
+          lines.push(`2 TITL ${src.titles[0].value}`);
+        }
       }
     } else {
       lines.push(`0 ${xref} SOUR`);

@@ -206,7 +206,38 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
       };
     }
 
-    // Resolve media resource URLs to Webview URIs
+    // Resolve media resource URLs to Webview URIs and ensure localResourceRoots covers all media directories
+    const roots: Uri[] = [];
+    if (workspace.workspaceFolders) {
+      roots.push(...workspace.workspaceFolders.map((f) => f.uri));
+    }
+    if (document.uri) {
+      roots.push(Uri.joinPath(document.uri, '..'));
+    }
+
+    for (const section of details.sections) {
+      for (const field of section.fields) {
+        if (field.url && !webUrl(field.url)) {
+          try {
+            let fileUri: Uri | undefined;
+            if (field.url.startsWith('file://')) fileUri = Uri.parse(field.url);
+            else if (/^[a-zA-Z]:[\\/]/.test(field.url) || field.url.startsWith('/'))
+              fileUri = Uri.file(field.url);
+            if (fileUri) {
+              roots.push(Uri.joinPath(fileUri, '..'));
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+
+    this.view.webview.options = {
+      enableScripts: true,
+      localResourceRoots: roots.length > 0 ? roots : undefined,
+    };
+
     const webview = this.view.webview;
     const resolvedDetails: Details = {
       ...details,

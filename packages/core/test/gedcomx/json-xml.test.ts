@@ -121,4 +121,34 @@ describe('GEDCOM X JSON & XML parser and serializer', () => {
     expect(parsed.persons?.[0]?.names?.[0]?.nameForms?.[0]?.fullText).toBe('Mary & Jane <Smith>');
     expect(parsed.persons?.[0]?.notes?.[0]?.text).toBe('Notes with "quotes" and \'apostrophes\'');
   });
+
+  it('parses and serializes source descriptions and media citations in XML', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<gedcomx xmlns="http://gedcomx.org/v1/">
+  <person id="P-3">
+    <source descriptionRef="#SRC-1"/>
+    <media descriptionRef="#SRC-2"/>
+  </person>
+  <sourceDescription id="SRC-1" about="https://picsum.photos/200/300" mediaType="image/jpeg" resourceType="http://gedcomx.org/DigitalArtifact">
+    <title>Picsum Portrait</title>
+  </sourceDescription>
+  <sourceDescription id="SRC-2" about="portrait.png" mediaType="image/png" resourceType="http://gedcomx.org/DigitalArtifact">
+    <title>Local Portrait</title>
+  </sourceDescription>
+</gedcomx>`;
+    const parsed = parseGedcomXXml(xml);
+    expect(parsed.persons?.[0]?.sources?.[0]?.descriptionRef).toBe('#SRC-1');
+    expect(parsed.persons?.[0]?.media?.[0]?.descriptionRef).toBe('#SRC-2');
+    expect(parsed.sourceDescriptions?.length).toBe(2);
+    expect(parsed.sourceDescriptions?.[0]?.about).toBe('https://picsum.photos/200/300');
+    expect(parsed.sourceDescriptions?.[0]?.mediaType).toBe('image/jpeg');
+    expect(parsed.sourceDescriptions?.[0]?.resourceType).toBe('http://gedcomx.org/DigitalArtifact');
+    expect(parsed.sourceDescriptions?.[0]?.titles?.[0]?.value).toBe('Picsum Portrait');
+
+    const roundtripXml = toGedcomXXml(parsed);
+    expect(roundtripXml).toContain('mediaType="image/jpeg"');
+    expect(roundtripXml).toContain('about="https://picsum.photos/200/300"');
+    expect(roundtripXml).toContain('<source descriptionRef="#SRC-1"/>');
+    expect(roundtripXml).toContain('<media descriptionRef="#SRC-2"/>');
+  });
 });

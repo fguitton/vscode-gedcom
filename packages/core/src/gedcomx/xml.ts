@@ -253,12 +253,26 @@ export function parseGedcomXXml(xmlText: string): Gedcomx {
     const sources: SourceCitation[] = [];
     for (const srcNode of findChildren(pNode, 'source')) {
       sources.push({
-        descriptionRef: srcNode.attrs.description,
+        descriptionRef:
+          srcNode.attrs.descriptionRef ?? srcNode.attrs.description ?? srcNode.attrs.resource,
         value: srcNode.text || undefined,
       });
     }
     if (sources.length > 0) {
       (person as { sources: SourceCitation[] }).sources = sources;
+    }
+
+    // Media
+    const media: SourceCitation[] = [];
+    for (const mNode of findChildren(pNode, 'media')) {
+      media.push({
+        descriptionRef:
+          mNode.attrs.descriptionRef ?? mNode.attrs.description ?? mNode.attrs.resource,
+        value: mNode.text || undefined,
+      });
+    }
+    if (media.length > 0) {
+      (person as { media: SourceCitation[] }).media = media;
     }
 
     persons.push(person);
@@ -310,6 +324,8 @@ export function parseGedcomXXml(xmlText: string): Gedcomx {
     sourceDescriptions.push({
       id: sNode.attrs.id,
       about: sNode.attrs.about,
+      mediaType: sNode.attrs.mediaType ?? findChild(sNode, 'mediaType')?.text,
+      resourceType: sNode.attrs.resourceType ?? findChild(sNode, 'resourceType')?.text,
       citation: findChild(sNode, 'citation')?.text,
       titles: findChild(sNode, 'title') ? [{ value: findChild(sNode, 'title')!.text }] : undefined,
     });
@@ -434,6 +450,22 @@ export function toGedcomXXml(gedcomx: Gedcomx): string {
         }
       }
 
+      if (p.sources) {
+        for (const src of p.sources) {
+          if (src.descriptionRef) {
+            lines.push(`    <source descriptionRef="${encodeXmlEntities(src.descriptionRef)}"/>`);
+          }
+        }
+      }
+
+      if (p.media) {
+        for (const m of p.media) {
+          if (m.descriptionRef) {
+            lines.push(`    <media descriptionRef="${encodeXmlEntities(m.descriptionRef)}"/>`);
+          }
+        }
+      }
+
       lines.push('  </person>');
     }
   }
@@ -464,7 +496,14 @@ export function toGedcomXXml(gedcomx: Gedcomx): string {
 
   if (gedcomx.sourceDescriptions) {
     for (const src of gedcomx.sourceDescriptions) {
-      lines.push(`  <sourceDescription id="${encodeXmlEntities(src.id ?? '')}">`);
+      const sAttrs = [`id="${encodeXmlEntities(src.id ?? '')}"`];
+      if (src.about) sAttrs.push(`about="${encodeXmlEntities(src.about)}"`);
+      if (src.mediaType) sAttrs.push(`mediaType="${encodeXmlEntities(src.mediaType)}"`);
+      if (src.resourceType) sAttrs.push(`resourceType="${encodeXmlEntities(src.resourceType)}"`);
+      lines.push(`  <sourceDescription ${sAttrs.join(' ')}>`);
+      if (src.titles?.[0]?.value) {
+        lines.push(`    <title>${encodeXmlEntities(src.titles[0].value)}</title>`);
+      }
       if (src.citation) {
         lines.push(`    <citation>${encodeXmlEntities(src.citation)}</citation>`);
       }

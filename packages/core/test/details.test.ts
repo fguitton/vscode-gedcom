@@ -535,4 +535,36 @@ describe('an event asserted with Y and nothing else', () => {
     const xmlDetails = documentDetails(xmlAnalysis);
     expect(xmlDetails.subtitle).toBe('GEDCOM X XML');
   });
+
+  it('supports Windows and POSIX local absolute media paths as safe resources', () => {
+    const analysis = analyze(
+      bytes(
+        [
+          '0 HEAD',
+          '1 GEDC',
+          '2 VERS 7.0',
+          '0 @I1@ INDI',
+          '1 OBJE @M1@',
+          '1 OBJE @M2@',
+          '0 @M1@ OBJE',
+          '1 FILE C:\\Genealogy\\photos\\portrait.jpg',
+          '2 FORM image/jpeg',
+          '2 TITL Windows Absolute',
+          '0 @M2@ OBJE',
+          '1 FILE /home/user/genealogy/portrait.png',
+          '2 FORM image/png',
+          '2 TITL POSIX Absolute',
+          '0 TRLR',
+          '',
+        ].join('\n'),
+      ),
+    );
+    const details = recordDetails(analysis, 'I1')!;
+    const mediaSection = details.sections.find((s) => s.title === 'Media');
+    expect(mediaSection?.fields.length).toBe(2);
+    expect(mediaSection?.fields[0]?.url).toBe('C:\\Genealogy\\photos\\portrait.jpg');
+    expect(mediaSection?.fields[0]?.mediaType).toBe('image/jpeg');
+    expect(mediaSection?.fields[1]?.url).toBe('/home/user/genealogy/portrait.png');
+    expect(mediaSection?.fields[1]?.mediaType).toBe('image/png');
+  });
 });

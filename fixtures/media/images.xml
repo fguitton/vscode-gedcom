@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gedcomx xmlns="http://gedcomx.org/v1/" id="media-tree-xml" description="XML tree with local and remote media">
+  <person id="P-1">
+    <gender type="http://gedcomx.org/Female"/>
+    <name preferred="true">
+      <nameForm>
+        <fullText>Sophia /Taylor/</fullText>
+      </nameForm>
+    </name>
+    <fact type="http://gedcomx.org/Birth">
+      <date original="1890"/>
+    </fact>
+    <source descriptionRef="#SRC-REMOTE-PHOTO"/>
+    <source descriptionRef="#SRC-LOCAL-PHOTO"/>
+  </person>
+  <sourceDescription id="SRC-REMOTE-PHOTO" about="https://picsum.photos/200/300.jpg" mediaType="image/jpeg" resourceType="http://gedcomx.org/DigitalArtifact">
+    <title>Sophia Photo (Picsum Web Photo)</title>
+  </sourceDescription>
+  <sourceDescription id="SRC-LOCAL-PHOTO" about="portrait.png" mediaType="image/png" resourceType="http://gedcomx.org/DigitalArtifact">
+    <title>Sophia Portrait (Local PNG)</title>
+  </sourceDescription>
+</gedcomx>
