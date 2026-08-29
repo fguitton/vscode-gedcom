@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gedcomx xmlns="http://gedcomx.org/v1/" id="familysearch-sample-tree" description="Multi-generational family tree in GEDCOM X XML format">
+  <attribution>
+    <contributor resource="#agent_fs"/>
+    <modified>1609459200000</modified>
+  </attribution>
+  <person id="KWQS-BB1">
+    <gender type="http://gedcomx.org/Male"/>
+    <name preferred="true">
+      <nameForm>
+        <fullText>Henry /Taylor/</fullText>
+        <part type="http://gedcomx.org/Given" value="Henry"/>
+        <part type="http://gedcomx.org/Surname" value="Taylor"/>
+      </nameForm>
+    </name>
+    <fact type="http://gedcomx.org/Birth">
+      <date formal="+1850-03-12">
+        <original>12 MAR 1850</original>
+      </date>
+      <place>
+        <original>Boston, Suffolk, Massachusetts, USA</original>
+      </place>
+    </fact>
+    <fact type="http://gedcomx.org/Death">
+      <date formal="+1920-11-04">
+        <original>4 NOV 1920</original>
+      </date>
+      <place>
+        <original>Boston, Suffolk, Massachusetts, USA</original>
+      </place>
+    </fact>
+  </person>
+  <person id="KWQS-BB2">
+    <gender type="http://gedcomx.org/Female"/>
+    <name preferred="true">
+      <nameForm>
+        <fullText>Clara /Adams/</fullText>
+        <part type="http://gedcomx.org/Given" value="Clara"/>
+        <part type="http://gedcomx.org/Surname" value="Adams"/>
+      </nameForm>
+    </name>
+    <fact type="http://gedcomx.org/Birth">
+      <date formal="+1853">
+        <original>1853</original>
+      </date>
+      <place>
+        <original>Salem, Essex, Massachusetts, USA</original>
+      </place>
+    </fact>
+    <fact type="http://gedcomx.org/Death">
+      <date formal="+1931">
+        <original>1931</original>
+      </date>
+    </fact>
+  </person>
+  <person id="KWQS-BB3">
+    <gender type="http://gedcomx.org/Male"/>
+    <name preferred="true">
+      <nameForm>
+        <fullText>Arthur /Taylor/</fullText>
+        <part type="http://gedcomx.org/Given" value="Arthur"/>
+        <part type="http://gedcomx.org/Surname" value="Taylor"/>
+      </nameForm>
+    </name>
+    <fact type="http://gedcomx.org/Birth">
+      <date formal="+1878">
+        <original>1878</original>
+      </date>
+      <place>
+        <original>Boston, Suffolk, Massachusetts, USA</original>
+      </place>
+    </fact>
+    <fact type="http://gedcomx.org/Occupation">
+      <value>Architect</value>
+    </fact>
+    <fact type="http://gedcomx.org/Death">
+      <date formal="+1955">
+        <original>1955</original>
+      </date>
+    </fact>
+  </person>
+  <person id="KWQS-BB4">
+    <gender type="http://gedcomx.org/Female"/>
+    <name preferred="true">
+      <nameForm>
+        <fullText>Eleanor /Vance/</fullText>
+        <part type="http://gedcomx.org/Given" value="Eleanor"/>
+        <part type="http://gedcomx.org/Surname" value="Vance"/>
+      </nameForm>
+    </name>
+    <fact type="http://gedcomx.org/Birth">
+      <date formal="+1882">
+        <original>1882</original>
+      </date>
+    </fact>
+  </person>
+  <person id="KWQS-BB5">
+    <gender type="http://gedcomx.org/Female"/>
+    <name preferred="true">
+      <nameForm>
+        <fullText>Grace /Taylor/</fullText>
+        <part type="http://gedcomx.org/Given" value="Grace"/>
+        <part type="http://gedcomx.org/Surname" value="Taylor"/>
+      </nameForm>
+    </name>
+    <fact type="http://gedcomx.org/Birth">
+      <date formal="+1910">
+        <original>1910</original>
+      </date>
+      <place>
+        <original>Cambridge, Middlesex, Massachusetts, USA</original>
+      </place>
+    </fact>
+  </person>
+  <relationship type="http://gedcomx.org/Couple">
+    <person1 resource="#KWQS-BB1"/>
+    <person2 resource="#KWQS-BB2"/>
+    <fact type="http://gedcomx.org/Marriage">
+      <date>
+        <original>1875</original>
+      </date>
+      <place>
+        <original>Boston, Massachusetts, USA</original>
+      </place>
+    </fact>
+  </relationship>
+  <relationship type="http://gedcomx.org/ParentChild">
+    <person1 resource="#KWQS-BB1"/>
+    <person2 resource="#KWQS-BB3"/>
+  </relationship>
+  <relationship type="http://gedcomx.org/ParentChild">
+    <person1 resource="#KWQS-BB2"/>
+    <person2 resource="#KWQS-BB3"/>
+  </relationship>
+  <relationship type="http://gedcomx.org/Couple">
+    <person1 resource="#KWQS-BB3"/>
+    <person2 resource="#KWQS-BB4"/>
+    <fact type="http://gedcomx.org/Marriage">
+      <date>
+        <original>1908</original>
+      </date>
+    </fact>
+  </relationship>
+  <relationship type="http://gedcomx.org/ParentChild">
+    <person1 resource="#KWQS-BB3"/>
+    <person2 resource="#KWQS-BB5"/>
+  </relationship>
+  <relationship type="http://gedcomx.org/ParentChild">
+    <person1 resource="#KWQS-BB4"/>
+    <person2 resource="#KWQS-BB5"/>
+  </relationship>
+  <agent id="agent_fs">
+    <name>FamilySearch API Client</name>
+  </agent>
+</gedcomx>

@@ -1,0 +1,184 @@
+{
+  "id": "tree-emma-bocock",
+  "description": "GEDCOM X Recipe Book: Birth Certificate extraction for Emma Bocock",
+  "attribution": {
+    "contributor": {
+      "resource": "#agent_1"
+    },
+    "modified": 1391784900000,
+    "changeMessage": "Extracted from England General Registry Office Birth Certificate"
+  },
+  "persons": [
+    {
+      "id": "P-1",
+      "extracted": true,
+      "gender": {
+        "type": "http://gedcomx.org/Female"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "type": "http://gedcomx.org/BirthName",
+          "nameForms": [
+            {
+              "fullText": "Emma /Bocock/",
+              "parts": [
+                {
+                  "type": "http://gedcomx.org/Given",
+                  "value": "Emma"
+                },
+                {
+                  "type": "http://gedcomx.org/Surname",
+                  "value": "Bocock"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Birth",
+          "date": {
+            "original": "23 JUN 1843",
+            "formal": "+1843-06-23"
+          },
+          "place": {
+            "original": "Gainsborough, Lincolnshire, England"
+          }
+        }
+      ],
+      "sources": [
+        {
+          "descriptionRef": "#S-1"
+        }
+      ]
+    },
+    {
+      "id": "P-2",
+      "extracted": true,
+      "gender": {
+        "type": "http://gedcomx.org/Male"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "type": "http://gedcomx.org/BirthName",
+          "nameForms": [
+            {
+              "fullText": "William /Bocock/",
+              "parts": [
+                {
+                  "type": "http://gedcomx.org/Given",
+                  "value": "William"
+                },
+                {
+                  "type": "http://gedcomx.org/Surname",
+                  "value": "Bocock"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Occupation",
+          "value": "Labourer"
+        }
+      ],
+      "sources": [
+        {
+          "descriptionRef": "#S-1"
+        }
+      ]
+    },
+    {
+      "id": "P-3",
+      "extracted": true,
+      "gender": {
+        "type": "http://gedcomx.org/Female"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "type": "http://gedcomx.org/BirthName",
+          "nameForms": [
+            {
+              "fullText": "Sarah /Bocock/",
+              "parts": [
+                {
+                  "type": "http://gedcomx.org/Given",
+                  "value": "Sarah"
+                },
+                {
+                  "type": "http://gedcomx.org/Surname",
+                  "value": "Bocock"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "descriptionRef": "#S-1"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "R-1",
+      "type": "http://gedcomx.org/Couple",
+      "person1": {
+        "resource": "#P-2"
+      },
+      "person2": {
+        "resource": "#P-3"
+      }
+    },
+    {
+      "id": "R-2",
+      "type": "http://gedcomx.org/ParentChild",
+      "person1": {
+        "resource": "#P-2"
+      },
+      "person2": {
+        "resource": "#P-1"
+      }
+    },
+    {
+      "id": "R-3",
+      "type": "http://gedcomx.org/ParentChild",
+      "person1": {
+        "resource": "#P-3"
+      },
+      "person2": {
+        "resource": "#P-1"
+      }
+    }
+  ],
+  "sourceDescriptions": [
+    {
+      "id": "S-1",
+      "about": "https://familysearch.org/platform/sources/1843-GRO-EMMA-BOCOCK",
+      "citation": "England and Wales, birth certificate for Emma Bocock, born 23 June 1843; citing 14/345/42, September quarter 1843, Gainsborough registration district; General Registry Office, Southport.",
+      "titles": [
+        {
+          "value": "Birth Certificate of Emma Bocock"
+        }
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent_1",
+      "names": [
+        {
+          "value": "FamilySearch Platform Researcher"
+        }
+      ]
+    }
+  ]
+}

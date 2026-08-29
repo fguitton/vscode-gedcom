@@ -1,0 +1,220 @@
+{
+  "id": "familysearch-sample-tree",
+  "description": "Multi-generational family tree in GEDCOM X JSON format",
+  "attribution": {
+    "contributor": {
+      "resource": "#agent_fs"
+    },
+    "modified": 1609459200000
+  },
+  "persons": [
+    {
+      "id": "KWQS-BB1",
+      "gender": {
+        "type": "http://gedcomx.org/Male"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "nameForms": [
+            {
+              "fullText": "Henry /Taylor/",
+              "parts": [
+                { "type": "http://gedcomx.org/Given", "value": "Henry" },
+                { "type": "http://gedcomx.org/Surname", "value": "Taylor" }
+              ]
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Birth",
+          "date": { "original": "12 MAR 1850", "formal": "+1850-03-12" },
+          "place": { "original": "Boston, Suffolk, Massachusetts, USA" }
+        },
+        {
+          "type": "http://gedcomx.org/Death",
+          "date": { "original": "4 NOV 1920", "formal": "+1920-11-04" },
+          "place": { "original": "Boston, Suffolk, Massachusetts, USA" }
+        }
+      ]
+    },
+    {
+      "id": "KWQS-BB2",
+      "gender": {
+        "type": "http://gedcomx.org/Female"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "nameForms": [
+            {
+              "fullText": "Clara /Adams/",
+              "parts": [
+                { "type": "http://gedcomx.org/Given", "value": "Clara" },
+                { "type": "http://gedcomx.org/Surname", "value": "Adams" }
+              ]
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Birth",
+          "date": { "original": "1853", "formal": "+1853" },
+          "place": { "original": "Salem, Essex, Massachusetts, USA" }
+        },
+        {
+          "type": "http://gedcomx.org/Death",
+          "date": { "original": "1931", "formal": "+1931" }
+        }
+      ]
+    },
+    {
+      "id": "KWQS-BB3",
+      "gender": {
+        "type": "http://gedcomx.org/Male"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "nameForms": [
+            {
+              "fullText": "Arthur /Taylor/",
+              "parts": [
+                { "type": "http://gedcomx.org/Given", "value": "Arthur" },
+                { "type": "http://gedcomx.org/Surname", "value": "Taylor" }
+              ]
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Birth",
+          "date": { "original": "1878", "formal": "+1878" },
+          "place": { "original": "Boston, Suffolk, Massachusetts, USA" }
+        },
+        {
+          "type": "http://gedcomx.org/Occupation",
+          "value": "Architect"
+        },
+        {
+          "type": "http://gedcomx.org/Death",
+          "date": { "original": "1955", "formal": "+1955" }
+        }
+      ]
+    },
+    {
+      "id": "KWQS-BB4",
+      "gender": {
+        "type": "http://gedcomx.org/Female"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "nameForms": [
+            {
+              "fullText": "Eleanor /Vance/",
+              "parts": [
+                { "type": "http://gedcomx.org/Given", "value": "Eleanor" },
+                { "type": "http://gedcomx.org/Surname", "value": "Vance" }
+              ]
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Birth",
+          "date": { "original": "1882", "formal": "+1882" }
+        }
+      ]
+    },
+    {
+      "id": "KWQS-BB5",
+      "gender": {
+        "type": "http://gedcomx.org/Female"
+      },
+      "names": [
+        {
+          "preferred": true,
+          "nameForms": [
+            {
+              "fullText": "Grace /Taylor/",
+              "parts": [
+                { "type": "http://gedcomx.org/Given", "value": "Grace" },
+                { "type": "http://gedcomx.org/Surname", "value": "Taylor" }
+              ]
+            }
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Birth",
+          "date": { "original": "1910", "formal": "+1910" },
+          "place": { "original": "Cambridge, Middlesex, Massachusetts, USA" }
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "REL-COUPLE-1",
+      "type": "http://gedcomx.org/Couple",
+      "person1": { "resource": "#KWQS-BB1" },
+      "person2": { "resource": "#KWQS-BB2" },
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Marriage",
+          "date": { "original": "1875" },
+          "place": { "original": "Boston, Massachusetts, USA" }
+        }
+      ]
+    },
+    {
+      "id": "REL-PC-1",
+      "type": "http://gedcomx.org/ParentChild",
+      "person1": { "resource": "#KWQS-BB1" },
+      "person2": { "resource": "#KWQS-BB3" }
+    },
+    {
+      "id": "REL-PC-2",
+      "type": "http://gedcomx.org/ParentChild",
+      "person1": { "resource": "#KWQS-BB2" },
+      "person2": { "resource": "#KWQS-BB3" }
+    },
+    {
+      "id": "REL-COUPLE-2",
+      "type": "http://gedcomx.org/Couple",
+      "person1": { "resource": "#KWQS-BB3" },
+      "person2": { "resource": "#KWQS-BB4" },
+      "facts": [
+        {
+          "type": "http://gedcomx.org/Marriage",
+          "date": { "original": "1908" }
+        }
+      ]
+    },
+    {
+      "id": "REL-PC-3",
+      "type": "http://gedcomx.org/ParentChild",
+      "person1": { "resource": "#KWQS-BB3" },
+      "person2": { "resource": "#KWQS-BB5" }
+    },
+    {
+      "id": "REL-PC-4",
+      "type": "http://gedcomx.org/ParentChild",
+      "person1": { "resource": "#KWQS-BB4" },
+      "person2": { "resource": "#KWQS-BB5" }
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent_fs",
+      "names": [{ "value": "FamilySearch API Client" }]
+    }
+  ]
+}
