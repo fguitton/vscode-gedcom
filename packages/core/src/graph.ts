@@ -847,6 +847,15 @@ function orderColumns(columns: [number, GraphNode[]][], edges: GraphEdge[]): voi
  * the cursor is usually inside a record rather than on its first line.
  */
 export function recordAt(analysis: Analysis, line: number): string | null {
+  if (analysis.entitySpans && analysis.entitySpans.length > 0) {
+    for (const span of analysis.entitySpans) {
+      if (line >= span.startLine && line <= span.endLine) {
+        return span.xref;
+      }
+    }
+    return null;
+  }
+
   let found: string | null = null;
   for (const record of analysis.document.records) {
     if (record.span.line > line) break;

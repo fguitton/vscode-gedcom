@@ -112,6 +112,7 @@ describe('inlay hints', () => {
     );
     expect(hint?.label).toMatch(/^\s{2,}Male$/);
     expect(hint?.paddingLeft).toBe(true);
+    expect(hint?.tooltip).toBeDefined();
   });
 
   it('does not put an age on the birth it is measured from', () => {
@@ -124,6 +125,7 @@ describe('inlay hints', () => {
     );
     expect(hint?.position.character).toBe(SOURCE.split('\n')[13]!.length);
     expect(hint?.paddingLeft).toBe(true);
+    expect(typeof (hint?.tooltip as { value?: string })?.value).toBe('string');
   });
 
   it('honours the range, so a long file only computes what is on screen', () => {
@@ -195,7 +197,8 @@ describe('code lenses', () => {
   it('links a person and a family into the graph panel', () => {
     const lens = resolved().find(
       (candidate) =>
-        candidate.range.start.line === 20 && candidate.command?.title === 'see in the tree',
+        candidate.range.start.line === 20 &&
+        candidate.command?.title === '$(type-hierarchy) Show in Tree',
     );
     expect(lens?.command?.command).toBe('gedcom.showGraph');
     expect(lens?.command?.arguments).toEqual([URI, 20]);

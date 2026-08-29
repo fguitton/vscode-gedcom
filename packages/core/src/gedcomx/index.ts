@@ -11,3 +11,4 @@ export * from './json.ts';
 export * from './xml.ts';
 export * from './to-gedcom7.ts';
 export * from './from-gedcom.ts';
+export * from './spans.ts';

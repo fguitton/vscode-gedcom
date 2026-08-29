@@ -172,6 +172,8 @@ export interface Analysis {
   readonly diagnostics: readonly Diagnostic[];
   /** File format: standard line-based GEDCOM, GEDCOM X JSON, or GEDCOM X XML. */
   readonly format?: FileFormat;
+  /** Exact line spans of entities in original source file (used for GEDCOM X cursor/record mapping). */
+  readonly entitySpans?: readonly EntitySpan[];
 }
 
 export interface AnalyzeOptions {
@@ -180,7 +182,13 @@ export interface AnalyzeOptions {
   readonly version?: GedcomVersion | null;
 }
 
-import { isGedcomX, detectGedcomXFormat, gedcomXToGedcom7 } from './gedcomx/index.ts';
+import {
+  isGedcomX,
+  detectGedcomXFormat,
+  gedcomXToGedcom7,
+  computeGedcomXEntitySpans,
+  type EntitySpan,
+} from './gedcomx/index.ts';
 export * from './gedcomx/index.ts';
 
 /** Full analysis of a GEDCOM stream, from raw bytes to diagnostics. */
@@ -201,6 +209,7 @@ export function analyze(bytes: Uint8Array, options: AnalyzeOptions = {}): Analys
  */
 export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysis {
   const gxFormat = isGedcomX(text) ? detectGedcomXFormat(text) : null;
+  const entitySpans = gxFormat ? computeGedcomXEntitySpans(text, gxFormat) : undefined;
   const actualText = gxFormat ? gedcomXToGedcom7(text) : text;
   const detected =
     options.version !== undefined
@@ -262,6 +271,7 @@ export function analyzeText(text: string, options: AnalyzeOptions = {}): Analysi
     validation,
     diagnostics,
     format,
+    entitySpans,
   };
 }
 

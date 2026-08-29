@@ -8,16 +8,19 @@
  */
 
 import {
+  computeGedcomXEntitySpans,
   detectGedcomXFormat,
   isGedcomX,
   parseGedcomXJson,
   parseGedcomXXml,
+  toGedcomXref,
   type Agent,
   type Fact,
   type Gedcomx,
   type Person,
   type SourceDescription,
 } from '@vscode-gedcom/core';
+
 import {
   CodeLens,
   Hover,
@@ -425,31 +428,35 @@ export class GedcomXCodeLensProvider implements CodeLensProvider {
     const enabled = workspace.getConfiguration('gedcom').get<boolean>('codeLens.enabled', true);
     if (!enabled) return [];
 
+    const text = document.getText();
+    const format = detectGedcomXFormat(text);
+    if (!format) return [];
+
     const gx = parseDocument(document);
     if (!gx || !gx.persons || gx.persons.length === 0) return [];
 
+    const spans = computeGedcomXEntitySpans(text, format);
     const lenses: CodeLens[] = [];
-    const personIds = new Set(gx.persons.map((p) => p.id).filter(Boolean));
 
-    const idRegex = /(?:"id"|id)\s*[:=]\s*"([a-zA-Z0-9_-]+)"/;
+    for (const span of spans) {
+      if (span.tag !== 'INDI') continue;
+      const l = span.startLine;
+      if (l >= document.lineCount) continue;
 
-    for (let l = 0; l < document.lineCount; l++) {
+      const person = gx.persons.find(
+        (p) => toGedcomXref(p.id ?? '', 'I') === span.xref || p.id === span.xref,
+      );
+      const name = person ? getPersonName(person) : span.xref;
       const lineText = document.lineAt(l).text;
-      const match = idRegex.exec(lineText);
-      if (match && personIds.has(match[1])) {
-        const id = match[1]!;
-        const person = gx.persons.find((p) => p.id === id);
-        const name = person ? getPersonName(person) : id;
-        const range = new Range(new Position(l, 0), new Position(l, lineText.length));
+      const range = new Range(new Position(l, 0), new Position(l, lineText.length));
 
-        lenses.push(
-          new CodeLens(range, {
-            title: `$(type-hierarchy) Show ${name} in Tree`,
-            command: 'gedcom.showGraph',
-            arguments: [document.uri.toString(), l],
-          }),
-        );
-      }
+      lenses.push(
+        new CodeLens(range, {
+          title: `$(type-hierarchy) Show ${name} in Tree`,
+          command: 'gedcom.showGraph',
+          arguments: [document.uri.toString(), l],
+        }),
+      );
     }
 
     return lenses;

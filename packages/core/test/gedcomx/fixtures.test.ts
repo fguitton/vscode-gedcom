@@ -10,6 +10,7 @@ import {
   individualTimeline,
   isGedcomX,
   neighbourhood,
+  recordAt,
 } from '../../src/index.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,6 +54,19 @@ describe('GEDCOM X test fixtures', () => {
     expect(analysis.xrefs.definitions.has('I_KWQS_BB1')).toBe(true);
     expect(analysis.xrefs.definitions.has('I_KWQS_BB5')).toBe(true);
 
+    // Test exact cursor line mapping (negative lines in attribution vs person records)
+    expect(recordAt(analysis, 0)).toBeNull();
+    expect(recordAt(analysis, 7)).toBeNull(); // inside attribution
+    expect(recordAt(analysis, 8)).toBeNull(); // inside attribution modified timestamp
+    expect(recordAt(analysis, 12)).toBe('I_KWQS_BB1'); // Henry Taylor
+    expect(recordAt(analysis, 25)).toBe('I_KWQS_BB1'); // Inside Henry Taylor name parts
+    expect(recordAt(analysis, 50)).toBe('I_KWQS_BB2'); // Clara Adams
+    expect(recordAt(analysis, 75)).toBe('I_KWQS_BB3'); // Arthur Taylor
+    expect(recordAt(analysis, 115)).toBe('I_KWQS_BB4'); // Eleanor Vance
+    expect(recordAt(analysis, 140)).toBe('I_KWQS_BB5'); // Grace Taylor
+    expect(recordAt(analysis, 170)).toBe('F_REL_COUPLE_1'); // Relationship Couple
+    expect(recordAt(analysis, 215)).toBe('U_agent_fs'); // Agent
+
     // Test tree navigation
     const graph = neighbourhood(analysis, 'I_KWQS_BB3', { depth: 2 });
     expect(graph.nodes.length).toBe(5);
@@ -76,6 +90,20 @@ describe('GEDCOM X test fixtures', () => {
     const analysis = analyzeText(content);
     expect(analysis.xrefs.definitions.has('I_KWQS_BB1')).toBe(true);
     expect(analysis.xrefs.definitions.has('I_KWQS_BB5')).toBe(true);
+
+    // Test exact cursor line mapping in XML
+    expect(recordAt(analysis, 0)).toBeNull();
+    expect(recordAt(analysis, 4)).toBeNull(); // inside <attribution>
+    expect(recordAt(analysis, 7)).toBe('I_KWQS_BB1'); // <person id="KWQS-BB1">
+    expect(recordAt(analysis, 18)).toBe('I_KWQS_BB1'); // inside Henry Taylor birth date
+    expect(recordAt(analysis, 35)).toBe('I_KWQS_BB2'); // <person id="KWQS-BB2">
+    expect(recordAt(analysis, 60)).toBe('I_KWQS_BB3'); // <person id="KWQS-BB3">
+    expect(recordAt(analysis, 85)).toBe('I_KWQS_BB4'); // <person id="KWQS-BB4">
+    expect(recordAt(analysis, 100)).toBe('I_KWQS_BB5'); // <person id="KWQS-BB5">
+    expect(recordAt(analysis, 120)).toBe('F_R_1'); // <relationship type="http://gedcomx.org/Couple">
+    expect(recordAt(analysis, 152)).toBe('U_agent_fs'); // <agent id="agent_fs">
+
+
 
     const kinship = calculateKinship(analysis, 'I_KWQS_BB1', 'I_KWQS_BB5');
     expect(kinship).not.toBeNull();

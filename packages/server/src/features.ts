@@ -40,7 +40,7 @@ import {
   type Structure,
 } from '@vscode-gedcom/core';
 
-import { annotate, describeStructure, type AnnotationKinds } from './describe.ts';
+import { annotate, annotateTooltip, describeStructure, type AnnotationKinds } from './describe.ts';
 
 import {
   CodeActionKind,
@@ -843,6 +843,10 @@ export function inlayHints(analysis: Analysis, range: Range, settings: Settings)
     );
     if (!label) continue;
 
+    const tooltip = annotateTooltip(analysis, structure, slug, kinds, (record) =>
+      summarize(record, analysis),
+    );
+
     hints.push({
       position: { line: span.line, character: span.end },
       // Set apart from the payload it annotates. Butted up against the line, an
@@ -852,6 +856,7 @@ export function inlayHints(analysis: Analysis, range: Range, settings: Settings)
       label: `${HINT_INDENT}${label}`,
       kind: InlayHintKind.Parameter,
       paddingLeft: true,
+      tooltip: tooltip ? { kind: 'markdown', value: tooltip } : undefined,
     });
   }
 
@@ -1001,7 +1006,7 @@ export function resolveCodeLens(analysis: Analysis, lens: CodeLens): CodeLens {
   return {
     ...lens,
     command: {
-      title: 'see in the tree',
+      title: '$(type-hierarchy) Show in Tree',
       command: SHOW_GRAPH,
       arguments: [data.uri, record.span.line],
     },

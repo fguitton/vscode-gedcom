@@ -599,6 +599,102 @@ export function annotate(
 }
 
 /**
+ * Rich Markdown tooltip for an inlay hint.
+ */
+export function annotateTooltip(
+  analysis: Analysis,
+  structure: Structure,
+  slug: string | null | undefined,
+  kinds: AnnotationKinds,
+  summarize: (record: Structure) => string,
+): string | undefined {
+  if (kinds.pointers) {
+    const pointer = structure.payload ? asPointer(structure) : null;
+    if (pointer !== null && pointer !== 'VOID') {
+      const target = analysis.xrefs.definitions.get(pointer);
+      if (target) {
+        const lines: string[] = [];
+        const label = summarize(target);
+        if (target.tag === 'INDI') {
+          lines.push(`### 👤 ${label}`);
+          const sex = target.children.find((c) => c.tag === 'SEX')?.payload;
+          if (sex) {
+            lines.push(
+              `**Gender:** ${sex === 'M' ? 'Male (♂)' : sex === 'F' ? 'Female (♀)' : sex}`,
+            );
+          }
+          const birt = target.children.find((c) => c.tag === 'BIRT');
+          if (birt) {
+            const date = birt.children.find((c) => c.tag === 'DATE')?.payload;
+            const plac = birt.children.find((c) => c.tag === 'PLAC')?.payload;
+            lines.push(`- **Birth:** ${[date, plac].filter(Boolean).join(' in ')}`);
+          }
+          const deat = target.children.find((c) => c.tag === 'DEAT');
+          if (deat) {
+            const date = deat.children.find((c) => c.tag === 'DATE')?.payload;
+            const plac = deat.children.find((c) => c.tag === 'PLAC')?.payload;
+            lines.push(`- **Death:** ${[date, plac].filter(Boolean).join(' in ')}`);
+          }
+        } else if (target.tag === 'FAM') {
+          lines.push(`### 👨‍👩‍👧 Family \`@${pointer}@\``);
+          const husb = target.children.find((c) => c.tag === 'HUSB')?.payload;
+          const wife = target.children.find((c) => c.tag === 'WIFE')?.payload;
+          const extractXref = (raw: string | undefined): string =>
+            raw ? raw.replace(/^@|@$/g, '') : '';
+          if (husb) {
+            const husbTarget = analysis.xrefs.definitions.get(extractXref(husb));
+            lines.push(`- **Husband:** ${husbTarget ? summarize(husbTarget) : husb}`);
+          }
+          if (wife) {
+            const wifeTarget = analysis.xrefs.definitions.get(extractXref(wife));
+            lines.push(`- **Wife:** ${wifeTarget ? summarize(wifeTarget) : wife}`);
+          }
+
+          const children = target.children.filter((c) => c.tag === 'CHIL').map((c) => c.payload);
+          if (children.length > 0) {
+            lines.push(`- **Children:** ${children.length}`);
+          }
+        } else if (target.tag === 'SOUR') {
+          lines.push(`### 📜 Source \`@${pointer}@\``);
+          const titl = target.children.find((c) => c.tag === 'TITL')?.payload;
+          if (titl) lines.push(`**Title:** ${titl}`);
+          const auth = target.children.find((c) => c.tag === 'AUTH')?.payload;
+          if (auth) lines.push(`**Author:** ${auth}`);
+          const publ = target.children.find((c) => c.tag === 'PUBL')?.payload;
+          if (publ) lines.push(`**Publication:** ${publ}`);
+        } else if (target.tag === 'SUBM') {
+          lines.push(`### 🏛️ Submitter \`@${pointer}@\``);
+          const name = target.children.find((c) => c.tag === 'NAME')?.payload;
+          if (name) lines.push(`**Name:** ${name}`);
+          const email = target.children.find((c) => c.tag === 'EMAIL')?.payload;
+          if (email) lines.push(`**Email:** ${email}`);
+        } else {
+          lines.push(`### ${target.tag} \`@${pointer}@\``);
+          lines.push(label);
+        }
+        return lines.join('\n\n');
+      }
+    }
+  }
+
+  if (kinds.values) {
+    const value = valueAnnotation(analysis, structure, slug);
+    if (value) {
+      return `**${standalone(value)}** (${structure.tag} value)`;
+    }
+  }
+
+  if (kinds.ages) {
+    const age = ageAnnotation(structure);
+    if (age) {
+      return `**${standalone(age)}** (calculated from birth date)`;
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * When and where, for anything that carries a date or a place.
  *
  * Written as a sentence rather than as the fields it is built from. A hover that
