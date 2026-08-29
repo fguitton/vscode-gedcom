@@ -3,6 +3,12 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.15.1]
+
+### Fixed
+
+- **Web Extension Host Browser Worker Bundling:** Switched to pure `fflate/browser` imports and explicitly inlined compression routines into browser client bundles (`tsdown.config.ts`), eliminating Node `worker_threads` and `createRequire('module')` shims from browser web worker environments.
+
 ## [0.15.0]
 
 Full FamilySearch GEDCOM 7.0 Chapter 4 GEDZIP (`.gdz`) format support across all three tiers: in-memory archive reading & webview streaming, virtual `gdz://` FileSystemProvider with automatic repacking, dedicated Custom Editor archive viewer, and Explorer sidebar tree navigation.
