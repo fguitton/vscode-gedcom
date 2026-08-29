@@ -3,6 +3,31 @@
 This project adheres to [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.14.0]
+
+Full GEDCOM X JSON & XML support, interactive multimedia image previews with local and remote source resolution, unified centralized language helpers, and cross-format navigation parity.
+
+### Added
+
+- **Comprehensive GEDCOM X JSON & XML support.** Full intelligence and interactive tooling for both GEDCOM X JSON (`.json`) and XML (`.xml`) genealogy files:
+  - **Code Lenses:** Document summary lenses (individuals count, contributors), per-person _Show in Tree_ quick actions, and cross-reference count indicators.
+  - **Unified Hovers:** Rich hover cards for individuals (lifespan, vital birth/death events), source citations, and contributors/agents.
+  - **Cross-Record Navigation:** Go to Definition (<kbd>Ctrl+Click</kbd> / <kbd>F12</kbd>) and Find All References (<kbd>Shift+Alt+F12</kbd>) across record pointers and resource links (`resource="#..."`, `descriptionRef="#..."`).
+  - **Clean End-of-Line Inlay Hints:** Unified pointer resolution (`HINT_INDENT`), relationship/gender coded values, and computed age at milestones (`Died age 70`, `Married age 25`).
+  - **Full Panel Integration:** Interactive Tree Graph, 5-Generation Ancestor Fan Chart, Life Event Timeline, and Details Panel for GEDCOM X datasets.
+  - **Non-GEDCOM Protection:** Automatic zero-overhead filtering ensuring non-genealogical JSON/XML files (e.g. `package.json`, `pom.xml`) are never affected.
+- **Multimedia image previews for local and remote resources (Issue #8).** Full image preview rendering in the Details panel across all GEDCOM formats:
+  - **Remote Web Images:** Secure HTTPS rendering with Content Security Policy (`img-src https:`).
+  - **Local Relative & Absolute Paths:** Support for local image paths (`portrait.jpg`, `portrait.png`, `file://` URIs) and local absolute paths on Windows (`C:\...`) and POSIX (`/...`).
+  - **Dynamic Security Roots:** Automatically registers media parent directories into `localResourceRoots` so local attachments can be viewed anywhere on disk.
+  - **Dedicated Test Corpus & Visual Fixtures:** Installed high-resolution visual portraits (`fixtures/media/portrait.jpg`, `portrait.png`, `sample.jpg`, `sample.png`) and test files (`images.ged`, `images.json`, `images.xml`).
+
+### Fixed
+
+- **GEDCOM X XML source description & media parsing.** Corrected XML parser to extract `mediaType`, `resourceType`, and `about` attributes on `<sourceDescription>` and `descriptionRef` on `<source>`/`<media>` elements.
+- **GEDCOM 7.0 multimedia structure compliance.** Nested `FORM` and `TITL` tags at level 2 under `1 FILE` in `0 @xref@ OBJE` records and details extractor to conform with GEDCOM 7.0 specification.
+- **Centralized core inlay hint and tooltip helpers.** Extracted shared `inlay.ts` and `tooltip.ts` in `@vscode-gedcom/core` to guarantee 100% visual and functional parity across `.ged`, `.json`, and `.xml` formats.
+
 ## [0.13.0]
 
 Comprehensive French internationalization, same-sex union support with gender and plural agreements, personal name underscore normalization, and dynamic graph label collision resolution.

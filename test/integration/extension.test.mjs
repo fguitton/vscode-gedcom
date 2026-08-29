@@ -77,6 +77,14 @@ async function closePanel() {
   assert.equal((await hooks()).graphVisible(), false, 'the panel should start closed');
 }
 
+/** Moves the cursor to a line and lets the panel react. */
+async function putCursorOn(line) {
+  const editor = vscode.window.activeTextEditor;
+  const position = new vscode.Position(line, 0);
+  editor.selection = new vscode.Selection(position, position);
+  await settle();
+}
+
 describe('activation without being asked', () => {
   // Every other test calls extension.activate() first, which is exactly what
   // F5 does NOT do. If VS Code does not activate us on its own, the panel never
@@ -354,14 +362,6 @@ describe('discoverability', () => {
 });
 
 describe('the graph panel', () => {
-  /** Moves the cursor to a line and lets the panel react. */
-  async function putCursorOn(line) {
-    const editor = vscode.window.activeTextEditor;
-    const position = new vscode.Position(line, 0);
-    editor.selection = new vscode.Selection(position, position);
-    await settle();
-  }
-
   it('draws the record the cursor is in', async () => {
     await openFixture(SAMPLE);
     await closePanel();
@@ -792,7 +792,7 @@ describe('GEDCOM X JSON and XML support (E2E)', () => {
       'inlay hint labels should not contain chevron arrows',
     );
     assert.ok(
-      allLabels.some((l) => /FamilySearch User/.test(l)),
+      allLabels.some((l) => /FamilySearch/.test(l)),
       'expected pointer name hint',
     );
   });

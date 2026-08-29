@@ -139,16 +139,24 @@ export class GedcomXHoverProvider implements HoverProvider {
       return new Hover(md, range);
     }
 
-    // 2. Check if cursor is on an entity line (e.g. <person id="..."> or "id": "...")
-    const span = (analysis.entitySpans ?? []).find((s) => s.startLine === position.line);
-    if (
-      span &&
-      (word === 'id' ||
-        word === 'person' ||
-        word === 'relationship' ||
-        word === 'sourceDescription' ||
-        word === 'agent')
-    ) {
+    // 2. Check if cursor is on an entity declaration or pointer line
+    const lineText = document.lineAt(position.line).text;
+    const idOnLineMatch = /(?:id|resource|descriptionRef)["\s:=]+"?#?([a-zA-Z0-9_-]+)"?/i.exec(
+      lineText,
+    );
+    if (idOnLineMatch) {
+      const idCard = buildRecordTooltip(analysis, idOnLineMatch[1]!);
+      if (!idCard.includes('no matching record found')) {
+        const md = new MarkdownString(idCard);
+        md.isTrusted = true;
+        return new Hover(md, range);
+      }
+    }
+
+    const span = (analysis.entitySpans ?? []).find(
+      (s) => position.line >= s.startLine && position.line <= s.startLine + 2,
+    );
+    if (span) {
       const entityCard = buildRecordTooltip(analysis, span.xref);
       if (!entityCard.includes('no matching record found')) {
         const md = new MarkdownString(entityCard);
