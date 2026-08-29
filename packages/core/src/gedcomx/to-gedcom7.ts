@@ -4,7 +4,7 @@
 
 import { detectGedcomXFormat } from './detect.ts';
 import { parseGedcomXJson } from './json.ts';
-import type { Fact, Gedcomx, Person } from './types.ts';
+import type { Fact, Gedcomx, Person, SourceDescription } from './types.ts';
 
 import { parseGedcomXXml } from './xml.ts';
 
@@ -151,9 +151,11 @@ export function gedcomXToGedcom7(input: Gedcomx | string): string {
   });
 
   // Map Source Descriptions to XREFs
+  const sourceDescriptionMap = new Map<string, SourceDescription>();
   const sourceIdToXref = new Map<string, string>();
   (doc.sourceDescriptions ?? []).forEach((src, idx) => {
     const id = src.id || `S_${idx + 1}`;
+    sourceDescriptionMap.set(id, src);
     sourceIdToXref.set(id, sanitizeXref(id, 'S', idx + 1));
   });
 
@@ -441,13 +443,41 @@ export function gedcomXToGedcom7(input: Gedcomx | string): string {
       }
     }
 
-    // Sources
+    // Media
+    if (person.media) {
+      for (const m of person.media) {
+        const refId = extractIdFromResource(m.descriptionRef);
+        const srcDesc = refId ? sourceDescriptionMap.get(refId) : null;
+        const mUrl = m.about || srcDesc?.about;
+        const mType = m.mediaType || srcDesc?.mediaType;
+        const mTitle = m.titles?.[0]?.value || srcDesc?.titles?.[0]?.value;
+        if (mUrl || refId) {
+          lines.push('1 OBJE');
+          if (mUrl) lines.push(`2 FILE ${mUrl}`);
+          if (mType) lines.push(`2 FORM ${mType}`);
+          if (mTitle) lines.push(`2 TITL ${mTitle}`);
+        }
+      }
+    }
+
+    // Sources & Attached Media
     if (person.sources) {
       for (const src of person.sources) {
         const refId = extractIdFromResource(src.descriptionRef);
         const srcXref = refId ? sourceIdToXref.get(refId) : null;
         if (srcXref) {
           lines.push(`1 SOUR ${srcXref}`);
+        }
+        const srcDesc = refId ? sourceDescriptionMap.get(refId) : null;
+        if (
+          srcDesc?.about &&
+          (srcDesc.mediaType?.startsWith('image/') ||
+            srcDesc.resourceType === 'http://gedcomx.org/DigitalArtifact')
+        ) {
+          lines.push('1 OBJE');
+          lines.push(`2 FILE ${srcDesc.about}`);
+          if (srcDesc.mediaType) lines.push(`2 FORM ${srcDesc.mediaType}`);
+          if (srcDesc.titles?.[0]?.value) lines.push(`2 TITL ${srcDesc.titles[0].value}`);
         }
       }
     }
@@ -504,16 +534,38 @@ export function gedcomXToGedcom7(input: Gedcomx | string): string {
     }
   }
 
-  // 5. Emit SOUR records
+  // 5. Emit SOUR / OBJE records
   for (const src of doc.sourceDescriptions ?? []) {
     const id = src.id || 'S_1';
     const xref = sourceIdToXref.get(id) || sanitizeXref(id, 'S', 1);
-    lines.push(`0 ${xref} SOUR`);
-    if (src.titles?.[0]?.value) {
-      lines.push(`1 TITL ${src.titles[0].value}`);
-    }
-    if (src.citation) {
-      lines.push(`1 AUTH ${src.citation}`);
+    const isMedia =
+      src.resourceType === 'http://gedcomx.org/DigitalArtifact' ||
+      src.mediaType?.startsWith('image/') ||
+      src.mediaType?.startsWith('audio/') ||
+      src.mediaType?.startsWith('video/');
+
+    if (isMedia) {
+      lines.push(`0 ${xref} OBJE`);
+      if (src.about) {
+        lines.push(`1 FILE ${src.about}`);
+      }
+      if (src.mediaType) {
+        lines.push(`1 FORM ${src.mediaType}`);
+      }
+      if (src.titles?.[0]?.value) {
+        lines.push(`1 TITL ${src.titles[0].value}`);
+      }
+    } else {
+      lines.push(`0 ${xref} SOUR`);
+      if (src.titles?.[0]?.value) {
+        lines.push(`1 TITL ${src.titles[0].value}`);
+      }
+      if (src.citation) {
+        lines.push(`1 AUTH ${src.citation}`);
+      }
+      if (src.about) {
+        lines.push(`1 FILE ${src.about}`);
+      }
     }
   }
 

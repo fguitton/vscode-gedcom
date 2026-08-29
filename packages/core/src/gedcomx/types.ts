@@ -44,6 +44,7 @@ export interface Person {
   readonly names?: Name[];
   readonly facts?: Fact[];
   readonly sources?: SourceCitation[];
+  readonly media?: SourceCitation[];
   readonly notes?: Note[];
   readonly attribution?: Attribution;
   readonly living?: boolean;
@@ -123,6 +124,7 @@ export interface SourceDescription {
   readonly about?: string;
   readonly citation?: string;
   readonly mediaType?: string;
+  readonly resourceType?: string;
   readonly titles?: TextValue[];
   readonly notes?: Note[];
   readonly attribution?: Attribution;
@@ -133,6 +135,9 @@ export interface SourceCitation {
   readonly description?: string;
   readonly descriptionRef?: string;
   readonly value?: string;
+  readonly about?: string;
+  readonly mediaType?: string;
+  readonly titles?: TextValue[];
 }
 
 export interface Agent {

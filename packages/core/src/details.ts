@@ -154,6 +154,17 @@ export function webUrl(payload: string): boolean {
   return /^https?:\/\/[^\s]+$/i.test(payload.trim());
 }
 
+/**
+ * Safe resource validator for media items (web URLs and local relative/absolute file paths).
+ * Refuses script and browser protocol schemes (javascript:, vbscript:, about:, data:).
+ */
+export function isSafeMediaResource(payload: string): boolean {
+  const clean = payload.trim();
+  if (clean.length === 0) return false;
+  if (/^(?:javascript|vbscript|about|data):/i.test(clean)) return false;
+  return true;
+}
+
 /** Follows a pointer to something worth showing in its place. */
 function resolve(analysis: Analysis, structure: Structure): string | undefined {
   const pointer = asPointer(structure);
@@ -520,25 +531,52 @@ export function recordDetails(
     }
 
     if (tag === 'OBJE') {
-      const file = child(structure, 'FILE')?.payload;
-      const form = child(structure, 'FORM')?.payload;
-      const titl = child(structure, 'TITL')?.payload;
+      const pointer = asPointer(structure);
+      const target = pointer ? analysis.xrefs.definitions.get(pointer) : undefined;
+      const effective = target ?? structure;
+
+      const file = child(effective, 'FILE')?.payload;
+      const form = child(effective, 'FORM')?.payload ?? child(structure, 'FORM')?.payload;
+      const titl = child(effective, 'TITL')?.payload ?? child(structure, 'TITL')?.payload;
       const kind = form ? describeMediaType(form) : undefined;
       const raw = file?.trim();
       const path =
         raw === undefined
-          ? (resolve(analysis, structure) ?? '')
+          ? target
+            ? (nameOf(target) ?? `@${pointer}@`)
+            : (resolve(analysis, structure) ?? '')
           : webUrl(raw)
             ? raw
             : firstLine(raw);
       const type = (form ? resolveMediaType(form) : undefined) ?? mediaTypeOfPath(path);
+      const safe = isSafeMediaResource(path);
+      media.push({
+        label: titl ? firstLine(titl, 60) : target ? (nameOf(target) ?? label) : label,
+        value: [path, kind ?? (type ? describeMediaType(type) : undefined)]
+          .filter(Boolean)
+          .join(' · '),
+        line,
+        ...(safe ? { url: path.trim() } : {}),
+        ...(type ? { mediaType: type } : {}),
+      });
+      continue;
+    }
+
+    if (tag === 'FILE' && record.tag === 'OBJE') {
+      const form = child(record, 'FORM')?.payload ?? child(structure, 'FORM')?.payload;
+      const titl = child(record, 'TITL')?.payload ?? child(structure, 'TITL')?.payload;
+      const kind = form ? describeMediaType(form) : undefined;
+      const raw = structure.payload?.trim();
+      const path = raw ? (webUrl(raw) ? raw : firstLine(raw)) : '';
+      const type = (form ? resolveMediaType(form) : undefined) ?? mediaTypeOfPath(path);
+      const safe = isSafeMediaResource(path);
       media.push({
         label: titl ? firstLine(titl, 60) : label,
         value: [path, kind ?? (type ? describeMediaType(type) : undefined)]
           .filter(Boolean)
           .join(' · '),
         line,
-        ...(webUrl(path) ? { url: path.trim() } : {}),
+        ...(safe ? { url: path.trim() } : {}),
         ...(type ? { mediaType: type } : {}),
       });
       continue;

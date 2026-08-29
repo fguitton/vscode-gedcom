@@ -14,19 +14,24 @@ export interface Policy {
   /** The nonce carried by the panel's own inline style and script. */
   readonly nonce: string;
   /**
-   * Permit images fetched over `https`.
+   * Permit images fetched over `https` and local workspace webview URIs.
    *
    * Only ever true where the reader has asked for previews. `http` is not
    * offered at any setting: a thumbnail does not justify a plaintext request
    * announcing which file is being read, and to whom.
    */
   readonly images?: boolean;
+  /** The webview's CSP source for loading local workspace resources. */
+  readonly cspSource?: string;
 }
 
-export function contentSecurityPolicy({ nonce, images = false }: Policy): string {
+export function contentSecurityPolicy({ nonce, images = false, cspSource }: Policy): string {
+  const imageSources = ['https:'];
+  if (cspSource) imageSources.push(cspSource);
+
   return [
     "default-src 'none'",
-    ...(images ? ['img-src https:'] : []),
+    ...(images ? [`img-src ${imageSources.join(' ')}`] : []),
     `style-src 'nonce-${nonce}'`,
     `script-src 'nonce-${nonce}'`,
   ].join('; ');

@@ -334,20 +334,39 @@ describe('media the file points at', () => {
     expect(field?.mediaType).toBe('image/jpeg');
   });
 
-  it('offers nothing to open for a path that is not a URL', () => {
-    // A great many files name a folder on a machine retired two decades ago.
+  it('populates url for safe local file paths so webviews can render previews', () => {
     const [field] = media(file('1 OBJE', '2 FORM jpg', '2 FILE C:\\Family\\Scans\\gran.jpg'));
     expect(field?.value).toContain('gran.jpg');
-    expect(field?.url).toBeUndefined();
+    expect(field?.url).toBe('C:\\Family\\Scans\\gran.jpg');
+    expect(field?.mediaType).toBe('image/jpeg');
   });
 
-  it('refuses a scheme that is not the web', () => {
-    // The payload is free text from a document the reader may merely have been
-    // sent, and the panel hands whatever it is given to the operating system.
+  it('resolves OBJE pointers to top-level multimedia records', () => {
+    const source = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 OBJE @M1@',
+      '0 @M1@ OBJE',
+      '1 FILE photos/john.png',
+      '1 FORM image/png',
+      '1 TITL John Smith portrait',
+      '0 TRLR',
+      '',
+    ].join('\n');
+
+    const [field] = media(source);
+    expect(field?.label).toBe('John Smith portrait');
+    expect(field?.url).toBe('photos/john.png');
+    expect(field?.mediaType).toBe('image/png');
+  });
+
+  it('refuses dangerous script schemes', () => {
     for (const path of [
       'javascript:alert(1)',
-      'file:///etc/passwd',
-      'vscode://ms-vscode.node-debug',
+      'vbscript:msgbox(1)',
+      'about:blank',
       'data:text/html,<script>alert(1)</script>',
     ]) {
       const [field] = media(file('1 OBJE', '2 FORM image/png', `2 FILE ${path}`));

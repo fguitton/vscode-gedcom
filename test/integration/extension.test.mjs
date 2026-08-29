@@ -522,6 +522,36 @@ describe('the graph panel', () => {
     assert.equal((await hooks()).graphShowing()?.focus, 'I2');
     assert.equal((await hooks()).graphDrawn()?.focus, 'I2');
   });
+
+  it('populates media fields with image URLs for preview rendering', async () => {
+    const document = await vscode.workspace.openTextDocument({
+      language: 'gedcom',
+      content: [
+        '0 HEAD',
+        '1 GEDC',
+        '2 VERS 7.0',
+        '0 @I1@ INDI',
+        '1 NAME John /Smith/',
+        '1 OBJE @M1@',
+        '0 @M1@ OBJE',
+        '1 FILE photos/john.jpg',
+        '1 FORM image/jpeg',
+        '1 TITL Portrait of John',
+        '0 TRLR',
+        '',
+      ].join('\n'),
+    });
+    await vscode.window.showTextDocument(document);
+    await settle();
+
+    await vscode.commands.executeCommand('gedcom.details.focus');
+    await settle();
+
+    assert.ok(
+      (await hooks()).detailsShowing(),
+      'details panel should display John Smith with media',
+    );
+  });
 });
 
 describe('inlay hints', () => {

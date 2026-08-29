@@ -19,6 +19,7 @@ import {
   type Details,
 } from '@vscode-gedcom/core';
 import {
+  commands,
   env,
   Range,
   Selection as EditorSelection,
@@ -28,6 +29,7 @@ import {
   workspace,
   type CancellationToken,
   type Disposable,
+  type Webview,
   type WebviewView,
   type WebviewViewProvider,
 } from 'vscode';
@@ -63,6 +65,24 @@ function configuredFormat(): NoteFormat {
     : 'text';
 }
 
+function resolveResourceUri(webview: Webview, baseDocUri: Uri, rawPath: string): string {
+  if (webUrl(rawPath)) return rawPath;
+  try {
+    let fileUri: Uri;
+    if (rawPath.startsWith('file://')) {
+      fileUri = Uri.parse(rawPath);
+    } else if (/^[a-zA-Z]:[\\/]/.test(rawPath) || rawPath.startsWith('/')) {
+      fileUri = Uri.file(rawPath);
+    } else {
+      const dirUri = Uri.joinPath(baseDocUri, '..');
+      fileUri = Uri.joinPath(dirUri, rawPath);
+    }
+    return webview.asWebviewUri(fileUri).toString();
+  } catch {
+    return rawPath;
+  }
+}
+
 export class GedcomDetailsViewProvider implements WebviewViewProvider {
   private view: WebviewView | undefined;
   private uri: Uri | undefined;
@@ -84,8 +104,13 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
 
   resolveWebviewView(view: WebviewView, _context: unknown, _token: CancellationToken): void {
     this.view = view;
-    view.webview.options = { enableScripts: true, localResourceRoots: [] };
-    view.webview.html = shell(previewsEnabled(), getClientBundle());
+    view.webview.options = {
+      enableScripts: true,
+      localResourceRoots: workspace.workspaceFolders
+        ? workspace.workspaceFolders.map((f) => f.uri)
+        : undefined,
+    };
+    view.webview.html = shell(previewsEnabled(), getClientBundle(), view.webview.cspSource);
 
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'ready') this.refresh();
@@ -108,7 +133,7 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
     this.subscriptions.push(
       workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration(PREVIEWS)) return;
-        view.webview.html = shell(previewsEnabled(), getClientBundle());
+        view.webview.html = shell(previewsEnabled(), getClientBundle(), view.webview.cspSource);
         this.refresh();
       }),
     );
@@ -181,10 +206,27 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
       };
     }
 
-    this.lastShown = details.title;
+    // Resolve media resource URLs to Webview URIs
+    const webview = this.view.webview;
+    const resolvedDetails: Details = {
+      ...details,
+      sections: details.sections.map((section) => ({
+        ...section,
+        fields: section.fields.map((field) => {
+          if (!field.url) return field;
+          return {
+            ...field,
+            url: resolveResourceUri(webview, document.uri, field.url),
+            rawUrl: field.url,
+          };
+        }),
+      })),
+    };
+
+    this.lastShown = resolvedDetails.title;
     void this.view.webview.postMessage({
       type: 'details',
-      details,
+      details: resolvedDetails,
       format: this.format,
       showFileLink: !isDocumentActive,
       fileName,
@@ -199,8 +241,26 @@ export class GedcomDetailsViewProvider implements WebviewViewProvider {
    * hand a `file:` or a `vscode:` URI straight to the machine.
    */
   private async open(url: string): Promise<void> {
-    if (!webUrl(url)) return;
-    await env.openExternal(Uri.parse(url, true));
+    if (webUrl(url)) {
+      await env.openExternal(Uri.parse(url, true));
+      return;
+    }
+
+    if (this.uri) {
+      try {
+        let fileUri: Uri;
+        if (url.startsWith('file://')) {
+          fileUri = Uri.parse(url);
+        } else if (/^[a-zA-Z]:[\\/]/.test(url) || url.startsWith('/')) {
+          fileUri = Uri.file(url);
+        } else {
+          fileUri = Uri.joinPath(Uri.joinPath(this.uri, '..'), url);
+        }
+        await commands.executeCommand('vscode.open', fileUri);
+      } catch {
+        // ignore
+      }
+    }
   }
 
   private async reveal(line: number): Promise<void> {
@@ -223,7 +283,7 @@ function nonce(): string {
 }
 
 /** The panel document. Inline behind a nonce; see graph-view.ts for why. */
-function shell(previews: boolean, bundle: Record<string, string> = {}): string {
+function shell(previews: boolean, bundle: Record<string, string> = {}, cspSource?: string): string {
   const id = nonce();
 
   return `<!DOCTYPE html>
@@ -231,7 +291,8 @@ function shell(previews: boolean, bundle: Record<string, string> = {}): string {
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy"
-      content="${contentSecurityPolicy({ nonce: id, images: previews })}">
+      content="${contentSecurityPolicy({ nonce: id, images: previews, cspSource })}">
+
 <style nonce="${id}">
   :root {
     color-scheme: light dark;
@@ -691,16 +752,18 @@ function shell(previews: boolean, bundle: Record<string, string> = {}): string {
     if (!previews || !field.url) return undefined;
     if (!field.mediaType || field.mediaType.slice(0, 6) !== 'image/') return undefined;
 
+    const targetUrl = field.rawUrl || field.url;
     const image = document.createElement('img');
     image.className = 'thumb';
     image.loading = 'lazy';
     image.alt = field.label;
-    image.title = 'Open ' + field.url;
-    image.addEventListener('click', () => openExternally(field.url));
+    image.title = 'Open ' + targetUrl;
+    image.addEventListener('click', () => openExternally(targetUrl));
     image.addEventListener('error', () => { image.classList.add('broken'); });
     image.src = field.url;
     return image;
   }
+
 
   /**
    * The two-way switch shown above a note that holds markup.
