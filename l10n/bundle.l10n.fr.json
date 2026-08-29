@@ -70,5 +70,9 @@
   "Path": "Chemin",
   "Size": "Taille",
   "Action": "Action",
-  "Media Gallery": "Galerie multimédia"
+  "Media Gallery": "Galerie multimédia",
+  "Select GEDZIP Archive to Mount": "Sélectionnez l'archive GEDZIP à monter",
+  "Archive {0} is already mounted in workspace.": "L'archive {0} est déjà montée dans l'espace de travail.",
+  "Mounted {0} in Explorer.": "{0} monté dans l'explorateur.",
+  "Mount in Explorer": "Monter dans l'explorateur"
 }

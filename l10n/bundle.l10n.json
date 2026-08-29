@@ -69,5 +69,9 @@
   "Path": "Path",
   "Size": "Size",
   "Action": "Action",
-  "Media Gallery": "Media Gallery"
+  "Media Gallery": "Media Gallery",
+  "Select GEDZIP Archive to Mount": "Select GEDZIP Archive to Mount",
+  "Archive {0} is already mounted in workspace.": "Archive {0} is already mounted in workspace.",
+  "Mounted {0} in Explorer.": "Mounted {0} in Explorer.",
+  "Mount in Explorer": "Mount in Explorer"
 }

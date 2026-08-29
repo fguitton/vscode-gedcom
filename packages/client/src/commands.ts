@@ -375,6 +375,45 @@ export function registerCommands(context: ExtensionContext): void {
         void window.showErrorMessage(t('Failed to open GEDZIP archive: {0}', String(err)));
       }
     }),
+    commands.registerCommand('gedcom.mountGdz', async (fileUri?: Uri) => {
+      let gdzUri = fileUri;
+      if (!gdzUri) {
+        const picked = await window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: false,
+          canSelectMany: false,
+          filters: { 'GEDZIP Archives': ['gdz'] },
+          openLabel: t('Select GEDZIP Archive to Mount'),
+        });
+        if (!picked || picked.length === 0) return;
+        gdzUri = picked[0];
+      }
+
+      if (!gdzUri) return;
+
+      const virtualRoot = toGdzUri(gdzUri, '');
+      const archiveName = gdzUri.path.split('/').filter(Boolean).pop() ?? 'archive.gdz';
+      const currentCount = workspace.workspaceFolders ? workspace.workspaceFolders.length : 0;
+
+      const alreadyMounted = workspace.workspaceFolders?.some(
+        (wf) => wf.uri.toString() === virtualRoot.toString(),
+      );
+      if (alreadyMounted) {
+        void window.showInformationMessage(
+          t('Archive {0} is already mounted in workspace.', archiveName),
+        );
+        return;
+      }
+
+      const success = workspace.updateWorkspaceFolders(currentCount, 0, {
+        uri: virtualRoot,
+        name: `GEDZIP: ${archiveName}`,
+      });
+
+      if (success) {
+        void window.showInformationMessage(t('Mounted {0} in Explorer.', archiveName));
+      }
+    }),
   );
 }
 

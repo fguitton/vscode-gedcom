@@ -19,6 +19,7 @@
   "command.packageGdz": "Package File as GEDZIP (.gdz)",
   "command.unpackGdz": "Unpack GEDZIP Archive (.gdz)",
   "command.openGdz": "Open GEDZIP Archive",
+  "command.mountGdz": "Mount GEDZIP in Workspace Explorer",
   "command.refreshGdzExplorer": "Refresh GEDZIP Explorer",
 
   "config.graph.depth.markdownDescription": "How many hops from the record at the cursor the tree panel shows.\n\nOne shows a person and their families; two also reaches spouses, children and parents. Beyond three the neighbourhood is usually larger than the panel can show usefully.",

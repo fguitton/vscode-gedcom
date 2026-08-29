@@ -129,6 +129,8 @@ export class GdzCustomEditorProvider implements CustomReadonlyEditorProvider {
         await commands.executeCommand('gedcom.showGraph');
       } else if (msg.command === 'unpack') {
         await commands.executeCommand('gedcom.unpackGdz', document.uri);
+      } else if (msg.command === 'mount') {
+        await commands.executeCommand('gedcom.mountGdz', document.uri);
       }
     });
 
@@ -361,6 +363,10 @@ export class GdzCustomEditorProvider implements CustomReadonlyEditorProvider {
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M5 2v3H3v6h2v3h6v-3h2V5h-2V2H5zm5 1v2H6V3h4zM4 6h8v4H4V6zm2 5h4v2H6v-2z"/></svg>
         ${escapeHtml(t('Show Tree'))}
       </button>
+      <button class="secondary" id="btnMount">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5l.5-.5h4.2l1.3 1.5H14.5l.5.5v8l-.5.5h-13l-.5-.5v-9.5zm1 1v8h12V5H6.8l-1.3-1.5H2v1z"/></svg>
+        ${escapeHtml(t('Mount in Explorer'))}
+      </button>
       <button class="secondary" id="btnUnpack">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 13A6 6 0 118 2a6 6 0 010 12zm0-9v5l3-3-1-1-2 2V5H8z"/></svg>
         ${escapeHtml(t('Unpack Archive'))}
@@ -445,6 +451,10 @@ export class GdzCustomEditorProvider implements CustomReadonlyEditorProvider {
 
     document.getElementById('btnOpenTree')?.addEventListener('click', () => {
       vscode.postMessage({ command: 'openTree' });
+    });
+
+    document.getElementById('btnMount')?.addEventListener('click', () => {
+      vscode.postMessage({ command: 'mount' });
     });
 
     document.getElementById('btnUnpack')?.addEventListener('click', () => {

@@ -343,6 +343,11 @@
         "title": "%command.refreshGdzExplorer%",
         "category": "GEDCOM",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "gedcom.mountGdz",
+        "title": "%command.mountGdz%",
+        "category": "GEDCOM"
       }
     ],
     "jsonValidation": [
@@ -394,9 +399,14 @@
           "group": "gedcom@1"
         },
         {
-          "command": "gedcom.unpackGdz",
+          "command": "gedcom.mountGdz",
           "when": "resourceExtname == .gdz",
           "group": "gedcom@2"
+        },
+        {
+          "command": "gedcom.unpackGdz",
+          "when": "resourceExtname == .gdz",
+          "group": "gedcom@3"
         },
         {
           "command": "gedcom.packageGdz",
@@ -437,6 +447,9 @@
           "command": "gedcom.openGdz"
         },
         {
+          "command": "gedcom.mountGdz"
+        },
+        {
           "command": "gedcom.refreshGdzExplorer"
         },
         {
@@ -451,6 +464,7 @@
   "activationEvents": [
     "onCommand:gedcom.convertGedcomXToGedcom7",
     "onCommand:gedcom.exportAsGedcomX",
+    "onCommand:gedcom.mountGdz",
     "onCommand:gedcom.openGdz",
     "onCommand:gedcom.packageGdz",
     "onCommand:gedcom.refreshGdzExplorer",
