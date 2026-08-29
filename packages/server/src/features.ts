@@ -32,6 +32,7 @@ import {
   formatRecordReferences,
   formatRecordSummary,
   formatTreeLensTitle,
+  HINT_INDENT,
   summarizeRecord,
   type Analysis,
   type Diagnostic as CoreDiagnostic,
@@ -721,9 +722,6 @@ export function semanticTokens(analysis: Analysis): number[] {
  * The other two kinds answer the same shape of question — a code standing in for
  * something the reader would have to look up — for enumerations and for ages.
  */
-/** Non-breaking, so the client does not collapse it the way it would spaces. */
-const HINT_INDENT = '   ';
-
 export function inlayHints(analysis: Analysis, range: Range, settings: Settings): InlayHint[] {
   const kinds = settings.inlayHints;
   if (!kinds.pointers && !kinds.values && !kinds.ages) return [];

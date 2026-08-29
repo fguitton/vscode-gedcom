@@ -52,7 +52,10 @@ export type { FanChartData, FanChartNode } from './fanchart.ts';
 export { parseAge, describeAge, ageInDays, EVENT_VERBS, formatAgeAtEvent } from './age.ts';
 export type { Age } from './age.ts';
 
+export { HINT_INDENT, formatValueHint, formatAgeHint, formatPointerHint } from './inlay.ts';
+
 export { enumSetFor, describeEnumValue, meaningOf, standalone, valuesOfSet } from './enums.ts';
+
 export type { EnumMeaning } from './enums.ts';
 
 export {

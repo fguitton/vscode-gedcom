@@ -743,12 +743,20 @@ describe('GEDCOM X JSON and XML support (E2E)', () => {
     const allLabels = hints.map(labelOf);
 
     assert.ok(
-      allLabels.some((l) => /Died age 70/.test(l)),
+      allLabels.some((l) => l === 'Died age 70'),
       'expected "Died age 70" hint',
     );
     assert.ok(
-      allLabels.some((l) => /Male/.test(l)),
-      'expected Male gender hint',
+      allLabels.some((l) => l === 'Female'),
+      'expected Female gender hint in JSON',
+    );
+    assert.ok(
+      allLabels.some((l) => l === 'Male'),
+      'expected Male gender hint in JSON',
+    );
+    assert.ok(
+      !allLabels.some((l) => l.includes('›')),
+      'inlay hint labels should not contain chevron arrows',
     );
     assert.ok(
       allLabels.some((l) => /FamilySearch User/.test(l)),
@@ -770,12 +778,20 @@ describe('GEDCOM X JSON and XML support (E2E)', () => {
     const allLabels = hints.map(labelOf);
 
     assert.ok(
-      allLabels.some((l) => /Died age 70/.test(l)),
+      allLabels.some((l) => l === 'Died age 70'),
       'expected "Died age 70" hint in XML',
     );
     assert.ok(
-      allLabels.some((l) => /Male/.test(l)),
+      allLabels.some((l) => l === 'Female'),
+      'expected Female gender hint in XML',
+    );
+    assert.ok(
+      allLabels.some((l) => l === 'Male'),
       'expected Male gender hint in XML',
+    );
+    assert.ok(
+      !allLabels.some((l) => l.includes('›')),
+      'inlay hint labels in XML should not contain chevron arrows',
     );
   });
 

@@ -18,6 +18,8 @@ import {
   formatRecordReferences,
   formatRecordSummary,
   formatTreeLensTitle,
+  formatValueHint,
+  HINT_INDENT,
   isGedcomX,
   parseGedcomXJson,
   parseGedcomXXml,
@@ -223,7 +225,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             const p = persons.get(id)!;
             const name = getPersonName(p);
             const span = getPersonLifespan(p);
-            const label = ` › ${name}${span ? ` (${span})` : ''}`;
+            const label = `${HINT_INDENT}${name}${span ? ` (${span})` : ''}`;
             const hint = new InlayHint(pos, label, InlayHintKind.Type);
             hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
             hint.paddingLeft = true;
@@ -231,7 +233,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
           } else if (sources.has(id)) {
             const s = sources.get(id)!;
             const title = s.titles?.[0]?.value ?? 'Source';
-            const label = ` › ${title}`;
+            const label = `${HINT_INDENT}${title}`;
             const hint = new InlayHint(pos, label, InlayHintKind.Type);
             hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
             hint.paddingLeft = true;
@@ -239,7 +241,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
           } else if (agents.has(id)) {
             const a = agents.get(id)!;
             const name = a.names?.[0]?.value ?? 'Agent';
-            const label = ` › ${name}`;
+            const label = `${HINT_INDENT}${name}`;
             const hint = new InlayHint(pos, label, InlayHintKind.Type);
             hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
             hint.paddingLeft = true;
@@ -252,7 +254,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
     // 2. Coded Value Inlay Hints (Gender, Relationship types)
     if (enabledValues) {
       const genderRegex =
-        /(?:gender[^>}]*?type|type)["\s:=]+"?https?:\/\/gedcomx\.org\/(Male|Female)"?/i;
+        /(?:gender[^>}]*?type|type)["\s:=]+"?https?:\/\/gedcomx\.org\/(Male|Female|Unknown)"?/i;
       const coupleRegex = /(?:type)["\s:=]+"?https?:\/\/gedcomx\.org\/Couple"?/i;
       const parentChildRegex = /(?:type)["\s:=]+"?https?:\/\/gedcomx\.org\/ParentChild"?/i;
 
@@ -260,32 +262,42 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
         const lineText = document.lineAt(l).text;
         const gMatch = genderRegex.exec(lineText);
         if (gMatch) {
-          const isMale = /Male/i.test(gMatch[1]!);
-          const label = isMale ? ' › Male (♂)' : ' › Female (♀)';
-          const pos = new Position(l, lineText.length);
-          const hint = new InlayHint(pos, label, InlayHintKind.Parameter);
-          hint.tooltip = new MarkdownString(`**${label.slice(3)}** (Gender value)`);
-          hint.paddingLeft = true;
-          hints.push(hint);
-          continue;
+          const val = formatValueHint(gMatch[1]!);
+          if (val) {
+            const label = `${HINT_INDENT}${val}`;
+            const pos = new Position(l, lineText.length);
+            const hint = new InlayHint(pos, label, InlayHintKind.Parameter);
+            hint.tooltip = new MarkdownString(`**${val}** (Gender value)`);
+            hint.paddingLeft = true;
+            hints.push(hint);
+            continue;
+          }
         }
 
         if (coupleRegex.test(lineText)) {
-          const pos = new Position(l, lineText.length);
-          const hint = new InlayHint(pos, ' › Couple (Spouses)', InlayHintKind.Parameter);
-          hint.tooltip = new MarkdownString('**Couple (Spouses)** (Relationship type)');
-          hint.paddingLeft = true;
-          hints.push(hint);
-          continue;
+          const val = formatValueHint('Couple');
+          if (val) {
+            const label = `${HINT_INDENT}${val}`;
+            const pos = new Position(l, lineText.length);
+            const hint = new InlayHint(pos, label, InlayHintKind.Parameter);
+            hint.tooltip = new MarkdownString(`**${val}** (Relationship type)`);
+            hint.paddingLeft = true;
+            hints.push(hint);
+            continue;
+          }
         }
 
         if (parentChildRegex.test(lineText)) {
-          const pos = new Position(l, lineText.length);
-          const hint = new InlayHint(pos, ' › Parent-Child', InlayHintKind.Parameter);
-          hint.tooltip = new MarkdownString('**Parent-Child** (Relationship type)');
-          hint.paddingLeft = true;
-          hints.push(hint);
-          continue;
+          const val = formatValueHint('ParentChild');
+          if (val) {
+            const label = `${HINT_INDENT}${val}`;
+            const pos = new Position(l, lineText.length);
+            const hint = new InlayHint(pos, label, InlayHintKind.Parameter);
+            hint.tooltip = new MarkdownString(`**${val}** (Relationship type)`);
+            hint.paddingLeft = true;
+            hints.push(hint);
+            continue;
+          }
         }
       }
     }
@@ -324,7 +336,11 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             if (matchesDate) {
               annotatedLines.add(l);
               const pos = new Position(l, lineText.length);
-              const hint = new InlayHint(pos, ` › ${ageInfo.label}`, InlayHintKind.Parameter);
+              const hint = new InlayHint(
+                pos,
+                `${HINT_INDENT}${ageInfo.label}`,
+                InlayHintKind.Parameter,
+              );
               hint.tooltip = new MarkdownString(ageInfo.tooltip);
               hint.paddingLeft = true;
               hints.push(hint);
@@ -384,7 +400,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
               ) {
                 annotatedLines.add(l);
                 const pos = new Position(l, lineText.length);
-                const hint = new InlayHint(pos, ` › ${label}`, InlayHintKind.Parameter);
+                const hint = new InlayHint(pos, `${HINT_INDENT}${label}`, InlayHintKind.Parameter);
                 hint.tooltip = new MarkdownString(tooltip);
                 hint.paddingLeft = true;
                 hints.push(hint);
