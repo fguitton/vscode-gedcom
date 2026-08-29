@@ -1,0 +1,19 @@
+{
+  "name": "sample-non-gedcom-project",
+  "version": "1.0.0",
+  "description": "Standard npm package metadata (Negative control for GEDCOM X)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["sample", "npm", "json"],
+  "author": "Sample Author <author@example.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "attribution": "Creative Commons Attribution 4.0"
+}

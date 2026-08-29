@@ -81,4 +81,39 @@ describe('GEDCOM X test fixtures', () => {
     expect(kinship).not.toBeNull();
     expect(kinship?.description.toLowerCase()).toContain('granddaughter');
   });
+
+  describe('negative control validation (non-GEDCOM files)', () => {
+    it('rejects npm package.json fixture', () => {
+      const content = readFileSync(join(fixturesDir, 'negative-controls', 'package.json'), 'utf8');
+      expect(isGedcomX(content)).toBe(false);
+      expect(detectGedcomXFormat(content)).toBeNull();
+    });
+
+    it('rejects REST API JSON response fixture', () => {
+      const content = readFileSync(
+        join(fixturesDir, 'negative-controls', 'rest-api-response.json'),
+        'utf8',
+      );
+      expect(isGedcomX(content)).toBe(false);
+      expect(detectGedcomXFormat(content)).toBeNull();
+    });
+
+    it('rejects Maven pom.xml fixture', () => {
+      const content = readFileSync(join(fixturesDir, 'negative-controls', 'pom.xml'), 'utf8');
+      expect(isGedcomX(content)).toBe(false);
+      expect(detectGedcomXFormat(content)).toBeNull();
+    });
+
+    it('rejects SVG graphic fixture', () => {
+      const content = readFileSync(join(fixturesDir, 'negative-controls', 'sample.svg'), 'utf8');
+      expect(isGedcomX(content)).toBe(false);
+      expect(detectGedcomXFormat(content)).toBeNull();
+    });
+
+    it('rejects RSS feed XML fixture', () => {
+      const content = readFileSync(join(fixturesDir, 'negative-controls', 'rss-feed.xml'), 'utf8');
+      expect(isGedcomX(content)).toBe(false);
+      expect(detectGedcomXFormat(content)).toBeNull();
+    });
+  });
 });

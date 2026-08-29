@@ -1,0 +1,30 @@
+{
+  "status": 200,
+  "message": "OK",
+  "data": {
+    "organization": "Acme Global",
+    "members": [
+      {
+        "id": "usr_9981",
+        "username": "johndoe",
+        "email": "johndoe@example.com",
+        "roles": ["admin", "billing"]
+      },
+      {
+        "id": "usr_9982",
+        "username": "janedoe",
+        "email": "janedoe@example.com",
+        "roles": ["viewer"]
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "perPage": 20,
+      "total": 2
+    },
+    "metadata": {
+      "source": "api.acme.com",
+      "timestamp": "2026-08-29T12:00:00Z"
+    }
+  }
+}

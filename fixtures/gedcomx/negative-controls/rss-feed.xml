@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Sample Non-GEDCOM News RSS</title>
+    <link>https://news.example.com</link>
+    <description>Sample syndication feed</description>
+    <item>
+      <title>First Sample Article</title>
+      <link>https://news.example.com/item-1</link>
+      <description>Content of the sample article</description>
+      <pubDate>Sat, 29 Aug 2026 12:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
