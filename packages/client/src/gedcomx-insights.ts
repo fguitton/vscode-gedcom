@@ -212,14 +212,14 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
       const refRegex = /(?:resource|descriptionRef)["\s:=]+#([a-zA-Z0-9_-]+)/g;
 
       for (let l = startLine; l <= endLine; l++) {
+        if (annotatedLines.has(l)) continue;
         const line = document.lineAt(l);
         let match: RegExpExecArray | null;
         refRegex.lastIndex = 0;
 
         while ((match = refRegex.exec(line.text)) !== null) {
           const id = match[1]!;
-          const matchEndIndex = match.index + match[0].length;
-          const pos = new Position(l, matchEndIndex);
+          const pos = new Position(l, line.text.length);
 
           if (persons.has(id)) {
             const p = persons.get(id)!;
@@ -230,6 +230,8 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
             hint.paddingLeft = true;
             hints.push(hint);
+            annotatedLines.add(l);
+            break;
           } else if (sources.has(id)) {
             const s = sources.get(id)!;
             const title = s.titles?.[0]?.value ?? 'Source';
@@ -238,6 +240,8 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
             hint.paddingLeft = true;
             hints.push(hint);
+            annotatedLines.add(l);
+            break;
           } else if (agents.has(id)) {
             const a = agents.get(id)!;
             const name = a.names?.[0]?.value ?? 'Agent';
@@ -246,6 +250,8 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             hint.tooltip = new MarkdownString(buildRecordTooltip(analysis, id));
             hint.paddingLeft = true;
             hints.push(hint);
+            annotatedLines.add(l);
+            break;
           }
         }
       }
@@ -259,6 +265,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
       const parentChildRegex = /(?:type)["\s:=]+"?https?:\/\/gedcomx\.org\/ParentChild"?/i;
 
       for (let l = startLine; l <= endLine; l++) {
+        if (annotatedLines.has(l)) continue;
         const lineText = document.lineAt(l).text;
         const gMatch = genderRegex.exec(lineText);
         if (gMatch) {
@@ -270,6 +277,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             hint.tooltip = new MarkdownString(`**${val}** (Gender value)`);
             hint.paddingLeft = true;
             hints.push(hint);
+            annotatedLines.add(l);
             continue;
           }
         }
@@ -283,6 +291,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             hint.tooltip = new MarkdownString(`**${val}** (Relationship type)`);
             hint.paddingLeft = true;
             hints.push(hint);
+            annotatedLines.add(l);
             continue;
           }
         }
@@ -296,6 +305,7 @@ export class GedcomXInlayHintsProvider implements InlayHintsProvider {
             hint.tooltip = new MarkdownString(`**${val}** (Relationship type)`);
             hint.paddingLeft = true;
             hints.push(hint);
+            annotatedLines.add(l);
             continue;
           }
         }
