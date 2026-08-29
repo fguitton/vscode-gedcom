@@ -10,16 +10,20 @@
 import {
   computeGedcomXEntitySpans,
   detectGedcomXFormat,
+  formatHeaderSummary,
+  formatRecordReferences,
+  formatRecordSummary,
+  formatTreeLensTitle,
   isGedcomX,
   parseGedcomXJson,
   parseGedcomXXml,
-  toGedcomXref,
   type Agent,
   type Fact,
   type Gedcomx,
   type Person,
   type SourceDescription,
 } from '@vscode-gedcom/core';
+import { analysisOf } from './analysis.ts';
 
 import {
   CodeLens,
@@ -432,31 +436,48 @@ export class GedcomXCodeLensProvider implements CodeLensProvider {
     const format = detectGedcomXFormat(text);
     if (!format) return [];
 
-    const gx = parseDocument(document);
-    if (!gx || !gx.persons || gx.persons.length === 0) return [];
-
-    const spans = computeGedcomXEntitySpans(text, format);
+    const analysis = analysisOf(document);
+    const spans = analysis.entitySpans ?? computeGedcomXEntitySpans(text, format);
     const lenses: CodeLens[] = [];
 
+    // 1. Header summary lens above the file
+    const headerTitle = formatHeaderSummary(analysis);
+    if (headerTitle && document.lineCount > 0) {
+      const headerRange = new Range(
+        new Position(0, 0),
+        new Position(0, document.lineAt(0).text.length),
+      );
+      lenses.push(new CodeLens(headerRange, { title: headerTitle, command: '' }));
+    }
+
+    // 2. Multi-lens above each record entity (Summary, References, Tree)
     for (const span of spans) {
-      if (span.tag !== 'INDI') continue;
       const l = span.startLine;
       if (l >= document.lineCount) continue;
 
-      const person = gx.persons.find(
-        (p) => toGedcomXref(p.id ?? '', 'I') === span.xref || p.id === span.xref,
-      );
-      const name = person ? getPersonName(person) : span.xref;
       const lineText = document.lineAt(l).text;
       const range = new Range(new Position(l, 0), new Position(l, lineText.length));
 
-      lenses.push(
-        new CodeLens(range, {
-          title: `$(type-hierarchy) Show ${name} in Tree`,
-          command: 'gedcom.showGraph',
-          arguments: [document.uri.toString(), l],
-        }),
-      );
+      // Summary lens
+      const summary = formatRecordSummary(analysis, span.xref);
+      if (summary) {
+        lenses.push(new CodeLens(range, { title: summary, command: '' }));
+      }
+
+      // References lens
+      const refs = formatRecordReferences(analysis, span.xref);
+      lenses.push(new CodeLens(range, { title: refs.title, command: '' }));
+
+      // Tree lens (for individuals and families)
+      if (span.tag === 'INDI' || span.tag === 'FAM') {
+        lenses.push(
+          new CodeLens(range, {
+            title: formatTreeLensTitle(),
+            command: 'gedcom.showGraph',
+            arguments: [document.uri.toString(), l],
+          }),
+        );
+      }
     }
 
     return lenses;

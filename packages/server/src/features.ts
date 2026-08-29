@@ -14,31 +14,32 @@ import {
   asPointer,
   completionsFor,
   describePayloadType,
-  displayName,
   fullSpan,
   glossOf,
   isExtensionTag,
   isRemovedInVersion,
-  meaningOf,
   modelFor,
   payloadOf,
-  recordNoun,
-  standalone,
   tagLabel,
-  relationsOf,
   removalNote,
   resolveSubstructure,
   scanDate,
   splitLines,
-  statistics,
   structureAt,
   walk,
-  lifespan,
+  describeRecord,
+  formatHeaderSummary,
+  formatRecordReferences,
+  formatRecordSummary,
+  formatTreeLensTitle,
+  summarizeRecord,
   type Analysis,
   type Diagnostic as CoreDiagnostic,
   type Span,
   type Structure,
 } from '@vscode-gedcom/core';
+
+export const summarize = summarizeRecord;
 
 import { annotate, annotateTooltip, describeStructure, type AnnotationKinds } from './describe.ts';
 
@@ -203,106 +204,6 @@ export function renameEdits(
 }
 
 // --- hover ------------------------------------------------------------------
-
-/**
- * A one-line description of a record, for hovers, the outline and completion.
- *
- * Given an analysis it resolves spouse pointers, so a family reads
- * `John Smith + Jane Doe` rather than `@I1@ + @I2@` — the identifiers are what
- * the reader is trying to look up, not what they want to be told.
- */
-export function summarize(record: Structure, analysis?: Analysis): string {
-  const name = record.children.find((c) => c.tag === 'NAME')?.payload;
-  // Whitespace collapsed as well as slashes and underscores removed: `Victoria  /Hanover/`, with
-  // an empty middle slot, otherwise comes out with a gap in the middle of it.
-  if (name) return displayName(name);
-
-  const title = record.children.find((c) => c.tag === 'TITL')?.payload;
-  if (title) return title;
-
-  if (record.payload) return record.payload.split('\n')[0]!.slice(0, 60);
-
-  const spouse = (tag: string): string | undefined => {
-    const structure = record.children.find((c) => c.tag === tag);
-    if (!structure) return undefined;
-
-    const pointer = asPointer(structure);
-    if (pointer === null || !analysis) return structure.payload ?? undefined;
-
-    const target = analysis.xrefs.definitions.get(pointer);
-    const targetName = target?.children.find((c) => c.tag === 'NAME')?.payload;
-    return (targetName ? displayName(targetName) : undefined) ?? structure.payload ?? undefined;
-  };
-
-  const husband = spouse('HUSB');
-  const wife = spouse('WIFE');
-  if (husband ?? wife) return `${husband ?? '?'} + ${wife ?? '?'}`;
-
-  return record.tag;
-}
-
-/**
- * What is worth saying about a record, beyond its name.
- *
- * Different records answer different questions. For a person the reader wants to
- * know their shape in the tree — how many children, whether they married more
- * than once, how many siblings — none of which the file states directly. For a
- * source they want to know how much of the tree leans on it.
- */
-function describeRecord(analysis: Analysis, record: Structure): string[] {
-  const lines: string[] = [];
-  const xref = record.xref;
-  if (xref === null) return lines;
-
-  if (record.tag === 'INDI') {
-    const span = lifespan(analysis, xref);
-    // In English: a lens reading "F · 1901–1975" is the file's own shorthand, and
-    // the point of a lens is to save the reader decoding the line below it.
-    const coded = record.children.find((c) => c.tag === 'SEX')?.payload;
-    const meaning = coded ? meaningOf(null, 'SEX', coded) : undefined;
-    const facts = [meaning ? standalone(meaning.label) : coded, span].filter(Boolean);
-    if (facts.length) lines.push(facts.join(' · '));
-
-    const relations = relationsOf(analysis, xref);
-    const counts: string[] = [];
-    const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-    if (relations.parents.length)
-      counts.push(plural(relations.parents.length, 'parent', 'parents'));
-    if (relations.siblings.length) {
-      counts.push(plural(relations.siblings.length, 'sibling', 'siblings'));
-    }
-    if (relations.spouses.length)
-      counts.push(plural(relations.spouses.length, 'spouse', 'spouses'));
-    if (relations.children.length)
-      counts.push(plural(relations.children.length, 'child', 'children'));
-
-    if (counts.length) lines.push(counts.join(' · '));
-    else lines.push('_No family recorded._');
-    return lines;
-  }
-
-  if (record.tag === 'FAM') {
-    const children = record.children.filter((c) => c.tag === 'CHIL').length;
-    const marriage = record.children
-      .find((c) => c.tag === 'MARR')
-      ?.children.find((c) => c.tag === 'DATE')?.payload;
-
-    if (marriage) lines.push(`Married ${marriage}`);
-    lines.push(children === 1 ? '1 child' : `${children} children`);
-    return lines;
-  }
-
-  if (record.tag === 'SOUR' || record.tag === 'REPO' || record.tag === 'SNOTE') {
-    const uses = analysis.xrefs.referencesTo.get(xref)?.length ?? 0;
-    lines.push(
-      uses === 0 ? '_Cited nowhere in this file._' : `Cited ${uses} time${uses === 1 ? '' : 's'}`,
-    );
-    return lines;
-  }
-
-  return lines;
-}
 
 export function hover(analysis: Analysis, position: Position): Hover | null {
   // Pointers are checked first: a pointer lives in the payload, which is outside
@@ -919,27 +820,6 @@ export function codeLenses(analysis: Analysis, uri: string, settings: Settings):
   return lenses;
 }
 
-/** The summary above the header: what is in this file. */
-function headerTitle(analysis: Analysis): string {
-  const stats = statistics(analysis);
-  const model = modelFor(analysis.version);
-  const counts = Object.entries(stats.records)
-    .filter(([tag]) => tag !== 'HEAD' && tag !== 'TRLR')
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(
-      ([tag, count]) =>
-        `${count.toLocaleString('en')} ${recordNoun(tag, count, tagLabel(model, tag))}`,
-    );
-
-  const period =
-    stats.earliest !== undefined && stats.latest !== undefined
-      ? `${stats.earliest}–${stats.latest}`
-      : undefined;
-
-  return [...counts, period].filter(Boolean).join(' · ');
-}
-
 function recordAtLine(records: readonly Structure[], line: number): Structure | undefined {
   let low = 0;
   let high = records.length - 1;
@@ -967,31 +847,23 @@ export function resolveCodeLens(analysis: Analysis, lens: CodeLens): CodeLens {
 
   const inert = (title: string): CodeLens => ({ ...lens, command: { title, command: '' } });
 
-  if (data.kind === 'header') return inert(headerTitle(analysis));
+  if (data.kind === 'header') return inert(formatHeaderSummary(analysis));
 
   const candidate = recordAtLine(analysis.document.records, data.line);
   const record = candidate && candidate.xref !== null ? candidate : undefined;
   if (!record?.xref) return inert('');
 
   if (data.kind === 'summary') {
-    // The name leads. A lens sits above `0 @I500037@ INDI`, which says who this
-    // is only to a reader willing to look three lines further down for the NAME.
-    const named =
-      record.tag === 'INDI' || record.tag === 'FAM' ? summarize(record, analysis) : undefined;
-
-    return inert(
-      [named, ...describeRecord(analysis, record).filter((l) => !l.startsWith('_'))]
-        .filter(Boolean)
-        .join(' · '),
-    );
+    return inert(formatRecordSummary(analysis, record));
   }
 
   if (data.kind === 'references') {
+    const refs = formatRecordReferences(analysis, record);
     const uses = analysis.xrefs.referencesTo.get(record.xref) ?? [];
     return {
       ...lens,
       command: {
-        title: uses.length === 1 ? '1 reference' : `${uses.length} references`,
+        title: refs.title,
         // Peeking nothing is confusing, so a record nothing points at gets an
         // inert lens rather than a command that appears to do nothing.
         command: uses.length > 0 ? SHOW_REFERENCES : '',
@@ -1006,7 +878,7 @@ export function resolveCodeLens(analysis: Analysis, lens: CodeLens): CodeLens {
   return {
     ...lens,
     command: {
-      title: '$(type-hierarchy) Show in Tree',
+      title: formatTreeLensTitle(),
       command: SHOW_GRAPH,
       arguments: [data.uri, record.span.line],
     },

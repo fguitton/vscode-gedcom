@@ -150,6 +150,7 @@ import { checkPlausibility } from './plausibility.ts';
 export { checkPlausibility } from './plausibility.ts';
 export { upgradeToGedcom7 } from './modernize.ts';
 export type { ModernizeResult } from './modernize.ts';
+export * from './summary.ts';
 
 import {
   validate,

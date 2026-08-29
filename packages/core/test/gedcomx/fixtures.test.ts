@@ -103,8 +103,6 @@ describe('GEDCOM X test fixtures', () => {
     expect(recordAt(analysis, 120)).toBe('F_R_1'); // <relationship type="http://gedcomx.org/Couple">
     expect(recordAt(analysis, 152)).toBe('U_agent_fs'); // <agent id="agent_fs">
 
-
-
     const kinship = calculateKinship(analysis, 'I_KWQS_BB1', 'I_KWQS_BB5');
     expect(kinship).not.toBeNull();
     expect(kinship?.description.toLowerCase()).toContain('granddaughter');
