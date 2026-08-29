@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>A comprehensive genealogical IDE for Visual Studio Code.</b><br />
-  Interactive family trees, 5-generation circular fan charts, consanguinity & affinity relationship calculation, chronological life timelines, real-time plausibility diagnostics, and seamless GEDCOM 7 modernizer.
+  Interactive family trees, 5-generation circular fan charts, consanguinity & affinity relationship calculation, chronological life timelines, multimedia image previews, real-time plausibility diagnostics, and multi-format support for traditional GEDCOM and modern <b>GEDCOM X (JSON & XML)</b>.
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 ---
 
-GEDCOM files are historically dense with cryptic pointers, undocumented tags, and complex inter-record dependencies. **vscode-gedcom** turns raw genealogical data into an intuitive, visual workspace — complete with deep language intelligence, interactive graph visualizations, and strict verification against the FamilySearch GEDCOM specification.
+GEDCOM files are historically dense with cryptic pointers, undocumented tags, and complex inter-record dependencies. **vscode-gedcom** turns raw genealogical data into an intuitive, visual workspace — complete with deep language intelligence, interactive graph visualizations, multimedia image previews, and strict verification against the FamilySearch GEDCOM and GEDCOM X specifications.
 
 > **GitHub Linguist Grammar:** This extension's grammar powers syntax highlighting for all `.ged` files across [github.com](https://github.com/github-linguist/linguist).
 
@@ -63,14 +63,15 @@ Select any two individuals in the file to instantly determine their exact geneal
 
 ---
 
-### ⏳ Chronological Life Event Timeline
+### ⏳ Chronological Life Event Timeline & Media Previews
 
-Inspect a person's life journey in the **Details Panel** with an interactive vertical milestone timeline.
+Inspect a person's life journey in the **Details Panel** with an interactive vertical milestone timeline and multimedia previews.
 
 ![Life Event Timeline in Details Panel](images/timeline.png)
 
 - **Computed Event Ages:** Displays exact computed age at every milestone (e.g., `Age 0` at birth, `Age 24` at marriage or birth of first child, `Age 81` at death).
 - **Comprehensive Life Events:** Consolidates personal milestones (birth, baptism, residence, census, marriage, occupations, death, burial) and the births of children.
+- **Multimedia Image Previews:** Renders high-quality thumbnail previews for attached photographs and records — supporting remote `https://` URLs as well as local relative and absolute paths (`portrait.jpg`, `portrait.png`, `C:\...`, `file://` URIs).
 - **Click to Navigate:** Clicking any milestone jumps directly to the corresponding line in the editor.
 
 ---
@@ -85,7 +86,7 @@ Driven by the official FamilySearch GEDCOM specification and registries:
 
 - **Genealogical Plausibility Checks:** Identifies biological contradictions, including death before birth, implausible parent ages at child birth ($< 12$ or $> 70$), post-mortem births, marriage outside lifespan, and unrecorded deaths for individuals born $> 120$ years ago.
 - **Syntax & Structural Validation:** Flags missing tags, invalid cardinality, unrecognized custom tags, and dangling or duplicate `@XREF@` pointers.
-- **Version Awareness:** Automatically adapts validation rules for **GEDCOM 5.5.1**, **GEDCOM 5.5.5**, and **GEDCOM 7.0**.
+- **Multi-Format Awareness:** Automatically adapts validation and intelligence rules for **GEDCOM 7.0**, **GEDCOM X (JSON & XML)**, **GEDCOM 5.5.5**, and **GEDCOM 5.5.1**.
 
 ---
 
@@ -106,15 +107,16 @@ One-click Code Actions (`Ctrl+.` / 💡) to resolve errors, synthesize missing r
 
 ### 🏷️ Inlay Hints & Rich Hovers
 
-- **Pointer Inline Names:** See who or what a pointer references directly in the editor line (`1 FAMS @F1@` $\rightarrow$ `John Smith + Jane Doe`).
+- **Pointer Inline Names:** See who or what a pointer references directly at the end of the line (`1 FAMS @F1@` $\rightarrow$ `John Smith + Jane Doe`, `<person1 resource="#KWQS-BB1"/>` $\rightarrow$ `Henry Taylor`).
 - **Enumeration Decoders:** Translates opaque codes into plain English (`1 SEX M` $\rightarrow$ `Male`, `2 QUAY 3` $\rightarrow$ `Primary`).
 - **Lifespan & Event Ages:** Shows subject age at event lines computed against their birth date (`died age 73`).
-- **Smart Hovers:** Shows exact day-of-the-week for dates, clarifies approximate dates, verifies child counts against family records, and resolves place jurisdictions from `HEAD.PLAC.FORM`.
+- **Smart Hovers:** Rich entity cards for individuals (lifespan, vital birth/death events), source citations, and contributors/agents across GEDCOM and GEDCOM X files.
 
 ---
 
 ### ⌨️ Navigation, Formatting & Symbols
 
+- **Cross-Record Navigation (<kbd>Ctrl+Click</kbd> / <kbd>F12</kbd>):** Go to Definition and Find All References (<kbd>Shift+Alt+F12</kbd>) across cross-record pointers and resource links in `.ged`, `.json`, and `.xml` files.
 - **Workspace Symbol Search (`Ctrl+T` / `Cmd+T`):** Instantly search individuals by name or identifier, families by partner names, sources by title, and repositories.
 - **Record Skeletons & Snippets:** Insert compliant boilerplate templates for `indi`, `fam`, `sour`, `repo`, `birt`, `marr`, `deat`, `buri`, `cens`, and `note`.
 - **Document Formatting (`Shift+Alt+F`):** Normalizes level indentation, standardizes uppercase tag names, removes blank lines, and trims trailing whitespace.
@@ -146,7 +148,7 @@ One-click Code Actions (`Ctrl+.` / 💡) to resolve errors, synthesize missing r
 | `gedcom.inlayHints.values`       | `true`  | Show plain-text descriptions for coded enumerations (`SEX`, `QUAY`, `PEDI`).                  |
 | `gedcom.inlayHints.ages`         | `true`  | Show subject ages next to dated events based on their birth record.                           |
 | `gedcom.codeLens.enabled`        | `true`  | Show record headers, relation summaries, and quick navigation links above records.            |
-| `gedcom.details.imagePreviews`   | `true`  | Render thumbnail previews for remote `https` media URLs.                                      |
+| `gedcom.details.imagePreviews`   | `true`  | Render thumbnail previews for remote `https` URLs and local image paths in the Details Panel. |
 | `gedcom.virtualIndent.enabled`   | `false` | Visually indent lines in the editor based on GEDCOM level numbers without modifying the file. |
 | `gedcom.virtualIndent.width`     | `2`     | Number of visual columns indented per level.                                                  |
 
@@ -167,6 +169,7 @@ Works seamlessly on desktop VS Code and in the browser on [vscode.dev](https://v
 ## 📜 Supported Standards
 
 - **[FamilySearch GEDCOM 7](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html)** (7.0.18, February 2025) — The active living standard with machine-readable registries.
+- **[GEDCOM X (JSON & XML)](https://gedcomx.org/)** — Modern FamilySearch data exchange specifications for JSON and XML datasets.
 - **[GEDCOM 5.5.5](https://www.gedcom.org/gedcom.html)** (2019) — UTF-8 strict maintenance specification.
 - **[GEDCOM 5.5.1](https://www.gedcom.org/gedcom.html)** (1999) — The historic universal exchange standard.
 
